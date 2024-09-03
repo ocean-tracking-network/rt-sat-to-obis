@@ -12,6 +12,20 @@ Due to lags in reporting between tag and manufacturer, manufacturer and research
 
 The process then should look like this.
 
-TAG -> Manufacturer -> API or WAF -> Correction of Positions via model -> OBIS reformatting -> Publication
-Tagging Metadata -> Researcher -> OBIS reformatting -> Publication
-Project Metadata -> Researcher -> OBIS reformatting -> Publication
+```mermaid
+flowchart LR
+
+TAG --> Manufacturer --> A["API or WAF"] --> B["Correction of Positions via model"] --> C["OBIS reformatting"] --> Publication
+```
+
+```mermaid
+flowchart LR
+
+A["Tagging Metadata"] --> Researcher --> B["OBIS reformatting"] --> Publication
+```
+
+```mermaid
+flowchart LR
+
+A["Project Metadata"] --> Researcher --> B["OBIS reformatting"] --> Publication
+```
