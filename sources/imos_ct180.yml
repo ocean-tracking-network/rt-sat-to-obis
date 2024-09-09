@@ -1,4 +1,9 @@
-sources:  # define inputs for the relevant data types
-  data: input/imos_ct180/diag_ct180_nrt.csv  # local files, or perhaps also remote URLs
-  tags: input/imos_ct180/metadata_ct180_nrt.csv
-  proj: input/imos_ct180/project_metadata.json
+data: 
+  file: input/imos_ct180/diag_ct180_nrt.csv  # local files, or perhaps also remote URLs
+  manufacturer: SMRU
+tags: 
+  file: input/imos_ct180/metadata_ct180_nrt.csv
+  manufacturer: SMRU
+proj: 
+  file: input/imos_ct180/project_metadata.json
+outdir: output/imos_ct180/
