@@ -26,6 +26,8 @@
     <electronicMailAddress>{{ creator.email }}</electronicMailAddress>
     <onlineUrl>https://members.oceantrack.org</onlineUrl>
 </creator>
+
+
 <!-- retrieve and display all node manager contacts on the parent node -->
 {% for nodem in nodemanager %}
 <metadataProvider>
@@ -43,7 +45,7 @@
 </metadataProvider>
   {% endfor %}
 
-<!-- todo: looping over every individual associated w/ Project. Feed a contacts object with dictionary entries for ech-->
+<!-- todo: looping over every individual associated w/ Project. Feed a contacts object with dictionary entries for each-->
 
 {%- for party in contacts %}
     <associatedParty>
@@ -166,11 +168,11 @@ Recognize the limitations of data in OBIS. See https://manual.obis.org/policy.ht
   </purpose>
   <contact>
     <individualName>
-        <givenName>{{ data_manager_firstname }}</givenName>
-      <surName>{{ data_manager_lastname }}</surName>
+        <givenName>{{ creator.firstname }}</givenName>
+      <surName>{{ creator.lastname }}</surName>
     </individualName>
-    <organizationName>Ocean Tracking Network</organizationName>
-    <positionName>{{ data_manager_title}}</positionName>
+    <organizationName>creator.institutionname</organizationName>
+    <positionName>{{ creator.title}}</positionName>
     <address>
         <deliveryPoint>Dalhousie University</deliveryPoint>
         <city>Halifax</city>
@@ -178,8 +180,8 @@ Recognize the limitations of data in OBIS. See https://manual.obis.org/policy.ht
         <postalCode>B3H 4J1</postalCode>
         <country>CA</country>
     </address>
-    <phone>{{ data_manager_phone }}</phone>
-    <electronicMailAddress>{{ data_manager_email }}</electronicMailAddress>
+    <phone>{{ creator.phone }}</phone>
+    <electronicMailAddress>{{ creator.email }}</electronicMailAddress>
     <onlineUrl>http://members.oceantrack.org</onlineUrl>
   </contact>
   <methods>
