@@ -10,22 +10,26 @@
                 {
                     "firstname": "Robert",
                     "lastname": "Harcourt",
+                    "institutionname": "Macquarie University",
+                    "country": "Australia",
                     "title": "Researcher",
                     "orcid": "https://orcid.org/0000-0003-4666-2934",
                     "phone": "",
                     "email": "robert.harcourt@mq.edu.au",
-                    "website": "https://imos.org.au/facility/animal-tracking/animal-tagging",
-                    "role": "principalInvestigator"
+                    "org_url": "https://imos.org.au/facility/animal-tracking/animal-tagging",
+                    "emlrole": "principalInvestigator"
                     },
                 {
                     "firstname": "Clive",
                     "lastname": "McMahon",
+                    "institutionname": "University of Tasmania",
+                    "country": "Australia",
                     "title": "Researcher",
                     "orcid": "",
                     "phone": "",
                     "email": "Clive.McMahon@utas.edu.au",
-                    "website": "https://imos.org.au/facility/animal-tracking/animal-tagging",
-                    "role": "principalInvestigator"
+                    "org_url": "https://imos.org.au/facility/animal-tracking/animal-tagging",
+                    "emlrole": "principalInvestigator"
                     }
             ]
 }
