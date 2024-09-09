@@ -4,5 +4,28 @@
 "project_title":"Southern Ocean Seal Monitoring",
 "principalInvestigatorName": "Robert Harcourt",
 "principalInvestigatorID": "https://orcid.org/0000-0003-4666-2934",
-"projectDescription": "Fitting seals with these miniaturised loggers provide the ability to collect valuable oceanographic measurements in regions often inaccessible to ship-based researchers, whilst also providing information on seal behaviour. Data is transmitted in near real-time using the Advanced Research and Global Observation Satellite (Argos) system."
+"projectDescription": "Fitting seals with these miniaturised loggers provide the ability to collect valuable oceanographic measurements in regions often inaccessible to ship-based researchers, whilst also providing information on seal behaviour. Data is transmitted in near real-time using the Advanced Research and Global Observation Satellite (Argos) system.",
+"datasetIPTId": "demo_live_seals_imos",
+"contacts": [   
+                {
+                    "firstname": "Robert",
+                    "lastname": "Harcourt",
+                    "title": "Researcher",
+                    "orcid": "https://orcid.org/0000-0003-4666-2934",
+                    "phone": "",
+                    "email": "robert.harcourt@mq.edu.au",
+                    "website": "https://imos.org.au/facility/animal-tracking/animal-tagging",
+                    "role": "principalInvestigator"
+                    },
+                {
+                    "firstname": "Clive",
+                    "lastname": "McMahon",
+                    "title": "Researcher",
+                    "orcid": "",
+                    "phone": "",
+                    "email": "Clive.McMahon@utas.edu.au",
+                    "website": "https://imos.org.au/facility/animal-tracking/animal-tagging",
+                    "role": "principalInvestigator"
+                    }
+            ]
 }
