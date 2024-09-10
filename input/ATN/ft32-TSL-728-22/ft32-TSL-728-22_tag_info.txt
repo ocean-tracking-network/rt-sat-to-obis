@@ -1,0 +1,30 @@
+REF	PTT	U_DATE	TX_NUMBER	OCLOCK	TAG_TIME	MAX_DEPTH	ABORTED_TX	BODY	LATEST_RESET	N_RESETS	ADC_OFFSET	WD_STATUS	N_WD_FAIL	N_ODO_FAIL	DRY_COND	WET_COND	GPS_NONE	GPS_SUB5	GPS_GOOD	GPS_REBOOT	TEMPERATURE	ODOMETER	BATTERY_MV	HOURLY_TX_ALLOWANCE	DEPTH_SPIKES	CTD_SAMPLES	VMT_DETRECS	VMT_NRESETS	VMT_MEMPTR	VMT_PULSES	VMT_SYNCH	VMT_REJECTS	VMT_PARTIALS	VMT_DTG	VMT_TIME	VMT_DMEM	VMT_TDECT	VMT_PCOUNT	VMT_NUM_COMPRESSED	BT_ATTEMPTS	BT_CONNECTIONS	BT_DROPPED	BT_BYTES	PCF_GLITCHES	GSM_TX_NUMBER	BT_TX_NUMBER	TAG_TIME_STR	WD_FAIL_COUNT	TAG_OCLOCK_STR
+ft32-TSL-728-22	236479	2023-02-13T19:23:43Z													0																																		
+ft32-TSL-728-22	236479	2023-02-21T14:26:21Z													108																																		
+ft32-TSL-728-22	236479	2023-02-22T12:46:04Z													88																																		
+ft32-TSL-728-22	236479	2023-02-24T02:58:05Z													112																																		
+ft32-TSL-728-22	236479	2023-02-24T03:49:38Z													128																																		
+ft32-TSL-728-22	236479	2023-03-05T03:23:29Z													112																																		
+ft32-TSL-728-22	236479	2023-03-20T04:27:25Z													4																																		
+ft32-TSL-728-22	236479	2023-03-22T21:13:50Z													24																																		
+ft32-TSL-728-22	236479	2023-03-28T04:19:33Z													100																																		
+ft32-TSL-728-22	236479	2023-04-05T06:45:43Z													0																																		
+ft32-TSL-728-22	236479	2023-04-07T09:37:13Z													108																																		
+ft32-TSL-728-22	236479	2023-04-09T04:04:06Z	1199	09-Apr-23/04	04:00	939.3		15728	13-Feb-23/19	2	16265	0	0		116	1									0	86038																							
+ft32-TSL-728-22	236479	2023-04-09T09:14:48Z													104																																		
+ft32-TSL-728-22	236479	2023-04-15T06:32:33Z													84																																		
+ft32-TSL-728-22	236479	2023-04-16T04:35:32Z													116																																		
+ft32-TSL-728-22	236479	2023-04-16T15:04:12Z													116																																		
+ft32-TSL-728-22	236479	2023-04-16T19:13:44Z													108																																		
+ft32-TSL-728-22	236479	2023-04-30T03:02:26Z	1499	30-Apr-23/03	02:24	1041.6		15728	13-Feb-23/19	2	16282	0	0		111	1									0	121313																							
+ft32-TSL-728-22	236479	2023-04-30T04:28:29Z													124																																		
+ft32-TSL-728-22	236479	2023-04-30T18:13:33Z													116																																		
+ft32-TSL-728-22	236479	2023-04-30T18:44:19Z													116																																		
+ft32-TSL-728-22	236479	2023-05-01T22:04:24Z													112																																		
+ft32-TSL-728-22	236479	2023-05-10T15:41:06Z													120																																		
+ft32-TSL-728-22	236479	2023-05-10T16:10:55Z													152																																		
+ft32-TSL-728-22	236479	2023-05-10T20:13:24Z													152																																		
+ft32-TSL-728-22	236479	2023-05-10T20:18:55Z													152																																		
+ft32-TSL-728-22	236479	2023-05-12T02:34:31Z													152																																		
+ft32-TSL-728-22	236479	2023-05-12T07:25:38Z	2339	12-May-23/07	25:36	1041.6		15728	13-Feb-23/19	2	16357	0	1		155	155									0	142835																							
+ft32-TSL-728-22	236479	2023-05-12T07:31:53Z													152																																		
