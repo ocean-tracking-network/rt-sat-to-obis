@@ -1,0 +1,15 @@
+data: 
+  file: input/ATN/gp24-416-20/gp24-416-20_diag.txt  # local files, files grouped by deployment id, additional files include ctd.txt, dive.txt, haulout.txt, summary.txt
+  file: input/ATN/gp24-419-20/gp24-419-20_diag.txt
+  file: input/ATN/gp24-420-20/gp24-420-20_diag.txt
+  file: input/ATN/gp24-421-20/gp24-421-20_diag.txt
+  file: input/ATN/gp24-425-20/gp24-425-20_diag.txt
+  manufacturer: SMRU
+  model: GPS SRDL
+tags: 
+  file: input/ATN/Costa_Beltran_ATN Tag Deployment Metadata.csv
+  manufacturer: SMRU
+proj: 
+  file: input/ATN/ATN_project_metadata.json
+  principalInvestigator: Daniel Costa
+outdir: output/ATN/

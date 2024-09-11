@@ -1,0 +1,12 @@
+data: 
+  file: input/ATN/ft32-TSL-728-22/ft32-TSL-728-22_diag.txt  # local files, files grouped by deployment id, additional files include ctd.txt, dive.txt, haulout.txt, summary.txt
+  file: input/ATN/ft32-TSL-729-22/ft32-TSL-729-22_diag.txt
+  manufacturer: SMRU
+  model: CTD/F SRDL
+tags: 
+  file: input/ATN/Costa_Beltran_ATN Tag Deployment Metadata.csv
+  manufacturer: SMRU
+proj: 
+  file: input/ATN/ATN_project_metadata.json
+  principalInvestigator: Roxanne Beltran
+outdir: output/ATN/

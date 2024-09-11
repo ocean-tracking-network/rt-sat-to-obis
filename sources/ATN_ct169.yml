@@ -1,0 +1,13 @@
+data: 
+  file: input/ATN/ct169-594-21/ct169-594-21_diag.txt  # local files, files grouped by deployment id, additional files include ctd.txt, dive.txt, haulout.txt, summary.txt
+  file: input/ATN/ct169-597-21/ct169-597-21_diag.txt
+  file: input/ATN/ct169-598-21/ct169-598-21_diag.txt
+  manufacturer: SMRU
+  model: CTD SRDL
+tags: 
+  file: input/ATN/Costa_Beltran_ATN Tag Deployment Metadata.csv
+  manufacturer: SMRU
+proj: 
+  file: input/ATN/ATN_project_metadata.json
+  principalInvestigator: Roxanne Beltran
+outdir: output/ATN/
