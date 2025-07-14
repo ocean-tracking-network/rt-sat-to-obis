@@ -4,8 +4,11 @@ cat("\n\n\n\n")
 Sys.time()
 cat("\n")
 
-## create output dir if not exist
+## create required dirs if not exist
 if(!dir.exists("aodn")) dir.create("aodn")
+if(!dir.exists("mdb")) dir.create("mdb")
+if(!dir.exists("maps")) dir.create("maps")
+if(!dir.exists("diag")) dir.create("diag")
 
 
 cid <- "ct182"
