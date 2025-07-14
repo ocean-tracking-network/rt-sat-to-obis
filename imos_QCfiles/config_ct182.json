@@ -1,0 +1,41 @@
+[{"setup": 
+	{
+	"datadir":"mdb",
+	"meta.file":null,
+	"maps.dir":"maps",
+	"diag.dir":"diag",
+	"outdir":"aodn"
+	},
+"harvest": 
+	{
+	"dwnld":true,
+	"species.code":"sese",
+	"cid":"ct182",
+	"smru.usr":"imos",
+	"smru.pwd":"imos",
+	"dwnld.timeout":180,
+	"dropIDs":null,
+	"p2mdbtools":null
+	},
+"proj":"+proj=stere +lat_0=-90 +lat_ts=-71 +lon_0=100 +k=1 +ellps=WGS84 +units=km +no_defs",
+"model": 
+	{
+	"model":"crw",
+	"vmax":3,
+	"time.step":2,
+	"reroute":true,
+	"dist":500,
+	"buffer":0.5,
+	"centroids":true,
+	"cut":false,
+	"min.gap":72,
+	"QCmode":"nrt"
+	},
+"meta": 
+	{
+	"common_name":"southern elephant seal",
+	"species":"Mirounga leonina",
+	"release_site":"Iles Kerguelen",
+	"state_country":"French Overseas Territory"
+	},
+"output":false}]
