@@ -12,7 +12,7 @@ if(!dir.exists("diag")) dir.create("diag")
 
 
 cid <- "ct182"
-imos_smru_qc(wd = ".",
+smru_qc(wd = ".",
              config = "config_ct182.json"
              )
 
