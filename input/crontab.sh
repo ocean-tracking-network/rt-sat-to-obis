@@ -8,7 +8,7 @@ for f in *; do
     for config in $(ls ./config_*.json);
     do
     # run the script using the config file
-      echo $config
+      echo "Running ArgosQC with ${config}"
       Rscript '../run_ArgosQC.R' $config  > "${config}.log" 2>&1
     done
     cd ..

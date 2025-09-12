@@ -1,4 +1,5 @@
 require(ArgosQC)
+require(jsonlite)
 
 cat("\n\n\n\n")
 Sys.time()
@@ -9,15 +10,28 @@ cli <- commandArgs(trailingOnly=TRUE)
 print(cli)
 
 
+conf <- jsonlite::read_json(cli[1], simplifyVector = TRUE)
 
 ## create required dirs if not exist
-if(!dir.exists("aodn")) dir.create("aodn")
-if(!dir.exists("mdb")) dir.create("mdb")
-if(!dir.exists("maps")) dir.create("maps")
-if(!dir.exists("diag")) dir.create("diag")
+## TODO: Get these directories from the config file.
+
+# output.dir
+if(!dir.exists(conf$setup$output.dir)) dir.create(conf$setup$output.dir)
+
+# data.dir
+if(!dir.exists(conf$setup$data.dir)) dir.create(conf$setup$data.dir)
+
+# maps.dir
+if(!dir.exists(conf$setup$maps.dir)) dir.create(conf$setup$maps.dir)
+
+# diag.dir
+if(!dir.exists(conf$setup$diag.dir)) dir.create(conf$setup$diag.dir)
 
 
-cid <- "ct188"
+cid <- conf$harvest$cid # TODO - get this from the config file.
+
+print(paste0('Operating on ',cid))
+
 smru_qc(wd = ".",
              config = cli[1]
              )
