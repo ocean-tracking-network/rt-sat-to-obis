@@ -6,6 +6,7 @@ dependencies:
   - pyworms
   - Pathlib
   - bs4
+  - lxml
   - requests
   - jinja2
   - pip

@@ -336,6 +336,12 @@ def generate_campaign_eml_from_template(config_file:Path=None, cid:str= None):
 
         eml_metadata_source['contacts'] = pd.read_csv(Path(contacts)).to_dict(orient='records')
 
+        eml_metadata_source['dataset_first_publication_date'] = datetime.now().isoformat()
+
+        eml_metadata_source['dataset_first_publication_date_as_date'] = datetime.now().date().isoformat()
+
+        eml_metadata_source['campaignid'] = cid
+
         result_string = template.render(eml_metadata_source)
         fh = open(eml_file, mode='w+', encoding='UTF-8')
         fh.write(result_string)
@@ -373,7 +379,7 @@ def republish_campaign(config_file:Path=None, cid:str=None, path_to_archive:Path
     ipt_auth = ast.literal_eval(ipt_authfile.read_text()) # TODO: evaluate how safe it is to do this.
 
     session = pub.open_ipt_session(ipt_auth, ipt_url)
-    current_date = datetime.now(tz='UTC').strftime('%Y-%m-%d')
+    current_date = datetime.utcnow().strftime('%Y-%m-%d')
     existing_proj = pub.check_if_project_exists(ds_name, ipt_url, session)
 
     if existing_proj:
@@ -382,7 +388,7 @@ def republish_campaign(config_file:Path=None, cid:str=None, path_to_archive:Path
         output = pub.refresh_ipt_project_files(ds_name, path_to_archive, ipt_url, session)
         output = pub.refresh_ipt_project_files(ds_name, path_to_archive, ipt_url, session)
 
-        pub.publish_ipt_project(ds_name, ipt_url, session, publishing_notes=f'Auto-publication from realtime-sat-to-OBIS script on {current_date}')
+        pub.publish_ipt_project(ds_name, ipt_url, session, publishing_notes=f'Automatically republished from realtime-sat-to-OBIS script on {current_date}')
         print(f'Updated data for existing project at {ipt_url}manage/resource?r={ds_name}')
     else:
         print(f"No IPT resource found for {ds_name} on {ipt_url}, creating a new project entry.")
@@ -400,7 +406,7 @@ def republish_campaign(config_file:Path=None, cid:str=None, path_to_archive:Path
         
         pub.make_public_ipt_project(ds_name,ipt_url, session)
         
-        pub.publish_ipt_project(ds_name,ipt_url, session, publishing_notes='Auto-publication from the OTN Database on 2025-08-18')
+        pub.publish_ipt_project(ds_name,ipt_url, session, publishing_notes=f'Auto-publication from the realtime-sat-to-OBIS script on {current_date}')
         
         # GBIF registration - Can't be undone easily!
         # pub.register_ipt_project(ds_name, ipt_url, session)
@@ -418,7 +424,7 @@ if __name__ == '__main__':
 
 
     # Test with ct180
-    cid = 'ct188'
+    cid = 'ct182'
     make_dwc_from_argosqc_output(script_path / 'input' / f'imos_{cid}'/ 'qc' / 'aodn', cid=cid)
     path_to_archive = generate_campaign_eml_from_template(config_file=script_path / 'input' / f'imos_{cid}' / f'config_{cid}.json', cid=cid)
-    # republish_campaign(config_file=script_path / 'input' / f'imos_{cid}' / f'config_{cid}.json', cid=cid, path_to_archive=path_to_archive, ipt_authfile=Path(script_path / '.iptauth_dev'), ipt_url='https://members.devel.oceantrack.org/ipt/')
+    republish_campaign(config_file=script_path / 'input' / f'imos_{cid}' / f'config_{cid}.json', cid=cid, path_to_archive=path_to_archive, ipt_authfile=Path(script_path / '.iptauth_dev'), ipt_url='https://members.devel.oceantrack.org/ipt/')

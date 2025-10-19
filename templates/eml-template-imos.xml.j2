@@ -10,6 +10,7 @@
         <title xml:lang="eng">IMOS Animal Tracking Facility - Near-realtime seal activity in the southern ocean - Campaign: {{campaignid}}</title>
 <creator>
     <individualName>
+        <salutation>Dr.</salutation>
         <givenName>Ian</givenName>
       <surName>Jonsen</surName>
     </individualName>
@@ -26,16 +27,16 @@
 {% for nodem in nodemanager %}
 <metadataProvider>
     <individualName>
+        <salutation>{{ nodem.title|e }}</salutation>
         <givenName>{{ nodem.firstname|e }}</givenName>
-      <surName>{{ nodem.lastname|e }}</surName>
+        <surName>{{ nodem.lastname|e }}</surName>
     </individualName>
     <organizationName>{{ nodem.org|e }}</organizationName>
-    <positionName>{{ nodem.title|e }}</positionName>
+    <positionName>{{ nodem.position|e }}</positionName>
     <address>{% if nodem.city %}<city>{{ nodem.city|e }}</city>{% endif %}
         {% if nodem.state %}<administrativeArea>{{ nodem.state|e }}</administrativeArea>{% endif %}
         <country>{{ nodem.country|e }}</country>
     </address>
-    <role>{{ nodem.role|e }}</role>
     <electronicMailAddress>{{ nodem.email|e }}</electronicMailAddress>
     <onlineUrl>{{ nodem.org_url|e }}</onlineUrl>
 </metadataProvider>
@@ -52,7 +53,7 @@
         <surName>{{ party.lastname }}</surName>
       </individualName>
       <organizationName>{{ party.org|e }}</organizationName>
-      {% if party.title %}<positionName>{{ party.title }}</positionName>{% endif %}
+      {% if party.title %}<positionName>{{ party.position }}</positionName>{% endif %}
       <address>{% if party.city %}<city>{{ party.city }}</city>{% endif %}
         {% if party.state %}<administrativeArea>{{ party.state }}</administrativeArea>{% endif %}
         <country>{{ party.country }}</country>
@@ -130,7 +131,7 @@
         <methods>
             <methodStep>
                 <description>
-                    <para>[step description]</para>
+                    <para>Real-time data is harvested from instrument manufacturer data portals, locations are corrected via the IMOS-approved state-space model QC performed by https://github.com/ianjonsen/ArgosQC, and realtime data archives are prepared using https://github.com/ocean-tracking-network/rt-sat-to-obis/</para>
                 </description>
             </methodStep>
             <sampling>
@@ -161,7 +162,7 @@ Tag deployments on southern elephant seals and Weddell seals occur annually. Dep
                     <surName>Jonsen</surName>
                 </individualName>
                 <userId directory="https://orcid.org/">0000-0001-5423-6076</userId>
-                <role>pointOfContact</role>
+                <role>Contact</role>
             </personnel>
             <abstract>
                 <para>The Animal Tagging Sub-Facility of the IMOS Animal Tracking Facility (formerly known as the Australian Animal Tracking And Monitoring System (AATAMS)) is a coordinated marine animal satellite-tracking project.</para>
