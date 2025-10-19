@@ -6,7 +6,39 @@ import os
 import json
 import ast
 import publish_to_ipt as pub
+import codecs
+from jinja2 import Template
 from datetime import datetime
+
+# We will eventually only need one of the following file-zipping functions. I think it's the zipfile-based one
+# but it might end up being the shutils based one.
+
+SCRIPT_PATH = Path(os.path.dirname(os.path.realpath(__file__)))
+
+def zip_files(folder_path:str, file_list:List) -> str:
+    """
+    Old method of zipping files for Darwin Core archive
+    Removes the relative paths from the files so that the IPT doesn't get confused.
+    Create .zip file from list of files passed
+    Author: Jon Pye
+    Maintainer: Jon Pye
+    :param obis_shortname: OBIS shortname of project
+    :param file_list: List of files to include in the zip
+    :return: path to the zipped files you provided. Not guaranteed to be a DwC Archive.
+    """
+     #
+    import zipfile
+
+    # if they mess up and pass you a file, name the zip after the folder it's in anyway.
+    zip_name = folder_path.parent.name if not folder_path.is_dir() else folder_path.name
+
+    with zipfile.ZipFile(folder_path/ f'{zip_name}_rt.zip', 'w', zipfile.ZIP_DEFLATED) as zip:
+        # Add each file to the ZIP
+        for f in file_list:
+            zip.write(f, arcname=f)
+            print(f'Zipped file {f}')
+
+    return folder_path / f'{zip_name}_rt.zip'
 
 def make_pyworms_lookup_table(species_list:pd.Series = None) -> pd.DataFrame:
     lookup_dict = {}
@@ -36,7 +68,7 @@ def make_pyworms_lookup_table(species_list:pd.Series = None) -> pd.DataFrame:
     return pd.DataFrame.from_dict(lookup_dict, orient='index')
 
 
-def make_dwc_from_argosqc_output(output_dir:Path=None, cid:str=None):
+def make_dwc_from_argosqc_output(output_dir:Path=None, cid:str=None, config_file:Path=None):
     """
     :str output_dir: full path string to where ArgosQC puts its output
     :str cid: string indicating the campaign ID (the substring in each of the output files from ArgosQC)
@@ -46,6 +78,8 @@ def make_dwc_from_argosqc_output(output_dir:Path=None, cid:str=None):
         print('missing arguments, aborting')
         return None
 
+    if config_file is None:
+        config_file = SCRIPT_PATH / 'input' / f'imos_{cid}' / f'config_{cid}.json'
 
     # argosQC makes a metadata_ file and a modified diag file available in its output.dir
     metadata_df = pd.read_csv(Path(f'{output_dir}/metadata_{cid}_nrt.csv'), dtype={'body': str})
@@ -168,6 +202,16 @@ def make_dwc_from_argosqc_output(output_dir:Path=None, cid:str=None):
 
     occ_df = occ_df.join(lookup_df, how='left', on='scientificName', rsuffix='_worms')
 
+
+    # TODO: add emof functionality, will need a switch per instrument type
+    emof_df = pd.DataFrame()
+
+    # Create emofs from biology
+
+
+    # Create emofs from environmental instruments
+
+
     # Save Events and occurrences to csv.
 
     # ensure there is an output folder for this project.
@@ -175,9 +219,76 @@ def make_dwc_from_argosqc_output(output_dir:Path=None, cid:str=None):
 
     Path(f'output/{cid}').mkdir(parents=True, exist_ok=True)
 
-    occ_df.to_csv(f'output/{cid}/occurrences.csv', date_format='%Y-%m-%dT%H:%M:%S', index=False)
-    event_df.to_csv(f'output/{cid}/events.csv', date_format='%Y-%m-%dT%H:%M:%S', index=False)
-    # emof_df.to_csv('output/{cid}/emof.csv', date_format='%Y-%m-%dT%H:%M:%S')
+    # create and include the meta.xml and eml.xml
+    # set the meta.xml paramaters by hand, using the format of the dataframes above
+
+    event_leading_cols=['id']
+    occ_leading_cols=['id']
+
+
+    # Add id columns to the 3 data types
+
+    event_df['id'] = event_df['eventID']
+    occ_df['id'] = occ_df['occurrenceID']
+    meta_xml_vars = {}
+    event_df = event_df[event_leading_cols + (event_df).columns.drop(event_leading_cols).tolist()]
+
+    occ_df = occ_df[occ_leading_cols + (occ_df).columns.drop(occ_leading_cols).tolist()]
+
+    # setup filepaths and naming for the meta.xml
+    occ_filepath = Path('output') / f'{cid}'/ 'occurrences.csv'
+    meta_xml_vars['occurrence_filename'] = occ_filepath.name
+    occ_df.to_csv(occ_filepath, date_format='%Y-%m-%dT%H:%M:%S', index=False)
+
+    event_filepath = Path('output') / f'{cid}' /'events.csv'
+    meta_xml_vars['event_filename'] = event_filepath.name
+    event_df.to_csv(event_filepath, date_format='%Y-%m-%dT%H:%M:%S', index=False)
+
+
+    
+    meta_xml_vars['event_cols_list'] = (event_df).columns.drop(event_leading_cols).tolist()
+ 
+    meta_xml_vars['cols_list'] = (occ_df).columns.drop(occ_leading_cols).tolist()
+
+    if not emof_df.empty:
+        emof_df['id'] = emof_df['eventID']
+        emof_leading_cols=['id', 'eventID']
+        emof_df = emof_df[emof_leading_cols + (emof_df).columns.drop(emof_leading_cols).tolist()]
+        emof_df.to_csv(f'output/{cid}/emof.csv', date_format='%Y-%m-%dT%H:%M:%S')
+
+        meta_xml_vars ['emof_cols_list'] = (emof_df).columns.drop(emof_leading_cols).tolist()
+        meta_xml_vars['emof_filename'] = Path('output') / f'{cid}' / 'emofs.csv'
+
+    # grab the template file for making meta.xml
+    meta_template_file = codecs.open(Path('templates') / 'event_meta.xml.j2', 'r', 'UTF-8').read()
+    meta_template = Template(meta_template_file)
+    meta_result_string = meta_template.render(meta_xml_vars)
+    meta_file = Path('output') / f'{cid}' / 'meta.xml'
+    fh = codecs.open(meta_file, 'wb+', 'UTF-8')
+    fh.write(meta_result_string)
+    fh.close()
+
+    # eml.xml
+    eml_file = generate_campaign_eml_from_template(config_file, cid)
+
+    # Add everything we just made to the zipfile
+    print("Creating fileset for DwC archive from the following files:")
+    if not emof_df.empty:
+        dwc_archive = zip_files(ds_name,  # Folder name
+                            [   meta_file.resolve(), # meta.xml
+                                eml_file.resolve(),   # eml.xml
+                                meta_xml_vars['event_filename'].resolve(),
+                                meta_xml_vars['occurrence_filename'].resolve(),
+                                meta_xml_vars['emof_filename'].resolve()
+                            ])
+    else:
+        dwc_archive = zip_files(ds_name,  # Folder name
+                [   meta_file.resolve(), # meta.xml
+                    eml_file.resolve(),   # eml.xml
+                    meta_xml_vars['event_filename'].resolve(),
+                    meta_xml_vars['occurrence_filename'].resolve()
+                ])
+
 
     # return the dataframes if people are expecting to review the data
     return occ_df, event_df # , emof_df
@@ -190,8 +301,8 @@ def generate_campaign_eml_from_template(config_file:Path=None, cid:str= None):
     """
 
     # What we need:
-    # Config file to have links to which project template to use -> setup.meta.project_meta_template
-    # Config file to have links to contact csv > setup.meta.contacts_file
+    # Config file must have links to which project template to use -> setup.meta.project_meta_template
+    # Config file must have links to contact csv > setup.meta.contacts_file
 
     # read the config file
 
@@ -201,17 +312,36 @@ def generate_campaign_eml_from_template(config_file:Path=None, cid:str= None):
         config = config_dict[0] # so take the first entry
 
         if 'project_meta_template' in config['meta'].keys():    # TODO: what's our error response?
-            template = config['meta']['project_meta_template']
-
+            template = Path('templates') / config['meta']['project_meta_template']
+        else:
+            template = Path('templates') / 'eml.xml.j2'
+        
         # allow config files to override IPT naming
         if 'ipt_resource_id' in config['meta'].keys():
             r = config['meta']['ipt_resource_id']
 
-
         if 'contacts_file' in config['meta'].keys():            # TODO: what's our error response?
             contacts = config['meta']['contacts_file']
 
-    return path_to_archive
+        eml_file = Path('output') / f'{cid}' / 'eml.xml'
+
+        template_file = codecs.open(template, 'r', 'UTF-8').read()
+        template = Template(template_file)
+        # TODO: add the three project data sections here? Or in the get_eml_metadata section.
+
+        # Build out the object to populate the template, from config file mostly:
+        eml_metadata_source = {}
+
+
+        result_string = template.render(eml_metadata_source)
+        fh = codecs.open(eml_file, 'wb+', 'UTF-8')
+        fh.write(result_string)
+        fh.close()
+        print(f'EML file written to {eml_file}')
+
+        return eml_file
+    
+    return None
 
 
 def republish_campaign(config_file:Path=None, cid:str=None, path_to_archive:Path=None, ipt_authfile:str=None, ipt_url:str=None) -> None:
@@ -288,4 +418,4 @@ if __name__ == '__main__':
     cid = 'ct188'
     make_dwc_from_argosqc_output(script_path / 'input' / f'imos_{cid}'/ 'qc' / 'aodn', cid=cid)
     path_to_archive = generate_campaign_eml_from_template(config_file=script_path / 'input' / f'imos_{cid}' / f'config_{cid}.json', cid=cid)
-    republish_campaign(config_file=script_path / 'input' / f'imos_{cid}' / f'config_{cid}.json', cid=cid, path_to_archive=path_to_archive, ipt_authfile=Path(script_path / '.iptauth_dev'), ipt_url='https://members.devel.oceantrack.org/ipt/')
+    # republish_campaign(config_file=script_path / 'input' / f'imos_{cid}' / f'config_{cid}.json', cid=cid, path_to_archive=path_to_archive, ipt_authfile=Path(script_path / '.iptauth_dev'), ipt_url='https://members.devel.oceantrack.org/ipt/')
