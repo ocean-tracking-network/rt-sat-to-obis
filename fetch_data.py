@@ -1,33 +1,26 @@
-# Functions for reading sources.yaml and fetching different types of data
-import yaml
-from cerberus import Validator
+import pyobistools
+import pandas as pd
 
-def fetch_tracks_csv(src: str):
-    """
-    Fetch a csv file of tracks, verify it's coherent, and map its relevant columns to their final names needed for the DwC translation
-    """
+# Using the QCed data sources - produce a DwC archive from each tag type
+# Validate the archive 
+# and possibly even autopublish it / autoupdate its publication on an IPT
 
 
-def fetch_dataset(src: str, outpath: str = 'output'):
-    """
-    Read a source definition file and execute it.
-    """
-    # check if filetype is valid yaml for our purposes
-    with open(src, 'r') as stream:
-        try:
-            datasource = yaml.load(stream)
-        except yaml.YAMLError as exception:
-            raise exception
+def generate_rt_sat_DwC(configFile=''):
+# Read a config file 
+# Set up necessary input and outputs 
+# and which flavour of tag we're working with
+# call the necessary sub-functions to generate the DwC archive
+    tag_family = ''
+    metadata_file = ''
+    qc_data_folder = ''
+    output_folder = ''
 
-    schema = eval(open('./templates/source_schema.py', 'r').read())
-    v = Validator(schema)
-    v.validate(datasource, schema)
-    print(v.errors)    # TODO: Something productive about the errors?
 
-    # if so, read its component data sources into their relevant structures
-
-    fetch_tracks_csv(src=datasource)
-    # and write them to the appropriate output
-
-if __name__ == '__main__':
-    fetch_dataset('sources/imos_ct180.yml')
+# Events
+    generate_rt_events(tag_family)
+# Occurrences
+    generate_rt_occurrences(tag_family)
+# Biotic eMoFs
+    generate_rt_emofs(tag_family)
+# Abiotic eMoFs
