@@ -4,6 +4,11 @@ input/*/qc/maps/
 input/*/qc/mdb/
 input/*/qc/aodn/
 input/*/qc/diag/
+input/*/aodn/
+input/*/maps/
+input/*/diag/
+*.zip
+*.mdb
 
 # Jupyter Notebook
 .ipynb_checkpoints

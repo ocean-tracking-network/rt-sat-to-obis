@@ -6,7 +6,6 @@ import os
 import json
 import ast
 import publish_to_ipt as pub
-import codecs
 from jinja2 import Template
 from datetime import datetime
 
@@ -35,7 +34,7 @@ def zip_files(folder_path:str, file_list:List) -> str:
     with zipfile.ZipFile(folder_path/ f'{zip_name}_rt.zip', 'w', zipfile.ZIP_DEFLATED) as zip:
         # Add each file to the ZIP
         for f in file_list:
-            zip.write(f, arcname=f)
+            zip.write(f, arcname=f.name)
             print(f'Zipped file {f}')
 
     return folder_path / f'{zip_name}_rt.zip'
@@ -253,18 +252,19 @@ def make_dwc_from_argosqc_output(output_dir:Path=None, cid:str=None, config_file
     if not emof_df.empty:
         emof_df['id'] = emof_df['eventID']
         emof_leading_cols=['id', 'eventID']
+        emof_filepath = Path('output') / f'{cid}' / 'emof.csv'
         emof_df = emof_df[emof_leading_cols + (emof_df).columns.drop(emof_leading_cols).tolist()]
-        emof_df.to_csv(f'output/{cid}/emof.csv', date_format='%Y-%m-%dT%H:%M:%S')
+        emof_df.to_csv(emof_filepath, date_format='%Y-%m-%dT%H:%M:%S')
 
         meta_xml_vars ['emof_cols_list'] = (emof_df).columns.drop(emof_leading_cols).tolist()
         meta_xml_vars['emof_filename'] = Path('output') / f'{cid}' / 'emofs.csv'
 
     # grab the template file for making meta.xml
-    meta_template_file = codecs.open(Path('templates') / 'event_meta.xml.j2', 'r', 'UTF-8').read()
+    meta_template_file = open(Path('templates') / 'event_meta.xml.j2', mode='r', encoding='UTF-8').read()
     meta_template = Template(meta_template_file)
     meta_result_string = meta_template.render(meta_xml_vars)
     meta_file = Path('output') / f'{cid}' / 'meta.xml'
-    fh = codecs.open(meta_file, 'wb+', 'UTF-8')
+    fh = open(meta_file, mode='w+', encoding='UTF-8')
     fh.write(meta_result_string)
     fh.close()
 
@@ -274,19 +274,19 @@ def make_dwc_from_argosqc_output(output_dir:Path=None, cid:str=None, config_file
     # Add everything we just made to the zipfile
     print("Creating fileset for DwC archive from the following files:")
     if not emof_df.empty:
-        dwc_archive = zip_files(ds_name,  # Folder name
+        dwc_archive = zip_files(Path('output')/ f'{cid}',  # Folder name
                             [   meta_file.resolve(), # meta.xml
                                 eml_file.resolve(),   # eml.xml
-                                meta_xml_vars['event_filename'].resolve(),
-                                meta_xml_vars['occurrence_filename'].resolve(),
-                                meta_xml_vars['emof_filename'].resolve()
+                                event_filepath.resolve(),
+                                occ_filepath.resolve(),
+                                emof_filepath.resolve()
                             ])
     else:
-        dwc_archive = zip_files(ds_name,  # Folder name
+        dwc_archive = zip_files(Path('output') / f'{cid}',  # Folder name
                 [   meta_file.resolve(), # meta.xml
                     eml_file.resolve(),   # eml.xml
-                    meta_xml_vars['event_filename'].resolve(),
-                    meta_xml_vars['occurrence_filename'].resolve()
+                    event_filepath.resolve(),
+                    occ_filepath.resolve()
                 ])
 
 
@@ -321,20 +321,23 @@ def generate_campaign_eml_from_template(config_file:Path=None, cid:str= None):
             r = config['meta']['ipt_resource_id']
 
         if 'contacts_file' in config['meta'].keys():            # TODO: what's our error response?
-            contacts = config['meta']['contacts_file']
+            contacts = Path('input') / 'contacts' / config['meta']['contacts_file']
 
         eml_file = Path('output') / f'{cid}' / 'eml.xml'
 
-        template_file = codecs.open(template, 'r', 'UTF-8').read()
+        template_file = open(template, mode='r', encoding='UTF-8').read()
         template = Template(template_file)
         # TODO: add the three project data sections here? Or in the get_eml_metadata section.
 
         # Build out the object to populate the template, from config file mostly:
         eml_metadata_source = {}
 
+        eml_metadata_source['nodemanager'] = pd.read_csv(Path('input') / 'contacts' / 'data_manager.csv').to_dict(orient='records')
+
+        eml_metadata_source['contacts'] = pd.read_csv(Path(contacts)).to_dict(orient='records')
 
         result_string = template.render(eml_metadata_source)
-        fh = codecs.open(eml_file, 'wb+', 'UTF-8')
+        fh = open(eml_file, mode='w+', encoding='UTF-8')
         fh.write(result_string)
         fh.close()
         print(f'EML file written to {eml_file}')
