@@ -1,0 +1,192 @@
+<eml:eml xmlns:eml="https://eml.ecoinformatics.org/eml-2.2.0"
+         xmlns:dc="http://purl.org/dc/terms/"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="https://eml.ecoinformatics.org/eml-2.2.0 https://rs.gbif.org/schema/eml-gbif-profile/1.3/eml.xsd"
+         packageId="https://members.devel.oceantrack.org/ipt/resource?id=demo_live_seals_imos/v1.6" system="http://gbif.org" scope="system"
+         xml:lang="eng">
+    <dataset>
+        <alternateIdentifier>https://members.devel.oceantrack.org/ipt/resource?r=demo_live_seals_imos</alternateIdentifier>
+        <shortName>IMOS-ATF satellite tracking - {{campaignid}}</shortName>
+        <title xml:lang="eng">IMOS Animal Tracking Facility - Near-realtime seal activity in the southern ocean - Campaign: {{campaignid}}</title>
+<creator>
+    <individualName>
+        <givenName>{{ creator.firstname }}</givenName>
+      <surName>{{ creator.lastname }}</surName>
+    </individualName>
+    <organizationName>{{ creator.org }}</organizationName>
+    <positionName>{{ creator.title}}</positionName>
+    <address>
+        <deliveryPoint>{{ creator.institution }}</deliveryPoint>
+        <city>{{ creator.city }}</city>
+        <administrativeArea>{{ creator.state }}</administrativeArea>
+        <postalCode>{{ creator.postal }}</postalCode>
+        <country>{{ creator.countrycode }}</country>
+    </address>
+    <phone>{{ creator.phone }}</phone>
+    <electronicMailAddress>{{ creator.email }}</electronicMailAddress>
+    <onlineUrl>{{ creator.url }}</onlineUrl>
+</creator>
+{% for nodem in nodemanager %}
+<metadataProvider>
+    <individualName>
+        <givenName>{{ nodem.firstname|e }}</givenName>
+      <surName>{{ nodem.lastname|e }}</surName>
+    </individualName>
+    <organizationName>{{ nodem.institutionname|e }}</organizationName>
+    <positionName>Data Manager</positionName>
+    <address>
+        <country>{{ nodem.country|e }}</country>
+    </address>
+    <electronicMailAddress>{{ nodem.email|e }}</electronicMailAddress>
+    <onlineUrl>{{ nodem.org_url|e }}</onlineUrl>
+</metadataProvider>
+{% endfor %}
+
+<!-- Project affiliated parties loop -->
+
+
+{%- for party in contacts %}
+    <associatedParty>
+      <individualName>
+          <salutation>{{ party.title }}</salutation>
+          <givenName>{{ party.firstname }}</givenName>
+        <surName>{{ party.lastname }}</surName>
+      </individualName>
+      <organizationName>{{ party.institutionname|e }}</organizationName>
+      <address>
+        {% if party.city %}
+        <city>{{ party.city }}</city>
+        {% endif %}
+        {% if party.state %}
+        <administrativeArea>{{ party.state }}</administrativeArea>
+        {% endif%}
+        <country>{{ party.country }}</country>
+      </address>
+      <electronicMailAddress>{{ party.email }}</electronicMailAddress>
+      <onlineUrl>{{ party.org_url }}</onlineUrl>
+      {% if party.orcid %}
+        <userId directory="http://orcid.org/">{{ party.orcid }}</userId>
+      {% endif %}
+      <role>{{ party.emlrole }}</role>
+    </associatedParty>
+  {% endfor %}
+        <pubDate>
+            {{ dataset_first_publication_date_as_date }}
+        </pubDate>
+        <language>eng</language>
+        <abstract>
+            <para>Live tracks of seals tagged as part of the Integrated Marine Observation System's Animal Tracking Facility</para>
+        </abstract>
+        <keywordSet>
+            <keyword>Samplingevent</keyword>
+            <keywordThesaurus>GBIF Dataset Type Vocabulary: http://rs.gbif.org/vocabulary/gbif/dataset_type_2015-07-10.xml</keywordThesaurus>
+        </keywordSet>
+        <keywordSet>
+            <keyword>Tags and Tracking Devices</keyword>
+            <keywordThesaurus>Marine Community Profile of ISO19115 v1.4 Collection Methods Vocabulary (Annex C.1.3)</keywordThesaurus>
+        </keywordSet>
+        <intellectualRights>
+            <para>This work is licensed under a <ulink url="http://creativecommons.org/licenses/by/4.0/legalcode"><citetitle>Creative Commons Attribution (CC-BY) 4.0 License</citetitle></ulink>.</para>
+        </intellectualRights>
+        <distribution scope="document">
+            <online>
+                <url function="information">https://imos.org.au/facility/animal-tracking/animal-tagging</url>
+            </online>
+        </distribution>
+        <coverage>
+            <geographicCoverage>
+                <geographicDescription>Southern Ocean</geographicDescription>
+                <boundingCoordinates>
+                    <westBoundingCoordinate>-12.14425</westBoundingCoordinate>
+                    <eastBoundingCoordinate>150.130946</eastBoundingCoordinate>
+                    <northBoundingCoordinate>-37.12765</northBoundingCoordinate>
+                    <southBoundingCoordinate>-70.31647</southBoundingCoordinate>
+                </boundingCoordinates>
+            </geographicCoverage>
+            <temporalCoverage>
+                <rangeOfDates>
+                    <beginDate>
+                        <calendarDate>2023-12-21</calendarDate>
+                    </beginDate>
+                    <endDate>
+                        <calendarDate>2023-12-21</calendarDate>
+                    </endDate>
+                </rangeOfDates>
+            </temporalCoverage>
+        </coverage>
+        <maintenance>
+            <description>
+                <para></para>
+            </description>
+            <maintenanceUpdateFrequency>daily</maintenanceUpdateFrequency>
+        </maintenance>
+        <contact>
+            <individualName>
+                <salutation>Dr</salutation>
+                <givenName>Ian</givenName>
+                <surName>Jonsen</surName>
+            </individualName>
+            <organizationName>Stochastic QC</organizationName>
+            <positionName>Owner</positionName>
+            <address>
+                <country>CA</country>
+            </address>
+            <electronicMailAddress>jonsen@stochastic-qc.org</electronicMailAddress>
+            <userId directory="https://orcid.org/">0000-0001-5423-6076</userId>
+        </contact>
+        <methods>
+            <methodStep>
+                <description>
+                    <para>[step description]</para>
+                </description>
+            </methodStep>
+            <sampling>
+                <studyExtent>
+                    <description>
+                        <para>Tagging efforts are focused around the Southern Ocean, especially the Kerguelen Islands
+
+Tag deployments on southern elephant seals and Weddell seals occur annually. Deployments on southern elephant seals typically range from December through January. Deployments on Weddell seals typically range from February through March. Individual deployments can last until October/November for southern elephant seals and until September/October for Weddell seals. Shorter deployment durations occur when tags fall off or otherwise fail prematurely.
+</para>
+                    </description>
+                </studyExtent>
+                <samplingDescription>
+                    <para>Animal Tracking Facility SRDL logger data have been supplied to IMOS by Animal-Tagging Sub-Facility participants, via the Sea Mammal Research Unit (SMRU, St Andrews University, UK). Tags used on southern elephant seals and Weddell seals - CTD Oceanography Satellite Relay Data Loggers (Argos) - collect conductivity, temperature and depth information. On some seals - CTD/Fluorometer Oceanography SRDL (Argos) - collect conductivity, temperature, fluorescence and depth information. The CTD Oceanography SRDL (Argos) and CTD/Fluorometer Oceanography SRDL (Argos) are built by SMRU and incorporate CTD sensors developed by Valeport Ltd (Devon, UK) and a Turner Cyclops-7 fluorometer sensor developed by Turner Designs (San Jose, US). The CTD sensor head consists of a pressure transducer, a platinum resistance thermometer, and an inductive cell for measuring conductivity. The temperature and conductivity sensors have a precision (repeatability) of +/- 0.005oC and +/- 0.01 mS/cm, respectively. Before being taken into the field, devices are calibrated in the laboratory by Valeport. CTD-SRDLs and CTD/Fluorometer SRDLs record hydrographic profiles during the ascent of seals, retaining only the deepest dive in each six-hour time interval, and transmitting profiles in a compressed form (between 10 and 25 data points per profile, depending on the tag program) through the Advanced Research and Global Observation Satellite (ARGOS) system.</para>
+                </samplingDescription>
+            </sampling>
+            <qualityControl>
+                <description>
+                    <para>The Animal-Tagging Sub-Facility conducts an automated, near real-time QC on the ARGOS positions as they are received daily. ARGOS geo-positioning is inherently error-prone, even with the introduction of new geo-positioning algorithms in 2011. The Animal-Tagging Sub-Facility uses a state-space model to quality control Argos location data, providing a median accuracy of +/- 3.24 km; see Jonsen et al. (2020) for details. These quality-controlled geo-positions are appended to all datasets (prefix: ?qc_ssm_?) and also provided as a separate dataset, SSM QC Locations, where SSM-predicted locations and their uncertainty are provided on a regular 6-h time interval. Hydrographic profiles are currently subjected to a rigorous QC process only in delayed-mode, near real-time profiles are presented as transmitted by the tag.</para>
+                </description>
+            </qualityControl>
+        </methods>
+        <project id="Integrated Marine Observing System - Animal Tracking Facility">
+            <title>IMOS Animal Tracking Facility</title>
+            <personnel>
+                <individualName>
+                    <salutation>Dr</salutation>
+                    <givenName>Ian</givenName>
+                    <surName>Jonsen</surName>
+                </individualName>
+                <userId directory="https://orcid.org/">0000-0001-5423-6076</userId>
+                <role>pointOfContact</role>
+            </personnel>
+            <abstract>
+                <para>The Animal Tagging Sub-Facility of the IMOS Animal Tracking Facility (formerly known as the Australian Animal Tracking And Monitoring System (AATAMS)) is a coordinated marine animal satellite-tracking project.</para>
+            </abstract>
+        </project>
+    </dataset>
+    <additionalMetadata>
+        <metadata>
+            <gbif>
+                <dateStamp>{{ dataset_first_publication_date }}</dateStamp>
+                <hierarchyLevel>dataset</hierarchyLevel>
+                <citation>{% if project.citation %} {{ project.citation }}.
+                {% endif %} IMOS - Animal Tracking Facility - Satellite Relay Tagging Program - Near real-time data with quality-controlled locations
+
+The citation in a list of references is: &quot;IMOS. [year-of-data-download], [Title], [data-access-URL], accessed [date-of-access]&quot;.</citation>
+                <resourceLogoUrl>https://imos.org.au/wp-content/uploads/2024/07/IMOS_logo-stacked-Colour.png</resourceLogoUrl>
+                <dc:replaces>https://members.devel.oceantrack.org/ipt/resource?id=demo_live_seals_imos/v1.6.xml</dc:replaces>
+            </gbif>
+        </metadata>
+    </additionalMetadata>
+</eml:eml>
