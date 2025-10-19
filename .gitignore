@@ -11,3 +11,10 @@ input/*/qc/diag/
 # IPython
 profile_default/
 ipython_config.py
+
+# Compiled python
+__pycache__/
+
+# local auths
+.iptauth*
+.mapbox_token

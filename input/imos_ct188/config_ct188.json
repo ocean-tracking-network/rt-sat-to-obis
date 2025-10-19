@@ -32,5 +32,12 @@
 	"cut":false,
 	"min.gap":72,
 	"QCmode":"nrt"
+	},
+"meta": 
+{
+	"release_site":"Iles Kerguelen",
+	"state_country":"French Overseas Territory",
+	"contacts_file":"imos_contacts.csv",
+	"project_meta_template":"eml-template-imos.xml.j2"
 	}
 }]

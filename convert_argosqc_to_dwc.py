@@ -3,8 +3,10 @@ import pyworms
 import pprint
 from pathlib import Path
 import os
-
-
+import json
+import ast
+import publish_to_ipt as pub
+from datetime import datetime
 
 def make_pyworms_lookup_table(species_list:pd.Series = None) -> pd.DataFrame:
     lookup_dict = {}
@@ -177,7 +179,100 @@ def make_dwc_from_argosqc_output(output_dir:Path=None, cid:str=None):
     event_df.to_csv(f'output/{cid}/events.csv', date_format='%Y-%m-%dT%H:%M:%S', index=False)
     # emof_df.to_csv('output/{cid}/emof.csv', date_format='%Y-%m-%dT%H:%M:%S')
 
+    # return the dataframes if people are expecting to review the data
+    return occ_df, event_df # , emof_df
 
+
+def generate_campaign_eml_from_template(config_file:Path=None, cid:str= None):
+    """
+    :str config_file: full path string to the ArgosQC config file, containing metadata and the template to use
+    :str cid: The campaign ID string
+    """
+
+    # What we need:
+    # Config file to have links to which project template to use -> setup.meta.project_meta_template
+    # Config file to have links to contact csv > setup.meta.contacts_file
+
+    # read the config file
+
+    with open(config_file, 'r') as campaign_config:
+        config_dict = json.load(campaign_config)
+        # config file is a list of dicts:
+        config = config_dict[0] # so take the first entry
+
+        if 'project_meta_template' in config['meta'].keys():    # TODO: what's our error response?
+            template = config['meta']['project_meta_template']
+
+        # allow config files to override IPT naming
+        if 'ipt_resource_id' in config['meta'].keys():
+            r = config['meta']['ipt_resource_id']
+
+
+        if 'contacts_file' in config['meta'].keys():            # TODO: what's our error response?
+            contacts = config['meta']['contacts_file']
+
+    return path_to_archive
+
+
+def republish_campaign(config_file:Path=None, cid:str=None, path_to_archive:Path=None, ipt_authfile:str=None, ipt_url:str=None) -> None:
+
+    if path_to_archive is None:
+        print("No DwC archive path provided for {cid}, skipping publish step.")
+        return
+
+    # TODO: evaluate fitness of DwC archive before continuing with publication
+
+
+    with open(config_file, 'r') as campaign_config:
+            config_dict = json.load(campaign_config)
+            # config file is a list of dicts:
+            config = config_dict[0] # so take the first entry
+
+            if 'ipt_resource_id' in config['meta'].keys():    # TODO: what's our error response?
+                ds_name = config['meta']['ipt_resource_id']
+            else:
+                print('No IPT ID in config file. Aborting publication for {cid}')
+                return
+
+
+    # Read the ipt_auth file into a dict for passing to the publish functions
+    # 
+    ipt_auth = ast.literal_eval(ipt_authfile.read_text()) # TODO: evaluate how safe it is to do this.
+
+    session = pub.open_ipt_session(ipt_auth, ipt_url)
+    current_date = datetime.now(tz='UTC').strftime('%Y-%m-%d')
+    existing_proj = pub.check_if_project_exists(ds_name, ipt_url, session)
+
+    if existing_proj:
+        print(f"IPT entry {ds_name} exists for campaign {cid}.")
+        # Workaround for IPT behaviour: have to run it 2x to bypass the beg box that pops up on the first request.
+        output = pub.refresh_ipt_project_files(ds_name, path_to_archive, ipt_url, session)
+        output = pub.refresh_ipt_project_files(ds_name, path_to_archive, ipt_url, session)
+
+        pub.publish_ipt_project(ds_name, ipt_url, session, publishing_notes=f'Auto-publication from realtime-sat-to-OBIS script on {current_date}')
+        print(f'Updated data for existing project at {ipt_url}manage/resource?r={ds_name}')
+    else:
+        print(f"No IPT resource found for {ds_name} on {ipt_url}, creating a new project entry.")
+        
+        create_result = pub.create_new_ipt_project(ds_name, 
+                                path_to_archive,
+                                ipt_url,
+                                session)
+        
+        # Can only do this before you publish the project.
+        add_publisher = pub.change_publishing_org_ipt_project(ds_name, 
+                                                            ipt_url, 
+                                                            session, 
+                                                            new_publishing_org_name='Ocean Tracking Network')
+        
+        pub.make_public_ipt_project(ds_name,ipt_url, session)
+        
+        pub.publish_ipt_project(ds_name,ipt_url, session, publishing_notes='Auto-publication from the OTN Database on 2025-08-18')
+        
+        # GBIF registration - Can't be undone easily!
+        # pub.register_ipt_project(ds_name, ipt_url, session)
+        
+        print('New project created at {ipt_url}manage/resource?r={dataset_name}'.format(ipt_url=ipt_url, dataset_name=ds_name))
 
 if __name__ == '__main__':
     # mess with script pathing to do a default run
@@ -186,5 +281,11 @@ if __name__ == '__main__':
     # For loop across all the input folders
     # when we find a metadata.json file:
     # get the CID from the file
-    cid = 'ct180'
+
+
+
+    # Test with ct180
+    cid = 'ct188'
     make_dwc_from_argosqc_output(script_path / 'input' / f'imos_{cid}'/ 'qc' / 'aodn', cid=cid)
+    path_to_archive = generate_campaign_eml_from_template(config_file=script_path / 'input' / f'imos_{cid}' / f'config_{cid}.json', cid=cid)
+    republish_campaign(config_file=script_path / 'input' / f'imos_{cid}' / f'config_{cid}.json', cid=cid, path_to_archive=path_to_archive, ipt_authfile=Path(script_path / '.iptauth_dev'), ipt_url='https://members.devel.oceantrack.org/ipt/')

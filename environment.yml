@@ -1,0 +1,12 @@
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - pandas
+  - pyworms
+  - Pathlib
+  - bs4
+  - requests
+  - pip
+  - pip:
+    - requests_toolbelt
