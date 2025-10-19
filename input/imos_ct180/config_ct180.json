@@ -2,7 +2,7 @@
 	{
 	"program":"imos",
 	"data.dir":"qc/mdb",
-	"meta.file":"metadata/MQ_2025_Mleonina.csv",
+	"meta.file":null,
 	"maps.dir":"qc/maps",
 	"diag.dir":"qc/diag",
 	"output.dir":"qc/aodn",
@@ -11,11 +11,11 @@
 "harvest": 
 	{
 	"download":true,
-	"cid":"ct188",
+	"cid":"ct180",
 	"smru.usr":"imos",
 	"smru.pwd":"imos",
 	"timeout":180,
-	"dropIDs":"ct188-Q1044-889-I2C-24",
+	"dropIDs":null,
 	"p2mdbtools":"/usr/bin/"
 	},
 "model": 
@@ -23,7 +23,7 @@
 	"model":"crw",
 	"vmax":3,
 	"time.step":2,
-	"proj":"+proj=stere +lat_0=-90 +lat_ts=-71 +lon_0=158 +k=1 +ellps=WGS84 +units=km +no_defs",
+	"proj":"+proj=stere +lat_0=-90 +lat_ts=-71 +lon_0=100 +k=1 +ellps=WGS84 +units=km +no_defs",
 	"reroute":true,
 	"dist":500,
 	"barrier":null,
@@ -34,11 +34,13 @@
 	"QCmode":"nrt"
 	},
 "meta": 
-{
+	{
+	"common_name":"southern elephant seal",
+	"species":"Mirounga leonina",
 	"release_site":"Iles Kerguelen",
 	"state_country":"French Overseas Territory",
 	"contacts_file":"imos_seals.csv",
 	"project_meta_template":"eml-template-imos.xml.j2",
-	"ipt_resource_id": "otn_imos_rtsat_ct188"
+	"ipt_resource_id":"demo_live_seals_imos"
 	}
 }]

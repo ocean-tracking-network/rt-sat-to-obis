@@ -10,31 +10,31 @@
         <title xml:lang="eng">IMOS Animal Tracking Facility - Near-realtime seal activity in the southern ocean - Campaign: {{campaignid}}</title>
 <creator>
     <individualName>
-        <givenName>{{ creator.firstname }}</givenName>
-      <surName>{{ creator.lastname }}</surName>
+        <salutation>Dr.</salutation>
+        <givenName>Ian</givenName>
+      <surName>Jonsen</surName>
     </individualName>
-    <organizationName>{{ creator.org }}</organizationName>
-    <positionName>{{ creator.title}}</positionName>
+    <organizationName>StochasticQC</organizationName>
+    <positionName>Owner</positionName>
     <address>
-        <deliveryPoint>{{ creator.institution }}</deliveryPoint>
-        <city>{{ creator.city }}</city>
-        <administrativeArea>{{ creator.state }}</administrativeArea>
-        <postalCode>{{ creator.postal }}</postalCode>
-        <country>{{ creator.countrycode }}</country>
+        <deliveryPoint>StochasticQC</deliveryPoint>
+        <city>Wolfville</city>
+        <administrativeArea>NS</administrativeArea>
+        <country>CA</country>
     </address>
-    <phone>{{ creator.phone }}</phone>
-    <electronicMailAddress>{{ creator.email }}</electronicMailAddress>
-    <onlineUrl>{{ creator.url }}</onlineUrl>
+    <electronicMailAddress>jonsen@stochastic-qc.org</electronicMailAddress>
 </creator>
 {% for nodem in nodemanager %}
 <metadataProvider>
     <individualName>
+        <salutation>{{ nodem.title|e }}</salutation>
         <givenName>{{ nodem.firstname|e }}</givenName>
-      <surName>{{ nodem.lastname|e }}</surName>
+        <surName>{{ nodem.lastname|e }}</surName>
     </individualName>
-    <organizationName>{{ nodem.institutionname|e }}</organizationName>
-    <positionName>Data Manager</positionName>
-    <address>
+    <organizationName>{{ nodem.org|e }}</organizationName>
+    <positionName>{{ nodem.position|e }}</positionName>
+    <address>{% if nodem.city %}<city>{{ nodem.city|e }}</city>{% endif %}
+        {% if nodem.state %}<administrativeArea>{{ nodem.state|e }}</administrativeArea>{% endif %}
         <country>{{ nodem.country|e }}</country>
     </address>
     <electronicMailAddress>{{ nodem.email|e }}</electronicMailAddress>
@@ -52,22 +52,16 @@
           <givenName>{{ party.firstname }}</givenName>
         <surName>{{ party.lastname }}</surName>
       </individualName>
-      <organizationName>{{ party.institutionname|e }}</organizationName>
-      <address>
-        {% if party.city %}
-        <city>{{ party.city }}</city>
-        {% endif %}
-        {% if party.state %}
-        <administrativeArea>{{ party.state }}</administrativeArea>
-        {% endif%}
+      <organizationName>{{ party.org|e }}</organizationName>
+      {% if party.title %}<positionName>{{ party.position }}</positionName>{% endif %}
+      <address>{% if party.city %}<city>{{ party.city }}</city>{% endif %}
+        {% if party.state %}<administrativeArea>{{ party.state }}</administrativeArea>{% endif %}
         <country>{{ party.country }}</country>
       </address>
       <electronicMailAddress>{{ party.email }}</electronicMailAddress>
       <onlineUrl>{{ party.org_url }}</onlineUrl>
-      {% if party.orcid %}
-        <userId directory="http://orcid.org/">{{ party.orcid }}</userId>
-      {% endif %}
-      <role>{{ party.emlrole }}</role>
+      {% if party.orcid %}<userId directory="http://orcid.org/">{{ party.orcid }}</userId>{% endif %}
+      <role>{{ party.role }}</role>
     </associatedParty>
   {% endfor %}
         <pubDate>
@@ -137,7 +131,7 @@
         <methods>
             <methodStep>
                 <description>
-                    <para>[step description]</para>
+                    <para>Real-time data is harvested from instrument manufacturer data portals, locations are corrected via the IMOS-approved state-space model QC performed by https://github.com/ianjonsen/ArgosQC, and realtime data archives are prepared using https://github.com/ocean-tracking-network/rt-sat-to-obis/</para>
                 </description>
             </methodStep>
             <sampling>
@@ -168,7 +162,7 @@ Tag deployments on southern elephant seals and Weddell seals occur annually. Dep
                     <surName>Jonsen</surName>
                 </individualName>
                 <userId directory="https://orcid.org/">0000-0001-5423-6076</userId>
-                <role>pointOfContact</role>
+                <role>Contact</role>
             </personnel>
             <abstract>
                 <para>The Animal Tagging Sub-Facility of the IMOS Animal Tracking Facility (formerly known as the Australian Animal Tracking And Monitoring System (AATAMS)) is a coordinated marine animal satellite-tracking project.</para>
@@ -180,7 +174,7 @@ Tag deployments on southern elephant seals and Weddell seals occur annually. Dep
             <gbif>
                 <dateStamp>{{ dataset_first_publication_date }}</dateStamp>
                 <hierarchyLevel>dataset</hierarchyLevel>
-                <citation>{% if project.citation %} {{ project.citation }}.
+                <citation>{% if project %} {{ project.citation }}.
                 {% endif %} IMOS - Animal Tracking Facility - Satellite Relay Tagging Program - Near real-time data with quality-controlled locations
 
 The citation in a list of references is: &quot;IMOS. [year-of-data-download], [Title], [data-access-URL], accessed [date-of-access]&quot;.</citation>

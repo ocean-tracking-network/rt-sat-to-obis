@@ -38,6 +38,9 @@
 	"common_name":"southern elephant seal",
 	"species":"Mirounga leonina",
 	"release_site":"Iles Kerguelen",
-	"state_country":"French Overseas Territory"
+	"state_country":"French Overseas Territory",
+	"contacts_file":"imos_seals.csv",
+	"project_meta_template":"eml-template-imos.xml.j2",
+	"ipt_resource_id": "otn_imos_rtsat_ct182"
 	}
 }]
