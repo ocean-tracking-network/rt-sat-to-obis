@@ -1,0 +1,13 @@
+input/*/*.log
+output/
+input/*/qc/maps/
+input/*/qc/mdb/
+input/*/qc/aodn/
+input/*/qc/diag/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
