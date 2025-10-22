@@ -8,6 +8,7 @@ import ast
 import publish_to_ipt as pub
 from jinja2 import Template
 from datetime import datetime
+import sys
 
 # We will eventually only need one of the following file-zipping functions. I think it's the zipfile-based one
 # but it might end up being the shutils based one.
@@ -386,9 +387,10 @@ def republish_campaign(config_file:Path=None, cid:str=None, path_to_archive:Path
         print(f"IPT entry {ds_name} exists for campaign {cid}.")
         # Workaround for IPT behaviour: have to run it 2x to bypass the beg box that pops up on the first request.
         output = pub.refresh_ipt_project_files(ds_name, path_to_archive, ipt_url, session)
-        output = pub.refresh_ipt_project_files(ds_name, path_to_archive, ipt_url, session)
+        #output = pub.refresh_ipt_project_files(ds_name, path_to_archive, ipt_url, session)
 
         pub.publish_ipt_project(ds_name, ipt_url, session, publishing_notes=f'Automatically republished from realtime-sat-to-OBIS script on {current_date}')
+        
         print(f'Updated data for existing project at {ipt_url}manage/resource?r={ds_name}')
     else:
         print(f"No IPT resource found for {ds_name} on {ipt_url}, creating a new project entry.")
@@ -417,14 +419,18 @@ if __name__ == '__main__':
     # mess with script pathing to do a default run
     script_path = Path(os.path.dirname(os.path.realpath(__file__)))
 
-    # For loop across all the input folders
-    # when we find a metadata.json file:
+    input_path = Path(sys.argv[1])
+
+    # This lives inside a for loop across all the input folders
+    # when we find a metadata.json file of the form config_*.json
+
+    for f in input_path.glob('config_*.json'):
+    # load the file
+        config_file = json.load(open(f,'r'))[0]
     # get the CID from the file
+        cid = config_file['harvest']['cid']
 
-
-
-    # Test with ct180
-    cid = 'ct182'
-    make_dwc_from_argosqc_output(script_path / 'input' / f'imos_{cid}'/ 'qc' / 'aodn', cid=cid)
-    path_to_archive = generate_campaign_eml_from_template(config_file=script_path / 'input' / f'imos_{cid}' / f'config_{cid}.json', cid=cid)
-    republish_campaign(config_file=script_path / 'input' / f'imos_{cid}' / f'config_{cid}.json', cid=cid, path_to_archive=path_to_archive, ipt_authfile=Path(script_path / '.iptauth_dev'), ipt_url='https://members.devel.oceantrack.org/ipt/')
+    # cid = 'ct188'
+    make_dwc_from_argosqc_output(input_path / 'qc' / 'aodn', cid=cid)
+    path_to_archive = generate_campaign_eml_from_template(config_file=input_path/ f'config_{cid}.json', cid=cid)
+    republish_campaign(config_file=input_path / f'config_{cid}.json', cid=cid, path_to_archive=path_to_archive, ipt_authfile=Path(script_path / '.iptauth_dev'), ipt_url='https://members.devel.oceantrack.org/ipt/')

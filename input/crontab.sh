@@ -10,6 +10,10 @@ for f in *; do
     # run the script using the config file
       echo "Running ArgosQC with ${config}"
       Rscript '../run_ArgosQC.R' $config  > "${config}.log" 2>&1
+
+    # run the Python DwC and publishing script
+      echo "Publishing the resulting archive to your OBIS IPT"
+      python '../../convert_argosqc_to_dwc.py' $f
     done
     cd ..
   fi
