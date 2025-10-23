@@ -15,7 +15,7 @@ import sys
 
 SCRIPT_PATH = Path(os.path.dirname(os.path.realpath(__file__)))
 
-def zip_files(folder_path:str, file_list:List) -> str:
+def zip_files(folder_path:str, file_list:list) -> str:
     """
     Old method of zipping files for Darwin Core archive
     Removes the relative paths from the files so that the IPT doesn't get confused.
@@ -261,7 +261,7 @@ def make_dwc_from_argosqc_output(output_dir:Path=None, cid:str=None, config_file
         meta_xml_vars['emof_filename'] = Path('output') / f'{cid}' / 'emofs.csv'
 
     # grab the template file for making meta.xml
-    meta_template_file = open(Path('templates') / 'event_meta.xml.j2', mode='r', encoding='UTF-8').read()
+    meta_template_file = open(Path(SCRIPT_PATH) / 'templates' / 'event_meta.xml.j2', mode='r', encoding='UTF-8').read()
     meta_template = Template(meta_template_file)
     meta_result_string = meta_template.render(meta_xml_vars)
     meta_file = Path('output') / f'{cid}' / 'meta.xml'
@@ -311,20 +311,22 @@ def generate_campaign_eml_from_template(config_file:Path=None, cid:str= None):
         config_dict = json.load(campaign_config)
         # config file is a list of dicts:
         config = config_dict[0] # so take the first entry
+        
+        print(Path(SCRIPT_PATH) / 'templates' / 'eml.xml.j2')
 
         if 'project_meta_template' in config['meta'].keys():    # TODO: what's our error response?
-            template = Path('templates') / config['meta']['project_meta_template']
+            template = Path(SCRIPT_PATH) / 'templates' / config['meta']['project_meta_template']
         else:
-            template = Path('templates') / 'eml.xml.j2'
+            template = Path(SCRIPT_PATH) / 'templates' / 'eml.xml.j2'
         
         # allow config files to override IPT naming
         if 'ipt_resource_id' in config['meta'].keys():
             r = config['meta']['ipt_resource_id']
 
         if 'contacts_file' in config['meta'].keys():            # TODO: what's our error response?
-            contacts = Path('input') / 'contacts' / config['meta']['contacts_file']
+            contacts = Path(SCRIPT_PATH) / 'input' / 'contacts' / config['meta']['contacts_file']
 
-        eml_file = Path('output') / f'{cid}' / 'eml.xml'
+        eml_file = Path(SCRIPT_PATH) / 'output' / f'{cid}' / 'eml.xml'
 
         template_file = open(template, mode='r', encoding='UTF-8').read()
         template = Template(template_file)
@@ -333,7 +335,7 @@ def generate_campaign_eml_from_template(config_file:Path=None, cid:str= None):
         # Build out the object to populate the template, from config file mostly:
         eml_metadata_source = {}
 
-        eml_metadata_source['nodemanager'] = pd.read_csv(Path('input') / 'contacts' / 'data_manager.csv').to_dict(orient='records')
+        eml_metadata_source['nodemanager'] = pd.read_csv(Path(SCRIPT_PATH) / 'input' / 'contacts' / 'data_manager.csv').to_dict(orient='records')
 
         eml_metadata_source['contacts'] = pd.read_csv(Path(contacts)).to_dict(orient='records')
 
@@ -419,16 +421,19 @@ if __name__ == '__main__':
     # mess with script pathing to do a default run
     script_path = Path(os.path.dirname(os.path.realpath(__file__)))
 
-    input_path = Path(sys.argv[1])
+    # the reallink output in the argument doubles the folder and destination file. This parent entry 'fixes' that.
+    input_path = Path(sys.argv[1]).parent
 
     # This lives inside a for loop across all the input folders
     # when we find a metadata.json file of the form config_*.json
 
-    for f in input_path.glob('config_*.json'):
-    # load the file
-        config_file = json.load(open(f,'r'))[0]
-    # get the CID from the file
-        cid = config_file['harvest']['cid']
+    if input_path.exists():
+      for f in input_path.glob('config_*.json'):
+      # load the file
+          config_file = json.load(open(f,'r'))[0]
+      # get the CID from the file
+          cid = config_file['harvest']['cid']
+          print(cid)
 
     # cid = 'ct188'
     make_dwc_from_argosqc_output(input_path / 'qc' / 'aodn', cid=cid)
