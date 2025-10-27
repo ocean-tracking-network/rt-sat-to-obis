@@ -32,7 +32,9 @@ def zip_files(folder_path:str, file_list:list) -> str:
     # if they mess up and pass you a file, name the zip after the folder it's in anyway.
     zip_name = folder_path.parent.name if not folder_path.is_dir() else folder_path.name
 
-    with zipfile.ZipFile(folder_path/ f'{zip_name}_rt.zip', 'w', zipfile.ZIP_DEFLATED) as zip:
+    print((folder_path / f'{zip_name}_rt.zip').resolve())
+
+    with zipfile.ZipFile(folder_path / f'{zip_name}_rt.zip', 'w', zipfile.ZIP_DEFLATED) as zip:
         # Add each file to the ZIP
         for f in file_list:
             zip.write(f, arcname=f.name)
@@ -80,6 +82,8 @@ def make_dwc_from_argosqc_output(output_dir:Path=None, cid:str=None, config_file
 
     if config_file is None:
         config_file = SCRIPT_PATH / 'input' / f'imos_{cid}' / f'config_{cid}.json'
+
+    print(config_file)
 
     # argosQC makes a metadata_ file and a modified diag file available in its output.dir
     metadata_df = pd.read_csv(Path(f'{output_dir}/metadata_{cid}_nrt.csv'), dtype={'body': str})
@@ -217,7 +221,7 @@ def make_dwc_from_argosqc_output(output_dir:Path=None, cid:str=None, config_file
     # ensure there is an output folder for this project.
     # Paths are relative to this executable by default, but let's be explicit:
 
-    Path(f'output/{cid}').mkdir(parents=True, exist_ok=True)
+    (SCRIPT_PATH / 'output' / f'{cid}').mkdir(parents=True, exist_ok=True)
 
     # create and include the meta.xml and eml.xml
     # set the meta.xml paramaters by hand, using the format of the dataframes above
@@ -236,13 +240,14 @@ def make_dwc_from_argosqc_output(output_dir:Path=None, cid:str=None, config_file
     occ_df = occ_df[occ_leading_cols + (occ_df).columns.drop(occ_leading_cols).tolist()]
 
     # setup filepaths and naming for the meta.xml
-    occ_filepath = Path('output') / f'{cid}'/ 'occurrences.csv'
+    occ_filepath = SCRIPT_PATH / 'output' / f'{cid}'/ 'occurrences.csv'
+    print(occ_filepath.resolve())
     meta_xml_vars['occurrence_filename'] = occ_filepath.name
-    occ_df.to_csv(occ_filepath, date_format='%Y-%m-%dT%H:%M:%S', index=False)
+    occ_df.to_csv(occ_filepath.resolve(), date_format='%Y-%m-%dT%H:%M:%S', index=False)
 
-    event_filepath = Path('output') / f'{cid}' /'events.csv'
+    event_filepath = SCRIPT_PATH / 'output' / f'{cid}' /'events.csv'
     meta_xml_vars['event_filename'] = event_filepath.name
-    event_df.to_csv(event_filepath, date_format='%Y-%m-%dT%H:%M:%S', index=False)
+    event_df.to_csv(event_filepath.resolve(), date_format='%Y-%m-%dT%H:%M:%S', index=False)
 
 
     
@@ -264,8 +269,8 @@ def make_dwc_from_argosqc_output(output_dir:Path=None, cid:str=None, config_file
     meta_template_file = open(Path(SCRIPT_PATH) / 'templates' / 'event_meta.xml.j2', mode='r', encoding='UTF-8').read()
     meta_template = Template(meta_template_file)
     meta_result_string = meta_template.render(meta_xml_vars)
-    meta_file = Path('output') / f'{cid}' / 'meta.xml'
-    fh = open(meta_file, mode='w+', encoding='UTF-8')
+    meta_file = SCRIPT_PATH / 'output' / f'{cid}' / 'meta.xml'
+    fh = open(meta_file, mode='w', encoding='UTF-8')
     fh.write(meta_result_string)
     fh.close()
 
@@ -274,8 +279,10 @@ def make_dwc_from_argosqc_output(output_dir:Path=None, cid:str=None, config_file
 
     # Add everything we just made to the zipfile
     print("Creating fileset for DwC archive from the following files:")
+    target_zip = (SCRIPT_PATH / 'output' / f'{cid}' / f'{cid}_rt.zip').resolve();
+    
     if not emof_df.empty:
-        dwc_archive = zip_files(Path('output')/ f'{cid}',  # Folder name
+        dwc_archive = zip_files((SCRIPT_PATH / 'output' / f'{cid}').resolve(),  # Folder name
                             [   meta_file.resolve(), # meta.xml
                                 eml_file.resolve(),   # eml.xml
                                 event_filepath.resolve(),
@@ -283,7 +290,7 @@ def make_dwc_from_argosqc_output(output_dir:Path=None, cid:str=None, config_file
                                 emof_filepath.resolve()
                             ])
     else:
-        dwc_archive = zip_files(Path('output') / f'{cid}',  # Folder name
+        dwc_archive = zip_files((SCRIPT_PATH / 'output' / f'{cid}').resolve(),  # Folder name
                 [   meta_file.resolve(), # meta.xml
                     eml_file.resolve(),   # eml.xml
                     event_filepath.resolve(),
@@ -292,7 +299,7 @@ def make_dwc_from_argosqc_output(output_dir:Path=None, cid:str=None, config_file
 
 
     # return the dataframes if people are expecting to review the data
-    return occ_df, event_df # , emof_df
+    return dwc_archive #occ_df, event_df # , emof_df
 
 
 def generate_campaign_eml_from_template(config_file:Path=None, cid:str= None):
@@ -346,7 +353,7 @@ def generate_campaign_eml_from_template(config_file:Path=None, cid:str= None):
         eml_metadata_source['campaignid'] = cid
 
         result_string = template.render(eml_metadata_source)
-        fh = open(eml_file, mode='w+', encoding='UTF-8')
+        fh = open(eml_file, mode='w', encoding='UTF-8')
         fh.write(result_string)
         fh.close()
         print(f'EML file written to {eml_file}')
@@ -419,7 +426,7 @@ def republish_campaign(config_file:Path=None, cid:str=None, path_to_archive:Path
 
 if __name__ == '__main__':
     # mess with script pathing to do a default run
-    script_path = Path(os.path.dirname(os.path.realpath(__file__)))
+    script_path = SCRIPT_PATH
 
     # the reallink output in the argument doubles the folder and destination file. This parent entry 'fixes' that.
     input_path = Path(sys.argv[1]).parent
@@ -436,6 +443,6 @@ if __name__ == '__main__':
           print(cid)
 
     # cid = 'ct188'
-    make_dwc_from_argosqc_output(input_path / 'qc' / 'aodn', cid=cid)
-    path_to_archive = generate_campaign_eml_from_template(config_file=input_path/ f'config_{cid}.json', cid=cid)
-    republish_campaign(config_file=input_path / f'config_{cid}.json', cid=cid, path_to_archive=path_to_archive, ipt_authfile=Path(script_path / '.iptauth_dev'), ipt_url='https://members.devel.oceantrack.org/ipt/')
+    zip_to_publish = make_dwc_from_argosqc_output(input_path / 'qc' / 'aodn', cid=cid)
+    path_to_eml = generate_campaign_eml_from_template(config_file=input_path/ f'config_{cid}.json', cid=cid)
+    republish_campaign(config_file=input_path / f'config_{cid}.json', path_to_archive = zip_to_publish, cid=cid, ipt_authfile=(SCRIPT_PATH / '.iptauth_dev'), ipt_url='https://members.devel.oceantrack.org/ipt/')

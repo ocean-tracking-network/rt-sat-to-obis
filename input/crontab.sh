@@ -1,6 +1,6 @@
 #!/bin/bash
 cd ~/projects/rt-sat-to-obis/input/
-conda init && conda activate rt-sat
+
 for f in *; do
   if [ -d "$f" ]; then
     cd $f
@@ -18,7 +18,7 @@ for f in *; do
     # run the Python DwC and publishing script
       fp=`readlink -f $f`
       echo "Publishing the resulting archive to your OBIS IPT"
-      python '../../convert_argosqc_to_dwc.py' "${fp}" >>"${config}.log" 2>&1
+      /home/jdpye/miniconda3/envs/rt-sat/bin/python '../../convert_argosqc_to_dwc.py' "${fp}" >>"${config}.log" 2>&1
     done
     cd ..
   fi
