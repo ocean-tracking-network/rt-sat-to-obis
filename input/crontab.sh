@@ -15,6 +15,10 @@ for f in *; do
       echo "Running ArgosQC with ${config}"
       Rscript '../run_ArgosQC.R' $config  > "${config}.log" 2>&1
 
+    # Push detections to OTN for storage / conversion 
+
+
+
     # run the Python DwC and publishing script
       fp=`readlink -f $f`
       echo "Publishing the resulting archive to your OBIS IPT"

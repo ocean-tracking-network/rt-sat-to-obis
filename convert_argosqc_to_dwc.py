@@ -321,17 +321,17 @@ def generate_campaign_eml_from_template(config_file:Path=None, cid:str= None):
         
         print(Path(SCRIPT_PATH) / 'templates' / 'eml.xml.j2')
 
-        if 'project_meta_template' in config['meta'].keys():    # TODO: what's our error response?
-            template = Path(SCRIPT_PATH) / 'templates' / config['meta']['project_meta_template']
+        if 'project_meta_template' in config['pub'].keys():    # TODO: what's our error response?
+            template = Path(SCRIPT_PATH) / 'templates' / config['pub']['project_meta_template']
         else:
             template = Path(SCRIPT_PATH) / 'templates' / 'eml.xml.j2'
         
         # allow config files to override IPT naming
-        if 'ipt_resource_id' in config['meta'].keys():
-            r = config['meta']['ipt_resource_id']
+        if 'ipt_resource_id' in config['pub'].keys():
+            r = config['pub']['ipt_resource_id']
 
-        if 'contacts_file' in config['meta'].keys():            # TODO: what's our error response?
-            contacts = Path(SCRIPT_PATH) / 'input' / 'contacts' / config['meta']['contacts_file']
+        if 'contacts_file' in config['pub'].keys():            # TODO: what's our error response?
+            contacts = Path(SCRIPT_PATH) / 'input' / 'contacts' / config['pub']['contacts_file']
 
         eml_file = Path(SCRIPT_PATH) / 'output' / f'{cid}' / 'eml.xml'
 
@@ -377,8 +377,8 @@ def republish_campaign(config_file:Path=None, cid:str=None, path_to_archive:Path
             # config file is a list of dicts:
             config = config_dict[0] # so take the first entry
 
-            if 'ipt_resource_id' in config['meta'].keys():    # TODO: what's our error response?
-                ds_name = config['meta']['ipt_resource_id']
+            if 'ipt_resource_id' in config['pub'].keys():    # TODO: what's our error response?
+                ds_name = config['pub']['ipt_resource_id']
             else:
                 print('No IPT ID in config file. Aborting publication for {cid}')
                 return
