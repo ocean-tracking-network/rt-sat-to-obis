@@ -198,7 +198,7 @@ def make_dwc_from_argosqc_output(output_dir:Path=None, cid:str=None, config_file
     # end Create Occurrences from location data
 
     # combine both sources of Occurrences
-    occ_df = pd.concat([occ_df, dets_df[['occurrenceID', 'eventID', 'scientificName', 'organismID', 'basisOfRecord']]])
+    occ_df = pd.concat([occ_df, dets_df[['occurrenceID', 'eventID', 'scientificName', 'organismID', 'basisOfRecord', 'dataGeneralizations']]])
 
 
     # get taxonomic information to add:
