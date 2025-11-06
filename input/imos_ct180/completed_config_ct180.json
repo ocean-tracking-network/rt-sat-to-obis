@@ -11,7 +11,7 @@
 "harvest": 
 	{
 	"download":true,
-	"cid":"ct182",
+	"cid":"ct180",
 	"smru.usr":"imos",
 	"smru.pwd":"imos",
 	"timeout":180,
@@ -38,12 +38,9 @@
 	"common_name":"southern elephant seal",
 	"species":"Mirounga leonina",
 	"release_site":"Iles Kerguelen",
-	"state_country":"French Overseas Territory"
-	},
-"pub":
-  {
-  "contacts_file":"imos_seals.csv",
+	"state_country":"French Overseas Territory",
+	"contacts_file":"imos_seals.csv",
 	"project_meta_template":"eml-template-imos.xml.j2",
-	"ipt_resource_id": "otn_imos_rtsat_ct182"
-  }
+	"ipt_resource_id":"demo_live_seals_imos"
+	}
 }]
