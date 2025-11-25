@@ -27,3 +27,8 @@ docker run -d --name timescaledb -p 5432:5432 -e POSTGRES_PASSWORD=password time
 ```
 
 <img width="1699" height="905" alt="image" src="https://github.com/user-attachments/assets/b452fccb-065c-4e86-93d2-c97f075b8a71" />
+
+
+3. In DBeaver create new connection: localhost_timescale according to the Docker image cridencials 
+
+
