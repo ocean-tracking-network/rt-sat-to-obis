@@ -32,3 +32,28 @@ docker run -d --name timescaledb -p 5432:5432 -e POSTGRES_PASSWORD=password time
 3. In DBeaver create new connection: localhost_timescale according to the Docker image cridencials 
 
 
+4. Enable timescaledb extesion:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS timescaledb;
+
+```
+
+5. Create and test `hypertables`
+
+```
+CREATE TABLE conditions (
+    time TIMESTAMPTZ NOT NULL,
+    location TEXT NOT NULL,
+    temperature DOUBLE PRECISION NULL
+);
+
+INSERT INTO conditions (time, location, temperature) VALUES
+  (NOW() - INTERVAL '1 day', 'office', 22.5),
+  (NOW() - INTERVAL '2 days', 'office', 23.1),
+  (NOW() - INTERVAL '3 days', 'office', 21.8),
+  (NOW() - INTERVAL '1 day', 'warehouse', 18.2),
+  (NOW() - INTERVAL '2 days', 'warehouse', 17.9);
+
+SELECT * FROM timescaledb_information.hypertables;
+```
