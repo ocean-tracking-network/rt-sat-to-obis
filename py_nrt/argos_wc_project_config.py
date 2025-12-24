@@ -5,6 +5,15 @@ import typing
 from collections import defaultdict
 from datetime import datetime, date
 from itertools import product
+import requests
+import hashlib
+import hmac
+import pandas as pd
+import xml.etree.ElementTree as ET
+from pathlib import Path
+import zipfile
+import shutil
+from datetime import datetime
 from typing import List, Tuple
 
 import numpy as np
@@ -96,3 +105,210 @@ def wc_get_collab_ids(a_key: str = None, s_key: str = None, verbose: bool = Fals
         raise Exception(f"Failed to parse XML response: {e}")
     except Exception as e:
         raise Exception(f"Unexpected error: {e}")
+
+
+def sha256_hmac(message: str, key: str) -> str:
+    """Return HMAC-SHA256 hex digest (WC API uses this)."""
+    return hmac.new(
+        key.encode("utf-8"),
+        message.encode("utf-8"),
+        hashlib.sha256
+    ).hexdigest()
+
+
+def parse_xml_nodes(xml_root, xpath):
+    """Return list of dicts for XML nodes matching an XPath-like pattern."""
+    nodes = xml_root.findall(xpath)
+    result = []
+    for node in nodes:
+        record = {child.tag: child.text for child in node}
+        result.append(record)
+    return result
+
+
+def posixtime(x):
+    """Convert numeric POSIX string to UTC datetime."""
+    if x is None:
+        return None
+    try:
+        return datetime.utcfromtimestamp(float(x))
+    except:
+        return None
+
+
+def wc_get_files(dest: str, a_key: str, s_key: str, owner_id: str = None, subset_ids: str = None, collaborator: bool = True,
+                 unzip_files: bool = True, verbose: bool = False, download: bool = True, return_tag_meta: bool = False):
+    """
+    Download files from Wildlife Computers API.
+
+    :param dest: Destination directory to save downloaded files
+    :param a_key: Wildlife Computers API Access Key
+    :param s_key: Wildlife Computers API Secret Key
+    :param owner_id: Owner ID to filter files by (optional)
+    :param subset_ids: Comma-separated subset IDs to download specific files (optional)
+    :param collaborator: Whether to include collaborator data (default: True)
+    :param unzip_files: Whether to automatically unzip downloaded files (default: True)
+    :param verbose: Print verbose output during operation (default: False)
+    :param download: Whether to download files or just list them (default: True)
+    :param return_tag_meta: Whether to return tag metadata along with file info (default: False)
+    :return: DataFrame containing file information and optionally tag metadata
+    """
+
+    if a_key is None:
+        raise ValueError("wc.access.key must be provided")
+
+    if s_key is None:
+        raise ValueError("wc.secret.key must be provided")
+
+    if owner_id is None and not collaborator:
+        raise ValueError("Either owner_id must be provided OR collaborator=True")
+
+    base_url = WC_API_ENDPOINT
+    # Get collaborator
+    if owner_id is None and collaborator:
+        ids_df = wc_get_collab_ids(a_key, s_key, verbose)
+
+        # Get deployments for each collaborator ID
+        deps_list = []
+        for _, row in ids_df.iterrows():
+            mid = row["id"]
+            msg = f"action=get_deployments&owner_id={mid}"
+            digest = sha256_hmac(msg, s_key)
+
+            r = requests.post(
+                base_url,
+                headers={"X-Access": a_key, "X-Hash": digest},
+                data=msg
+            )
+            root = ET.fromstring(r.text)
+            dep = parse_xml_nodes(root, ".//deployment")
+
+            df = pd.DataFrame(dep)
+            if not df.empty:
+                df = df[["id", "owner", "status", "tag", "last_update_date"]]
+                deps_list.append(df)
+
+        deps = pd.concat(deps_list, ignore_index=True)
+        deps["last_update_date"] = deps["last_update_date"].apply(posixtime)
+        print(f'deps: ')
+        itables.show(deps)
+
+    #################################################
+    # 2. OWNER-ID MODE
+    #################################################
+    else:
+        msg = f"action=get_deployments&owner_id={owner_id}"
+        digest = sha256_hmac(msg, s_key)
+
+        r = requests.post(
+            base_url,
+            headers={"X-Access": a_key, "X-Hash": digest},
+            data=msg
+        )
+        root = ET.fromstring(r.text)
+
+        # Parse deployment nodes
+        deps = pd.DataFrame(parse_xml_nodes(root, ".//deployment"))
+
+        # Required fields only
+        keep = [
+            "id", "owner", "status", "tag", "argos",
+            "deployment", "last_update_date", "last_location",
+            "first_uplink_date", "last_uplink_date"
+        ]
+        deps = deps[[c for c in keep if c in deps.columns]]
+
+        # Convert numeric POSIX timestamps
+        for col in ["last_update_date", "first_uplink_date", "last_uplink_date"]:
+            if col in deps.columns:
+                deps[col] = deps[col].apply(posixtime)
+
+        # ARGOS tag info
+        argos = pd.DataFrame(parse_xml_nodes(root, ".//argos"))
+        argos = argos.rename(columns={
+            "program_number": "sattag_program",
+            "ptt_decimal": "ptt"
+        })
+
+        # LAST LOCATION
+        last_loc = pd.DataFrame(parse_xml_nodes(root, ".//last_location"))
+        last_loc = last_loc.rename(columns={
+            "location_date": "last_loc_date",
+            "longitude": "last_loc_lon",
+            "latitude": "last_loc_lat"
+        })
+        last_loc["last_loc_date"] = last_loc["last_loc_date"].apply(posixtime)
+
+        deps = pd.concat([deps, argos, last_loc], axis=1)
+
+        # DEPLOY start node
+        deploy = pd.DataFrame(parse_xml_nodes(root, ".//start"))
+        print(deploy.columns)
+        deploy.columns = ["deploy_date", "deploy_lat", "deploy_lon"]
+        deploy["deploy_date"] = deploy["deploy_date"].apply(posixtime)
+
+        # Join by row order (same as R)
+        deploy["id"] = deps["id"]
+        deps = deps.merge(deploy, on="id", how="left")
+
+        #################################################
+        # Subset by UUID list (if provided)
+        #################################################
+        if subset_ids:
+            uuid_df = pd.read_csv(subset_ids)
+            if list(uuid_df.columns) != ["uuid"]:
+                raise ValueError("subset.ids CSV must contain a single column named 'uuid'")
+
+            deps = deps[deps["id"].isin(uuid_df["uuid"])]
+
+        #################################################
+        # Duplicate PTT check
+        #################################################
+        if deps["ptt"].duplicated().any():
+            deps.to_csv("QC_logfile.csv", index=False)
+            raise RuntimeError(
+                "Duplicate PTT detected. Metadata written to QC_logfile.csv. "
+                "Add UUIDs to QC list and retry."
+            )
+
+    #################################################
+    # 3. DOWNLOAD ZIPFILES
+    #################################################
+    dest_path = Path(dest)
+    print(dest)
+    dest_path.mkdir(parents=True, exist_ok=True)
+    if download:
+        for _, row in deps.iterrows():
+            uuid = row["id"]
+            tagid = str(row.get("tag", "tag")).replace('\n', '_n')
+            print(f'tagid:{tagid}')
+#             if pd.isna(tagid) or (isinstance(tagid, str) and tagid.strip() == ""):
+#                 continue
+
+            msg = f"action=download_deployment&id={uuid}"
+            digest = sha256_hmac(msg, s_key)
+
+            outfile = dest_path / f"{uuid}_{tagid}.zip"
+            print(f'writing to {outfile}...')
+
+            r = requests.post(
+                base_url,
+                headers={"X-Access": a_key, "X-Hash": digest},
+                data=msg
+            )
+
+            # Write ZIP
+            outfile.write_bytes(r.content)
+
+            if unzip_files:
+                with zipfile.ZipFile(outfile, "r") as z:
+                    extract_path = outfile.with_suffix("")
+                    z.extractall(extract_path)
+
+                outfile.unlink()  # delete zip
+
+    #################################################
+    # Return tag metadata if requested
+    #################################################
+    if return_tag_meta:
+        return deps
