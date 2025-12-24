@@ -32,6 +32,8 @@ dependencies:
 - pyarrow
 - r-base=4.3
 - r-essentials
+- itables
+- hashlib
 
 - pip:
   - pykeepass
