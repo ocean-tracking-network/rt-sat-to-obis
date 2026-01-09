@@ -1,9 +1,11 @@
 import binascii
 import hashlib
+import json
 import os
 import typing
 from collections import defaultdict
 from datetime import datetime, date
+from functools import partial
 from itertools import product
 import requests
 import hashlib
@@ -42,6 +44,81 @@ from py_nrt.common import run_from_ipython
 itables.init_notebook_mode()
 # WC API endpoint
 WC_API_ENDPOINT = 'https://my.wildlifecomputers.com/services/'
+
+
+def create_wc_qc_config_template(
+        dest_path: Path = None,
+        a_key: str = None,
+        s_key: str = None,
+        owner_id: str = None,
+        time_step: int = 3,
+        program: str=None,
+        project_id: str =None,
+        common_name: str = None,
+        species: str = None,
+        release_site: str = None,
+        state_country: str = None
+) -> list:
+    """
+    Create a configuration file for wc_qc with customizable parameters.
+
+    Args:
+        owner_id: Owner ID for harvest section
+        time_step: Time step for model section
+        common_name: Common name for meta section
+        species: Species name for meta section
+        release_site: Release site for meta section
+        state_country: State/Country for meta section
+
+    Returns:
+        List containing the configuration template
+    """
+    wc_qc_config = [
+        {
+            "setup": {
+                "program": program,
+                "data.dir": "data",
+                "meta.file": None,
+                "maps.dir": f"output/maps/{project_id}",
+                "diag.dir": f"output/diag/{project_id}",
+                "output.dir": f"output/{program}/{project_id}",
+                "return.R": True
+            },
+            "harvest": {
+                "download": False,
+                "owner.id": owner_id,
+                "wc.akey": a_key,
+                "wc.skey": s_key,
+                "tag.list": f"{program}_{project_id}_tags.csv",
+                "dropIDs": None
+            },
+            "model": {
+                "model": "rw",
+                "vmax": 3,
+                "time.step": time_step,
+                "proj": None,
+                "reroute": True,
+                "dist": 20,
+                "barrier": None,
+                "buffer": 0.25,
+                "centroids": True,
+                "cut": False,
+                "min.gap": 72,
+                "QCmode": "nrt",
+                "pred.int": 12
+            },
+            "meta": {
+                "common_name": common_name,
+                "species": species,
+                "release_site": release_site,
+                "state_country": state_country
+            }
+        }
+    ]
+    output_path = os.path.join(dest_path, f'{program}_{project_id}.json')
+    with open(output_path, 'w') as f:
+        json.dump(wc_qc_config, f, indent=2, ensure_ascii=False)
+    print(f'Wrote wc_qc config file to {output_path}.')
 
 
 def wc_get_collab_ids(a_key: str = None, s_key: str = None, verbose: bool = False) -> pd.DataFrame:
@@ -189,14 +266,35 @@ def parse_xml_to_dict(response: str, element: str, verbose=False) -> dict[str,st
     return flattened_dicts
 
 
+def build_request_header(a_key: str, s_key: str, payload: str):
+    """
+    Build the header of API request
+    """
+    return {"X-Access": a_key, "X-Hash": sha256_hmac(payload, s_key)}
+
+
+def perform_download(a_key: str, s_key: str, tag_uuid_dropdown: widgets.Dropdown = None, dest_path: Path = None, verbose=False, button: Button=None) -> Path:
+    tag_uuid = tag_uuid_dropdown.value
+    payload = f"action=download_deployment&id={tag_uuid}"
+    print(f'Downloading :{tag_uuid}...', sep=' ')
+    response = requests.post(
+        WC_API_ENDPOINT,
+        headers=build_request_header(a_key, s_key, payload),
+        data=payload
+    )
+    dest_path.mkdir(parents=True, exist_ok=True)
+    outfile = Path(os.path.join(dest_path, f"{tag_uuid}.zip"))
+    outfile.write_bytes(response.content)
+    print('Done')
+    return outfile
+
+
 def get_deployments_for_owner_id(a_key: str, s_key: str, owner_id: str = None, verbose=False) -> pd.DataFrame:
     if not owner_id:
         print('Select a collaborator_id to proceed')
         return pd.DataFrame
-    msg = f"action=get_deployments&owner_id={owner_id}"
-    digest = sha256_hmac(msg, s_key)
-    response = requests.post(WC_API_ENDPOINT, headers={"X-Access": a_key, "X-Hash": digest}, data=msg)
-    root = ET.fromstring(response.text)
+    payload = f"action=get_deployments&owner_id={owner_id}"
+    response = requests.post(WC_API_ENDPOINT, data=payload, headers=build_request_header(a_key, s_key, payload))
     if verbose:
         print(response)
         print(response.text)
@@ -204,11 +302,22 @@ def get_deployments_for_owner_id(a_key: str, s_key: str, owner_id: str = None, v
     flattened_dicts = parse_xml_to_dict(response, 'deployment')
     deployment_df = pd.DataFrame(flattened_dicts)
 
-    rename_dict = {'id': 'tag_uuid', 'argos_ptt_decimal': 'argos_ptt', 'last_location_location_date': 'last_location_date'}
-    columns = ['tag_uuid', 'argos_ptt', 'status', 'last_update_date', 'deploy_id','deployment_start_date', 'deployment_end_date', 'deployment_start_latitude','argos_first_uplink_date',
-               'argos_last_uplink_date','last_location_latitude', 'last_location_longitude', 'last_location_date']
+    rename_dict = {
+        'id': 'tag_uuid',
+        'argos_ptt_decimal': 'ptt',
+        'argos_program_number': 'sattag_program',
+        'last_location_location_date': 'last_loc_date',
+        'last_location_latitude': 'last_loc_lat',
+        'last_location_longitude': 'last_loc_lon'
+    }
+    columns = [
+        'tag_uuid', 'ptt', 'sattag_program', 'status', 'last_update_date',
+        'last_loc_date','last_loc_lat', 'last_loc_lon',
+        'deploy_id','deployment_start_date', 'deployment_end_date',
+        'deployment_start_latitude','argos_first_uplink_date', 'argos_last_uplink_date'
+    ]
     deployment_df = deployment_df.rename(columns=rename_dict)
-    # Convert epoch to datetiem
+    # Convert epoch to datetime
     for col in [col for col in deployment_df.columns if col.endswith('_date')]:
         # Convert integer timestamps to UTC datetime
         deployment_df[col] = pd.to_datetime(deployment_df[col], unit='s', utc=True)
@@ -216,46 +325,21 @@ def get_deployments_for_owner_id(a_key: str, s_key: str, owner_id: str = None, v
     itables.show(deployment_df[columns])
     return deployment_df
 
-    # Required fields only
-    keep = [
-        "id", "owner", "status", "tag", "argos",
-        "deployment", "last_update_date", "last_location",
-        "first_uplink_date", "last_uplink_date"
-    ]
-    deps = deps[[c for c in keep if c in deps.columns]]
 
-    # Convert numeric POSIX timestamps
-    for col in ["last_update_date", "first_uplink_date", "last_uplink_date"]:
-        if col in deps.columns:
-            deps[col] = deps[col].apply(posixtime)
+def download_tag(a_key: str, s_key: str, deployment_df: pd.DataFrame, dest_path: str, verbose=False):
+    tag_uuid_dropdown = build_drop_down(deployment_df['tag_uuid'].tolist())
+    download_button = Button(description="Download", button_style='primary')
+    display(tag_uuid_dropdown, download_button)
+    download_button.on_click(partial(perform_download, a_key, s_key, tag_uuid_dropdown, Path(dest_path), verbose))
 
-    # ARGOS tag info
-    argos = pd.DataFrame(parse_xml_nodes(root, ".//argos"))
-    argos = argos.rename(columns={
-        "program_number": "sattag_program",
-        "ptt_decimal": "ptt"
-    })
 
-    # LAST LOCATION
-    last_loc = pd.DataFrame(parse_xml_nodes(root, ".//last_location"))
-    last_loc = last_loc.rename(columns={
-        "location_date": "last_loc_date",
-        "longitude": "last_loc_lon",
-        "latitude": "last_loc_lat"
-    })
-    last_loc["last_loc_date"] = last_loc["last_loc_date"].apply(posixtime)
 
-    deps = pd.concat([deps, argos, last_loc], axis=1)
-
-    # DEPLOY start node
-    deploy = pd.DataFrame(parse_xml_nodes(root, ".//start"))
-    print(deploy.columns)
-    deploy.columns = ["deploy_date", "deploy_lat", "deploy_lon"]
-    deploy["deploy_date"] = deploy["deploy_date"].apply(posixtime)
-
-    # Join by row order (same as R)
-    deploy["id"] = deps["id"]
-    deps = deps.merge(deploy, on="id", how="left")
+def build_drop_down(option_lst: list[str]) -> widgets.Dropdown :
+    return widgets.Dropdown(
+        options=option_lst,
+        description='Select UUID',
+        disabled=False,
+    )
 
 def wc_get_files(dest: str, a_key: str, s_key: str, owner_id: str = None, subset_ids: str = None, collaborator: bool = True,
                  unzip_files: bool = True, verbose: bool = False, download: bool = True, return_tag_meta: bool = False):
