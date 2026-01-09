@@ -46,7 +46,7 @@ itables.init_notebook_mode()
 WC_API_ENDPOINT = 'https://my.wildlifecomputers.com/services/'
 
 
-def create_wc_qc_config_template(
+def create_wc_qc_config(
         dest_path: Path = None,
         a_key: str = None,
         s_key: str = None,
