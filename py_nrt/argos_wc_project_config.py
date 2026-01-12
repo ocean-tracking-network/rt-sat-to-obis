@@ -57,7 +57,8 @@ def create_wc_qc_config(
         common_name: str = None,
         species: str = None,
         release_site: str = None,
-        state_country: str = None
+        state_country: str = None,
+        tag_uuid_list: list[str] = []
 ) -> list:
     """
     Create a configuration file for wc_qc with customizable parameters.
@@ -115,10 +116,14 @@ def create_wc_qc_config(
             }
         }
     ]
-    output_path = os.path.join(dest_path, f'{program}_{project_id}.json')
+    output_path = os.path.join(dest_path, f'{program}_{project_id}_wc.json')
     with open(output_path, 'w') as f:
         json.dump(wc_qc_config, f, indent=2, ensure_ascii=False)
-    print(f'Wrote wc_qc config file to {output_path}.')
+    tag_list_file = os.path.join(dest_path, f'{program}_{project_id}_tags.csv')
+    with open(tag_list_file, 'w') as f:
+        f.write('\n'.join(['uuid'] + tag_uuid_list))
+    print(f'wc_qc config file is written to {output_path}')
+    print(f'tag list config file is written to {tag_list_file}')
 
 
 def wc_get_collab_ids(a_key: str = None, s_key: str = None, verbose: bool = False) -> pd.DataFrame:
@@ -305,13 +310,17 @@ def get_deployments_for_owner_id(a_key: str, s_key: str, owner_id: str = None, v
     rename_dict = {
         'id': 'tag_uuid',
         'argos_ptt_decimal': 'ptt',
-        'argos_program_number': 'sattag_program',
+        'argos_program_number': 'tag_program_number',
         'last_location_location_date': 'last_loc_date',
+        'labels_category_name': 'label_name',
+        'labels_category_label': 'label',
         'last_location_latitude': 'last_loc_lat',
-        'last_location_longitude': 'last_loc_lon'
+        'last_location_longitude': 'last_loc_lon',
+        'tag_tag_type': 'tag_type',
+        'tag_serial_number': 'serial_number'
     }
     columns = [
-        'tag_uuid', 'ptt', 'sattag_program', 'status', 'last_update_date',
+        'tag_uuid', 'ptt', 'tag_program_number', 'status', 'tag_type', 'serial_number', 'last_update_date', 'label_name', 'label',
         'last_loc_date','last_loc_lat', 'last_loc_lon',
         'deploy_id','deployment_start_date', 'deployment_end_date',
         'deployment_start_latitude','argos_first_uplink_date', 'argos_last_uplink_date'
