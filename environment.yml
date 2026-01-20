@@ -11,6 +11,7 @@ dependencies:
 - ipyleaflet
 - plotly
 - pandas=1.5.3
+- pypgstac
 - matplotlib
 - shapely
 - sqlalchemy<=1.4.46
