@@ -11,6 +11,8 @@ dependencies:
 - ipyleaflet
 - plotly
 - pandas=1.5.3
+- psycopg
+- psycopg_pool
 - pypgstac
 - matplotlib
 - shapely
