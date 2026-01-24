@@ -12,8 +12,6 @@ dependencies:
 - plotly
 - pandas=1.5.3
 - psycopg
-- psycopg_pool
-- pypgstac
 - matplotlib
 - shapely
 - sqlalchemy<=1.4.46
@@ -36,7 +34,6 @@ dependencies:
 - r-base=4.3
 - r-essentials
 - itables
-- hashlib
 - xmltodict
 
 - pip:
@@ -53,6 +50,9 @@ dependencies:
   - pytz
   - resonATe
   - fiona
+  - hashlib
+  - psycopg_pool
+  - pypgstac
 
 channels:
   - conda-forge
