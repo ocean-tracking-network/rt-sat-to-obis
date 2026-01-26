@@ -33,10 +33,12 @@ dependencies:
 - pyarrow
 - r-base=4.3
 - r-essentials
+- remotes
 - itables
 - xmltodict
 - keplergl
 - widgetsnbextension==4.0.8
+- nodejs>=20
 
 - pip:
   - pykeepass
@@ -57,3 +59,4 @@ dependencies:
 
 channels:
   - conda-forge
+  - r
