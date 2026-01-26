@@ -6,7 +6,7 @@ dependencies:
 - jupyter_events==0.6.3
 - jupyter_server==1.23.4
 - notebook=6.5.7
-- ipywidgets<=8.1.3
+- ipywidgets==8.0.4
 - traitlets==5.9
 - ipyleaflet
 - plotly
@@ -35,6 +35,8 @@ dependencies:
 - r-essentials
 - itables
 - xmltodict
+- keplergl
+- widgetsnbextension==4.0.8
 
 - pip:
   - pykeepass
@@ -50,7 +52,6 @@ dependencies:
   - pytz
   - resonATe
   - fiona
-  - hashlib
   - psycopg_pool
   - pypgstac
 

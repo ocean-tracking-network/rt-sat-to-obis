@@ -2,6 +2,8 @@ import binascii
 import hashlib
 import json
 import os
+import zipfile
+
 import typing
 from collections import defaultdict
 from datetime import datetime, date
@@ -50,7 +52,7 @@ def create_wc_qc_config(
         dest_path: Path = None,
         a_key: str = None,
         s_key: str = None,
-        owner_id: str = None,
+        collaborator: str = None,
         time_step: int = 3,
         program: str=None,
         project_id: str =None,
@@ -87,7 +89,7 @@ def create_wc_qc_config(
             },
             "harvest": {
                 "download": False,
-                "owner.id": owner_id,
+                "owner.id": collaborator.split(' - ')[-1],
                 "wc.akey": a_key,
                 "wc.skey": s_key,
                 "tag.list": f"{program}_{project_id}_tags.csv",
@@ -183,10 +185,15 @@ def wc_get_collab_ids(a_key: str = None, s_key: str = None, verbose: bool = Fals
             collab_df = pd.DataFrame()
             if verbose:
                 warnings.warn("No collaborators found in response")
-        radio_btn = RadioButtons(options=collab_df['id'].to_list(), value=None)
+        collab_list = [f"{email_val} - {id_val}" for id_val, email_val in zip(collab_df['id'], collab_df['email_address'])]
+
+        radio_btn = RadioButtons(options=collab_list,
+                                 layout={'width': '600px'},
+                                 style={'description_width': 'initial'},
+                                 value=None)
 
         itables.show(collab_df)
-        print('Select a collaborator_id to proceed')
+        print('Select a collaborator to proceed')
         display(radio_btn)
         return collab_df, radio_btn
 
@@ -196,8 +203,6 @@ def wc_get_collab_ids(a_key: str = None, s_key: str = None, verbose: bool = Fals
         raise Exception(f"Failed to parse XML response: {e}")
     except Exception as e:
         raise Exception(f"Unexpected error: {e}")
-
-
 
 def sha256_hmac(message: str, key: str) -> str:
     """Return HMAC-SHA256 hex digest (WC API uses this)."""
@@ -278,27 +283,71 @@ def build_request_header(a_key: str, s_key: str, payload: str):
     return {"X-Access": a_key, "X-Hash": sha256_hmac(payload, s_key)}
 
 
-def perform_download(a_key: str, s_key: str, tag_uuid_dropdown: widgets.Dropdown = None, dest_path: Path = None, verbose=False, button: Button=None) -> Path:
+def unzip_file(extract_dest_path: Path) -> None:
+    """
+    Unzip files despite extraction error may occur
+    Args:
+        extract_dest_path: destination folder
+
+    Returns: None
+    """
+    if extract_dest_path.exists():
+        shutil.rmtree(extract_dest_path)
+        print(f'Removed existing directory: {extract_dest_path}')
+
+    try:
+        with zipfile.ZipFile(Path(str(extract_dest_path) +'.zip'), 'r') as zip_ref:
+            try:
+                zip_ref.extractall(extract_dest_path)
+                print(f'Successfully unzipped to: "{extract_dest_path}"')
+
+                extracted_files = zip_ref.namelist()
+                print(f'Extracted {len(extracted_files)} files')
+
+            except zipfile.BadZipFile as e:
+                print(f'Warning: Bad zip file - {e}. Continuing...')
+
+                # Try to extract
+                print('Attempting to extract valid files...')
+                successful_files = 0
+                for file_info in zip_ref.infolist():
+                    try:
+                        zip_ref.extract(file_info, extract_dest_path)
+                        successful_files += 1
+                    except RuntimeError as e1:
+                        print(f'  Could not extract: {file_info.filename} - {e1}')
+                print(
+                    f'Partially extracted {successful_files} out of {len(zip_ref.namelist())} files')
+
+    except Exception as e:
+        print(f'Warning: Failed to process zip file - {e}')
+
+
+def perform_download(a_key: str, s_key: str, tag_uuid_dropdown: widgets.Dropdown = None,
+                     deployment_df: pd.DataFrame = None, verbose=False, button: Button = None) -> Path:
     tag_uuid = tag_uuid_dropdown.value
     payload = f"action=download_deployment&id={tag_uuid}"
-    print(f'Downloading :{tag_uuid}...', sep=' ')
+    print(f'Downloading: {tag_uuid}...', sep=' ')
     response = requests.post(
         WC_API_ENDPOINT,
         headers=build_request_header(a_key, s_key, payload),
         data=payload
     )
+    dest_path = Path(deployment_df[deployment_df['tag_uuid'] == tag_uuid]['owner'].iloc[0])
     dest_path.mkdir(parents=True, exist_ok=True)
     outfile = Path(os.path.join(dest_path, f"{tag_uuid}.zip"))
     outfile.write_bytes(response.content)
-    print('Done')
+    print(f'Downloaded to: "{outfile}')
+
+    unzip_file(dest_path / tag_uuid)
     return outfile
 
 
-def get_deployments_for_owner_id(a_key: str, s_key: str, owner_id: str = None, verbose=False) -> pd.DataFrame:
-    if not owner_id:
+def get_deployments_for_owner_id(a_key: str, s_key: str, collaborator: str = None, verbose=False) -> pd.DataFrame:
+    if not collaborator:
         print('Select a collaborator_id to proceed')
         return pd.DataFrame
-    payload = f"action=get_deployments&owner_id={owner_id}"
+    payload = f"action=get_deployments&owner_id={collaborator.split(' - ')[-1]}"
     response = requests.post(WC_API_ENDPOINT, data=payload, headers=build_request_header(a_key, s_key, payload))
     if verbose:
         print(response)
@@ -330,16 +379,16 @@ def get_deployments_for_owner_id(a_key: str, s_key: str, owner_id: str = None, v
     for col in [col for col in deployment_df.columns if col.endswith('_date')]:
         # Convert integer timestamps to UTC datetime
         deployment_df[col] = pd.to_datetime(deployment_df[col], unit='s', utc=True)
-
+    print(f'Showing {len(deployment_df)} tag(s) for collaborator: {collaborator}')
     itables.show(deployment_df[columns])
     return deployment_df
 
 
-def download_tag(a_key: str, s_key: str, deployment_df: pd.DataFrame, dest_path: str, verbose=False):
+def download_tag(a_key: str, s_key: str, deployment_df: pd.DataFrame, verbose=False):
     tag_uuid_dropdown = build_drop_down(deployment_df['tag_uuid'].tolist())
     download_button = Button(description="Download", button_style='primary')
     display(tag_uuid_dropdown, download_button)
-    download_button.on_click(partial(perform_download, a_key, s_key, tag_uuid_dropdown, Path(dest_path), verbose))
+    download_button.on_click(partial(perform_download, a_key, s_key, tag_uuid_dropdown, deployment_df, verbose))
 
 
 
@@ -350,7 +399,7 @@ def build_drop_down(option_lst: list[str]) -> widgets.Dropdown :
         disabled=False,
     )
 
-def wc_get_files(dest: str, a_key: str, s_key: str, owner_id: str = None, subset_ids: str = None, collaborator: bool = True,
+def wc_get_files(dest: str, a_key: str, s_key: str, collaborator: str = None, subset_ids: str = None,
                  unzip_files: bool = True, verbose: bool = False, download: bool = True, return_tag_meta: bool = False):
     """
     Download files from Wildlife Computers API.
@@ -358,7 +407,7 @@ def wc_get_files(dest: str, a_key: str, s_key: str, owner_id: str = None, subset
     :param dest: Destination directory to save downloaded files
     :param a_key: Wildlife Computers API Access Key
     :param s_key: Wildlife Computers API Secret Key
-    :param owner_id: Owner ID to filter files by (optional)
+    :param collaborator: the collaborator to filter file
     :param subset_ids: Comma-separated subset IDs to download specific files (optional)
     :param collaborator: Whether to include collaborator data (default: True)
     :param unzip_files: Whether to automatically unzip downloaded files (default: True)
@@ -374,12 +423,12 @@ def wc_get_files(dest: str, a_key: str, s_key: str, owner_id: str = None, subset
     if s_key is None:
         raise ValueError("wc.secret.key must be provided")
 
-    if owner_id is None and not collaborator:
-        raise ValueError("Either owner_id must be provided OR collaborator=True")
+    if not collaborator:
+        raise ValueError("Please select a collaborator")
 
     base_url = WC_API_ENDPOINT
     # Get collaborator
-    if owner_id is None and collaborator:
+    if not collaborator:
         ids_df = wc_get_collab_ids(a_key, s_key, verbose)
 
         # Get deployments for each collaborator ID
@@ -516,8 +565,8 @@ def wc_get_files(dest: str, a_key: str, s_key: str, owner_id: str = None, subset
 
             if unzip_files:
                 with zipfile.ZipFile(outfile, "r") as z:
-                    extract_path = outfile.with_suffix("")
-                    z.extractall(extract_path)
+                    extract_dest_path = outfile.with_suffix("")
+                    z.extractall(extract_dest_path)
 
                 outfile.unlink()  # delete zip
 
