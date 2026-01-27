@@ -324,9 +324,9 @@ def unzip_file(extract_dest_path: Path) -> None:
         print(f'Warning: Failed to process zip file - {e}')
 
 
-def perform_download(a_key: str, s_key: str, tag_uuid_dropdown: widgets.Dropdown = None,
+def perform_download(a_key: str, s_key: str, tag_uuid_combobox: widgets.Dropdown = None,
                      deployment_df: pd.DataFrame = None, verbose=False, button: Button = None) -> Path:
-    tag_uuid = tag_uuid_dropdown.value
+    tag_uuid = tag_uuid_combobox.value
     payload = f"action=download_deployment&id={tag_uuid}"
     print(f'Downloading: {tag_uuid}...', sep=' ')
     response = requests.post(
@@ -386,16 +386,16 @@ def get_deployments_for_owner_id(a_key: str, s_key: str, collaborator: str = Non
 
 
 def download_tag(a_key: str, s_key: str, deployment_df: pd.DataFrame, verbose=False):
-    tag_uuid_dropdown = build_drop_down(deployment_df['tag_uuid'].tolist())
+    tag_uuid_combobox = build_combobox(deployment_df['tag_uuid'].tolist())
     download_button = Button(description="Download", button_style='primary')
-    display(tag_uuid_dropdown, download_button)
-    download_button.on_click(partial(perform_download, a_key, s_key, tag_uuid_dropdown, deployment_df, verbose))
+    display(tag_uuid_combobox, download_button)
+    download_button.on_click(partial(perform_download, a_key, s_key, tag_uuid_combobox, deployment_df, verbose))
 
 
-def build_drop_down(option_lst: list[str]) -> widgets.Dropdown :
-    return widgets.Dropdown(
+def build_combobox(option_lst: list[str]) -> widgets.Combobox :
+    return widgets.Combobox(
         options=option_lst,
-        description='Select UUID',
+        placeholder='Tag UUID',
         disabled=False,
     )
 
