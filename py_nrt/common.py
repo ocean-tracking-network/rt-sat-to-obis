@@ -1,14 +1,19 @@
 import os
+import sys
 import urllib
 import uuid
 from dataclasses import dataclass
 from getpass import getpass
-from typing import Union
+from io import StringIO
+from typing import Union, Dict, List
 
+import pandas as pd
+from IPython.core.display_functions import display
 from ipywidgets import Color
+from ipywidgets.widgets import widget
 from pykeepass import PyKeePass
 from pykeepass.exceptions import CredentialsError
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, VARCHAR
 from sqlalchemy.engine import Engine
 from termcolor import colored
 
@@ -305,5 +310,94 @@ class Color():
 
 
 CLR = Color()
+def map_header_to_table_columns(headers: List[str], ) -> List[str]:
+    column_mapping = {
+        'DeploymentID': 'deployment_id',
+        'date': 'datetime_utc',
+        'lon': 'longitude',
+        'lat': 'latitude'
+    }
 
 
+def chunk_csv_loader(engine: Engine, input_file: str, table_name: str, schema: str,
+                     chunksize: int = 10000) -> bool:
+    """CSV chunk loading operation with progress bars for both command-line and notebook
+
+    Args:
+        engine (Engine): sqlalchemy engine object
+        input_file (str): input csv file location
+        table_name (str): target table name
+        schema (str): target schema name
+        chunksize (int, optional): load chunksize. (Defaults to 10000)
+    """
+    # Get column names
+    headers = pd.read_csv(input_file, dtype=object, nrows=1, encoding='utf-8').columns
+    headers = map_header_to_table_columns(headers)
+
+    total_lines = get_file_line_count(input_file)
+
+    # Read file yet again using chunks for memory
+    dataframe = pd.read_csv(input_file, dtype=object, chunksize=chunksize, header=0,
+                            names=headers, encoding='utf-8')
+
+    dtypes = {x: VARCHAR for x in headers}  # Set all columns to varchar
+
+    try:
+        # Batch process all the chunks
+        # db transfer
+        no_chunk = 0
+        conn = engine.raw_connection()
+        cursor = conn.cursor()
+        cmd = f'COPY {schema}.{table_name} FROM STDIN WITH (FORMAT CSV, HEADER TRUE)'
+        progress = widget.IntProgress(0)
+        if run_from_ipython():  # pragma: no cover
+            # Use progress widget if loading this script from an ipython notebook
+            display(progress)
+
+        for chunk in dataframe:
+            fh = StringIO()
+            chunk.to_csv(fh, index=False, encoding='utf-8')
+            # First create the database table using an empty dataframe chunk
+            if no_chunk == 0:
+                chunk[:0].to_sql(table_name, engine, schema=schema, dtype=dtypes,
+                                 index=False, chunksize=chunksize, if_exists='append')
+            fh.seek(0)
+            cursor.copy_expert(cmd, fh)
+            conn.commit()
+            # sys.stdout.write('\r')
+            no_chunk += 1
+            percent = (chunksize * no_chunk) / float(total_lines)
+            if percent > 1:
+                percent = 1
+            # Display the current percentage completed
+            if run_from_ipython():  # pragma: no cover
+                progress.value = percent*100
+                progress.description = '{0}%'.format('{: >5}'.format(round(percent * 100, 1)))
+            else:
+                sys.stdout.write('\r')
+                sys.stdout.write('{0}%[{1: <20}]'.format('{: >5}'.
+                                                         format(round(percent * 100, 1)),
+                                                         '#'*int(percent*20)))
+        if not run_from_ipython():
+            sys.stdout.write('\n')
+        return True
+
+    except ValueError as e:  # pragma: no cover
+        print('Error:', e)
+        return False
+    except Exception:
+        print('Unexpected Error:', sys.exc_info())
+        return False
+
+
+def get_file_line_count(file_path: str) -> int:
+    """Returns the number of lines in a file
+
+    Args:
+        file_path (str): file path, either in Unix or Windows format
+
+    Returns:
+        int: The count of lines in a file
+    """
+
+    return sum(1 for i in open(file_path, 'rb'))
