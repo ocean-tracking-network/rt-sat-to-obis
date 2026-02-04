@@ -33,7 +33,7 @@ dependencies:
 - pyarrow
 - r-base=4.5.2
 - r-essentials
-- remotes
+- r-remotes
 - itables
 - xmltodict
 - keplergl
