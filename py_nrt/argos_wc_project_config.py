@@ -49,6 +49,7 @@ WC_API_ENDPOINT = 'https://my.wildlifecomputers.com/services/'
 
 
 def create_wc_qc_config(
+        data_dir: Path = None,
         dest_path: Path = None,
         a_key: str = None,
         s_key: str = None,
@@ -80,7 +81,7 @@ def create_wc_qc_config(
         {
             "setup": {
                 "program": program,
-                "data.dir": "data",
+                "data.dir": data_dir,
                 "meta.file": None,
                 "maps.dir": f"output/maps/{project_id}",
                 "diag.dir": f"output/diag/{project_id}",
