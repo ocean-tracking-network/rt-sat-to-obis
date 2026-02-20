@@ -1,0 +1,242 @@
+import binascii
+import hashlib
+import json
+import os
+import zipfile
+
+import typing
+from collections import defaultdict
+from datetime import datetime, date
+from functools import partial
+from itertools import product
+import requests
+import hashlib
+import hmac
+import pandas as pd
+import xml.etree.ElementTree as ET
+from pathlib import Path
+import zipfile
+import shutil
+from datetime import datetime
+from typing import List, Tuple
+
+import numpy as np
+import pandas as pd
+import plotly
+import requests
+from IPython import get_ipython
+from ipywidgets import Layout, Checkbox, VBox, Label, Box, Button, widgets, HTML, RadioButtons
+from IPython.display import display
+from shapely import wkb
+import xmltodict
+from pandas import json_normalize
+
+from sqlalchemy.engine import Engine
+import itables
+import re
+import hmac
+import hashlib
+import requests
+import pandas as pd
+from xml.etree import ElementTree as ET
+import warnings
+
+from py_nrt.common import run_from_ipython
+
+itables.init_notebook_mode()
+# WC API endpoint
+WC_API_ENDPOINT = 'https://my.wildlifecomputers.com/services/'
+import os
+import requests
+import zipfile
+from pathlib import Path
+from typing import List, Optional
+from tqdm import tqdm
+import shutil
+import time
+
+
+def smru_get_mdb(
+        cid: List[str],
+        dest: Optional[str] = None,
+        user: Optional[str] = None,
+        pwd: Optional[str] = None,
+        timeout: int = 120,
+        verbose: bool = False
+) -> None:
+    """
+    Download and extract SMRU database files.
+
+    Args:
+    cid : List[str]
+        List of collection IDs to download
+    dest : str
+        Destination directory for downloaded files
+    user : str
+        Username for authentication
+    pwd : str
+        Password for authentication
+    timeout : int, optional
+        Timeout in seconds for download operations (default: 120)
+    verbose : bool, optional
+        Whether to show progress bars (default: False)
+    """
+
+    if dest is None:
+        raise ValueError("dest must be specified")
+    if not os.path.exists(dest):
+        raise ValueError(f"Destination directory {dest} does not exist")
+    if user is None:
+        raise ValueError("user must be specified")
+    if pwd is None:
+        raise ValueError("pwd must be specified")
+
+    dest_path = Path(dest)
+
+
+    # Process each CID
+    for cid_item in tqdm(cid, desc="Processing CIDs", disable=not verbose):
+        download_and_extract(cid_item)
+
+    def download_and_extract(cid_item: str) -> None:
+        """Download and extract a single CID file."""
+
+        # Construct URL
+        url = f"http://{user}:{pwd}@www.smru.st-andrews.ac.uk/protected/{cid_item}/db/{cid_item}.zip"
+
+        # Destination paths
+        zip_path = dest_path / f"{cid_item}.zip"
+        extract_path = dest_path
+
+        try:
+            # Download file
+            if verbose:
+                print(f"Downloading {cid_item}...")
+
+            response = requests.get(
+                url,
+                timeout=timeout,
+                stream=True
+            )
+            response.raise_for_status()
+
+            # Save zip file
+            with open(zip_path, 'wb') as f:
+                if verbose:
+                    # Show progress bar for download
+                    total_size = int(response.headers.get('content-length', 0))
+                    with tqdm(total=total_size, unit='B', unit_scale=True,
+                              desc=f"Downloading {cid_item}", disable=not verbose) as pbar:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                            pbar.update(len(chunk))
+                else:
+                    f.write(response.content)
+
+            # Extract zip file
+            if verbose:
+                print(f"Extracting {cid_item}...")
+
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(extract_path)
+
+            # Remove zip file
+            os.remove(zip_path)
+
+        except requests.exceptions.RequestException as e:
+            print(f"Error downloading {cid_item}: {e}")
+            # Clean up partial download if it exists
+            if zip_path.exists():
+                os.remove(zip_path)
+            raise
+        except zipfile.BadZipFile as e:
+            print(f"Error extracting {cid_item}: Invalid zip file")
+            if zip_path.exists():
+                os.remove(zip_path)
+            raise
+        except Exception as e:
+            print(f"Unexpected error processing {cid_item}: {e}")
+            if zip_path.exists():
+                os.remove(zip_path)
+            raise
+
+
+def create_smru_qc_config(
+        data_dir: Path = None,
+        dest_path: Path = None,
+        a_key: str = None,
+        s_key: str = None,
+        collaborator: str = None,
+        time_step: int = 3,
+        program: str=None,
+        project_id: str =None,
+        common_name: str = None,
+        species: str = None,
+        release_site: str = None,
+        state_country: str = None,
+        tag_uuid_list: list[str] = []
+) -> list:
+    """
+    Create a configuration file for smru_qc with customizable parameters.
+
+    Args:
+        owner_id: Owner ID for harvest section
+        time_step: Time step for model section
+        common_name: Common name for meta section
+        species: Species name for meta section
+        release_site: Release site for meta section
+        state_country: State/Country for meta section
+
+    Returns:
+        List containing the configuration template
+    """
+    wc_qc_config = [
+        {
+            "setup": {
+                "program": program,
+                "data.dir": data_dir,
+                "meta.file": None,
+                "maps.dir": f"output/maps/{project_id}",
+                "diag.dir": f"output/diag/{project_id}",
+                "output.dir": f"output/{program}/{project_id}",
+                "return.R": True
+            },
+            "harvest": {
+                "download": False,
+                "owner.id": collaborator.split(' - ')[-1],
+                "wc.akey": a_key,
+                "wc.skey": s_key,
+                "tag.list": f"{program}_{project_id}_tags.csv",
+                "dropIDs": None
+            },
+            "model": {
+                "model": "rw",
+                "vmax": 3,
+                "time.step": time_step,
+                "proj": None,
+                "reroute": True,
+                "dist": 20,
+                "barrier": None,
+                "buffer": 0.25,
+                "centroids": True,
+                "cut": False,
+                "min.gap": 72,
+                "QCmode": "nrt",
+                "pred.int": 12
+            },
+            "meta": {
+                "common_name": common_name,
+                "species": species,
+                "release_site": release_site,
+                "state_country": state_country
+            }
+        }
+    ]
+    output_path = os.path.join(dest_path, f'{program}_{project_id}_wc.json')
+    with open(output_path, 'w') as f:
+        json.dump(wc_qc_config, f, indent=2, ensure_ascii=False)
+    tag_list_file = os.path.join(dest_path, f'{program}_{project_id}_tags.csv')
+    with open(tag_list_file, 'w') as f:
+        f.write('\n'.join(['uuid'] + tag_uuid_list))
+    print(f'wc_qc config file is written to {output_path}')
+    print(f'tag list config file is written to {tag_list_file}')
