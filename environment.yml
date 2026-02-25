@@ -39,6 +39,7 @@ dependencies:
 - keplergl
 - widgetsnbextension==4.0.8
 - nodejs>=20
+- tqdm
 
 - pip:
   - pykeepass
