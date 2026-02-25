@@ -57,6 +57,9 @@ dependencies:
   - fiona
   - psycopg_pool
   - pypgstac
+  - jupyter_contrib_nbextensions
+  - jupyter_nbextensions_configurator
+
 
 channels:
   - conda-forge
