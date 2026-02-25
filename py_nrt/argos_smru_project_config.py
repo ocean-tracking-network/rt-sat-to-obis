@@ -56,14 +56,7 @@ import shutil
 import time
 
 
-def smru_get_mdb(
-        cid: List[str],
-        dest: str,
-        user: str,
-        pwd: str,
-        timeout: int = 120,
-        verbose: bool = False
-) -> None:
+def smru_get_mdb(cid: List[str], dest: str,user: str, pwd: str, timeout: int = 120, verbose: bool = False) -> None:
     """
     Download and extract SMRU database files.
 
@@ -76,10 +69,8 @@ def smru_get_mdb(
         Username for authentication
     pwd : str
         Password for authentication
-    timeout : int, optional
-        Timeout in seconds for download operations (default: 120)
-    verbose : bool, optional
-        Whether to show progress bars (default: False)
+    timeout(int): Timeout in seconds for download operations (default: 120)
+    verbose(bool): Whether to show progress bars (default: False)
     """
 
     if dest is None:
