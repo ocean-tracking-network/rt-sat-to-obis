@@ -44,8 +44,8 @@ import warnings
 from py_nrt.common import run_from_ipython
 
 itables.init_notebook_mode()
-# WC API endpoint
-WC_API_ENDPOINT = 'https://my.wildlifecomputers.com/services/'
+# SMRU API endpoint
+SMRU_API_ENDPOINT = 'www.smru.st-andrews.ac.uk'
 import os
 import requests
 import zipfile
@@ -58,9 +58,9 @@ import time
 
 def smru_get_mdb(
         cid: List[str],
-        dest: Optional[str] = None,
-        user: Optional[str] = None,
-        pwd: Optional[str] = None,
+        dest: str,
+        user: str,
+        pwd: str,
         timeout: int = 120,
         verbose: bool = False
 ) -> None:
@@ -93,73 +93,70 @@ def smru_get_mdb(
 
     dest_path = Path(dest)
 
+    # Download each CID
+    for cid in tqdm(cid, desc=f"Downloading .mdb for {cid}", disable=not verbose):
+        # Construct request URL for mdb.zip
+        url = f"http://{user}:{pwd}@{SMRU_API_ENDPOINT}/protected/{cid}/db/{cid}.zip"
+        download_and_extract(url, cid, dest_path)
 
-    # Process each CID
-    for cid_item in tqdm(cid, desc="Processing CIDs", disable=not verbose):
-        download_and_extract(cid_item)
+def download_and_extract(mdb_url: str, cid: str, dest_path:Path, timeout: int=180, verbose: bool=False) -> None:
+    """Download and extract a single CID file."""
+    # Destination paths
+    zip_path = dest_path / f"{cid}.zip"
+    extract_path = dest_path
 
-    def download_and_extract(cid_item: str) -> None:
-        """Download and extract a single CID file."""
+    try:
 
-        # Construct URL
-        url = f"http://{user}:{pwd}@www.smru.st-andrews.ac.uk/protected/{cid_item}/db/{cid_item}.zip"
+        response = requests.get(
+            mdb_url,
+            timeout=timeout,
+            stream=True
+        )
 
-        # Destination paths
-        zip_path = dest_path / f"{cid_item}.zip"
-        extract_path = dest_path
+        if verbose:
+            print(f"response: {response}")
 
-        try:
-            # Download file
+        response.raise_for_status()
+
+        # Save zip file
+        with open(zip_path, 'wb') as f:
             if verbose:
-                print(f"Downloading {cid_item}...")
+                # Show progress bar for download
+                total_size = int(response.headers.get('content-length', 0))
+                with tqdm(total=total_size, unit='B', unit_scale=True,
+                          desc=f"Downloading {cid}", disable=not verbose) as pbar:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        f.write(chunk)
+                        pbar.update(len(chunk))
+            else:
+                f.write(response.content)
 
-            response = requests.get(
-                url,
-                timeout=timeout,
-                stream=True
-            )
-            response.raise_for_status()
+        # Extract zip file
+        if verbose:
+            print(f"Extracting {cid}...")
 
-            # Save zip file
-            with open(zip_path, 'wb') as f:
-                if verbose:
-                    # Show progress bar for download
-                    total_size = int(response.headers.get('content-length', 0))
-                    with tqdm(total=total_size, unit='B', unit_scale=True,
-                              desc=f"Downloading {cid_item}", disable=not verbose) as pbar:
-                        for chunk in response.iter_content(chunk_size=8192):
-                            f.write(chunk)
-                            pbar.update(len(chunk))
-                else:
-                    f.write(response.content)
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(extract_path)
 
-            # Extract zip file
-            if verbose:
-                print(f"Extracting {cid_item}...")
+        # Remove zip file
+        # os.remove(zip_path)
 
-            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                zip_ref.extractall(extract_path)
-
-            # Remove zip file
+    except requests.exceptions.RequestException as e:
+        print(f"Error downloading {cid}: {e}")
+        # Clean up partial download if it exists
+        if zip_path.exists():
             os.remove(zip_path)
-
-        except requests.exceptions.RequestException as e:
-            print(f"Error downloading {cid_item}: {e}")
-            # Clean up partial download if it exists
-            if zip_path.exists():
-                os.remove(zip_path)
-            raise
-        except zipfile.BadZipFile as e:
-            print(f"Error extracting {cid_item}: Invalid zip file")
-            if zip_path.exists():
-                os.remove(zip_path)
-            raise
-        except Exception as e:
-            print(f"Unexpected error processing {cid_item}: {e}")
-            if zip_path.exists():
-                os.remove(zip_path)
-            raise
-
+        raise
+    except zipfile.BadZipFile as e:
+        print(f"Error extracting {cid}: Invalid zip file")
+        if zip_path.exists():
+            os.remove(zip_path)
+        raise
+    except Exception as e:
+        print(f"Unexpected error processing {cid}: {e}")
+        if zip_path.exists():
+            os.remove(zip_path)
+        raise
 
 def create_smru_qc_config(
         data_dir: Path = None,
