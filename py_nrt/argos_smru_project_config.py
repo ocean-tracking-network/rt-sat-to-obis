@@ -148,6 +148,48 @@ def download_and_extract(mdb_url: str, cid: str, dest_path:Path, timeout: int=18
         if zip_path.exists():
             os.remove(zip_path)
         raise
+def extract_deployments(cids: List[str], input_path: str, verbose: bool=False) -> dict[str, pd.dataFrame]:
+
+
+import subprocess
+import pandas as pd
+import os
+import tempfile
+from typing import Tuple
+
+
+def extract_table_from_mdb(input_path: str, mdb_file: str, table: str, verbose=False) -> Tuple[str, pd.DataFrame]:
+    """
+    Extract a table from an .mdb file using mdbtools on Windows.
+    """
+    mdb_full_path = os.path.join(input_path, mdb_file)
+
+    if not os.path.exists(mdb_full_path):
+        raise FileNotFoundError(f"{mdb_file} is not found in: {input_path}")
+
+    if verbose:
+        print(f"Exporting table '{table}' from {mdb_file}...")
+
+    # Create temp file
+    with tempfile.NamedTemporaryFile(mode='w+', suffix='.csv', delete=False) as temp_csv:
+        temp_csv_path = temp_csv.name
+
+    # Export table to CSV
+    with open(temp_csv_path, 'w', newline='', encoding='utf-8') as csv_file:
+        subprocess.run(
+            ['mdb-export', mdb_full_path, table],
+            stdout=csv_file,
+            check=True,
+            shell=True
+        )
+
+    # Read CSV into DataFrame
+    df = pd.read_csv(temp_csv_path)
+
+    # Clean up
+    os.unlink(temp_csv_path)
+
+    return (mdb_file, df)
 
 def create_smru_qc_config(
         data_dir: Path = None,
