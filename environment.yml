@@ -34,6 +34,13 @@ dependencies:
 - r-base=4.5.2
 - r-essentials
 - r-remotes
+- r-rcpp
+- r-rcppeigen
+- r-tmb
+- r-remakes
+- m2w64-toolchain
+- gsl
+- libxml2
 - itables
 - xmltodict
 - keplergl
