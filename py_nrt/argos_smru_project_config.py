@@ -375,5 +375,5 @@ def create_smru_qc_config(
     exclude_tags_file = get_path_from_strings([qc_input_path, f'{program}_{cid}', drop_ids_file])
     with open(exclude_tags_file, 'w') as f:
         f.write('\n'.join(drop_ids))
-    print(f'smru_qc config file is written to {qc_config_file}')
-    print(f'Exclude tags are written to {exclude_tags_file}')
+    print(f'smru_qc config file is written to:\n{qc_config_file}')
+    return [qc_config_file, exclude_tags_file]
