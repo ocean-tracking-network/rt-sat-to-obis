@@ -334,7 +334,7 @@ def create_smru_qc_config(
                 "meta.file": None,
                 "maps.dir": f"{qc_output_path}/maps/{program}_{cid}",
                 "diag.dir": f"{qc_output_path}/diag/{program}_{cid}",
-                "output.dir": f"{qc_output_path}/{program}/{program}_{cid}",
+                "output.dir": f"{qc_output_path}/aodn/{program}_{cid}",
                 "return.R": verbose
             },
             "harvest": {
