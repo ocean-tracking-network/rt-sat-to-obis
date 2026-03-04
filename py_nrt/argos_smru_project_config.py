@@ -2,6 +2,7 @@ import binascii
 import hashlib
 import json
 import os
+import sys
 import zipfile
 
 import typing
@@ -291,6 +292,7 @@ def create_smru_qc_config(
         otn_collection_code: str,
         qc_input_path: Path,
         qc_output_path: Path,
+        mdb_tables_path: str,
         user: str,
         password: str,
         timeout: int=180,
@@ -323,16 +325,17 @@ def create_smru_qc_config(
     Returns:
         List containing the configuration template
     """
+    drop_ids_file = 'exclude_tags.csv'
     smru_qc_config = [
         {
             "setup": {
                 "program": program,
-                "data.dir": f'{qc_input_path}/mdb/{program}_{cid}',
+                "data.dir": f'{qc_input_path}/{program}_{cid}/mdb',
                 "meta.file": None,
                 "maps.dir": f"{qc_output_path}/maps/{program}_{cid}",
                 "diag.dir": f"{qc_output_path}/diag/{program}_{cid}",
                 "output.dir": f"{qc_output_path}/{program}/{program}_{cid}",
-                "return.R": {verbose}
+                "return.R": verbose
             },
             "harvest": {
                 "download": True,
@@ -340,17 +343,18 @@ def create_smru_qc_config(
                 "smru.usr": user,
                 "smru.pwd": password,
                 "timeout": timeout,
-                "dropIDs": drop_ids if drop_ids else '',
+                "dropIDs": drop_ids_file,
+                "p2mdbtools": mdb_tables_path
             },
             "model": {
-                "model": "rw",
+                "model": "crw",
                 "vmax": 3,
                 "time.step": time_step,
-                "proj": None,
+                "proj": "+proj=stere +lat_0=-90 +lat_ts=-71 +lon_0=100 +k=1 +ellps=WGS84 +units=km +no_defs",
                 "reroute": True,
-                "dist": 20,
+                "dist": 500,
                 "barrier": None,
-                "buffer": 0.25,
+                "buffer": 0.5,
                 "centroids": True,
                 "cut": False,
                 "min.gap": 72,
@@ -365,8 +369,11 @@ def create_smru_qc_config(
             }
         }
     ]
-    qc_config_file = get_path_from_strings([qc_input_path, f'{program}_{cid}.json'])
+    qc_config_file = get_path_from_strings([qc_input_path, f'{program}_{cid}', f'config_{cid}.json'])
     with open(qc_config_file, 'w') as f:
         json.dump(smru_qc_config, f, indent=2, ensure_ascii=False)
-    print(f'wc_qc config file is written to {qc_config_file}')
-    # print(f'tag list config file is written to {tag_list_file}')
+    exclude_tags_file = get_path_from_strings([qc_input_path, f'{program}_{cid}', drop_ids_file])
+    with open(exclude_tags_file, 'w') as f:
+        f.write('\n'.join(drop_ids))
+    print(f'smru_qc config file is written to {qc_config_file}')
+    print(f'Exclude tags are written to {exclude_tags_file}')
