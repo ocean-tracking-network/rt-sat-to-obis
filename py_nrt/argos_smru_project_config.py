@@ -61,42 +61,44 @@ import shutil
 import time
 
 
-def smru_get_mdb(cid: str, dest: str,user: str, pwd: str, timeout: int = 120, verbose: bool = False) -> None:
+def smru_get_mdb(program: str, cid: str,  user: str, pwd: str, qc_input_path: str, otn_collection_code: str='', timeout: int = 120, verbose: bool = False) -> None:
     """
     Download and extract SMRU database files.
 
-    Args:
-    cid : str
-        collection IDs to download
-    dest : str
-        Destination directory for downloaded files
-    user : str
-        Username for authentication
-    pwd : str
-        Password for authentication
-    timeout(int): Timeout in seconds for download operations (default: 120)
-    verbose(bool): Whether to show progress bars (default: False)
+        program (str): Program name identifier for the database request
+        cid (str): Collection IDs to download
+        user (str): Username for authentication
+        pwd (str): Password for authentication
+        qc_input_path (str): Destination directory path for downloaded files
+        otn_collection_code (str, optional): OTN collection code identifier. Defaults to ''.
+        timeout (int, optional): Timeout in seconds for download operations. Defaults to 120.
+        verbose (bool, optional): Whether to show progress bars during download. Defaults to False.
     """
 
-    if dest is None:
+    if qc_input_path is None:
         raise ValueError("dest must be specified")
-    if not os.path.exists(dest):
-        raise ValueError(f"Destination directory {dest} does not exist")
+    if not os.path.exists(qc_input_path):
+        Path(qc_input_path).mkdir(parents=True, exist_ok=True)
+
+    download_path = Path(qc_input_path) / f"{program}_{cid}/mdb"
+    download_path.mkdir(parents=True, exist_ok=True)
+    print(f"Downloading {cid}.mdb to '{download_path}'")
+
     if user is None:
         raise ValueError("user must be specified")
     if pwd is None:
         raise ValueError("pwd must be specified")
 
-    dest_path = Path(dest)
+    print(f'Optional arguments: otn_collection_code: {otn_collection_code}; timeout: {timeout}')
 
-    # Download each CID
+    # Download the CID
     for cid in tqdm([cid], desc=f"Downloading .mdb for {cid}", disable=not verbose):
         # Construct request URL for mdb.zip
         url = f"http://{user}:{pwd}@{SMRU_API_ENDPOINT}/protected/{cid}/db/{cid}.zip"
-        download_and_extract(url, cid, dest_path)
+        download_and_extract(url, cid, download_path)
 
 
-def download_and_extract(mdb_url: str, cid: str, dest_path:Path, timeout: int=180, verbose: bool=False) -> None:
+def download_and_extract(mdb_url: str, cid: str, dest_path: Path, timeout: int=180, verbose: bool=False) -> None:
     """Download and extract a single CID file."""
     # Destination paths
     zip_path = dest_path / f"{cid}.zip"
@@ -194,6 +196,32 @@ def extract_tacks(cid: str, input_path: str, exclude_tag_ref: list[str], verbose
     return mdb_file, tracks_df
 
 
+def export_for_kepler(cid: str, tracks_df: pd.DataFrame) -> None:
+    filename = f"{cid}_tracks_{datetime.now().strftime('%Y%m%d')}.csv"
+    tracks_subset = tracks_df[['REF', 'END_DATE', 'lat', 'lon']].copy().rename(columns={
+        'REF': 'tag_ref',
+        'END_DATE': 'date_time'
+    })
+    itables.options.maxBytes = 0
+    itables.show(tracks_subset,
+                 buttons=[
+                    'copy',
+                    {
+                        'extend': 'csv',
+                        'filename': filename.replace('.csv', '')
+                    },
+                    {
+                        'extend': 'excel',
+                        'filename': filename.replace('.csv', ''),
+                        'exportOptions': {
+                            'modifier': {
+                                'page': 'all'
+                            }
+                        }
+                    }
+                ])
+
+
 def extract_table_from_mdb(input_path: str, mdb_file: str, table: str, verbose=False) -> Tuple[str, pd.DataFrame]:
     """
     Extract a table from an .mdb file using mdbtools on Windows.
@@ -227,31 +255,39 @@ def extract_table_from_mdb(input_path: str, mdb_file: str, table: str, verbose=F
 
     return (mdb_file, df)
 
+
 def create_smru_qc_config(
-        data_dir: Path = None,
-        dest_path: Path = None,
-        a_key: str = None,
-        s_key: str = None,
-        collaborator: str = None,
+        program: str,
+        otn_collection_code: str,
+        qc_input_path: Path,
+        qc_output_path: Path,
+        user: str,
+        password: str,
+        cid: str,
+        drop_ids: list[str],
         time_step: int = 3,
-        program: str=None,
-        project_id: str =None,
         common_name: str = None,
         species: str = None,
         release_site: str = None,
-        state_country: str = None,
-        tag_uuid_list: list[str] = []
+        state_country: str = None
 ) -> list:
     """
     Create a configuration file for smru_qc with customizable parameters.
 
     Args:
-        owner_id: Owner ID for harvest section
-        time_step: Time step for model section
-        common_name: Common name for meta section
-        species: Species name for meta section
-        release_site: Release site for meta section
-        state_country: State/Country for meta section
+        program (str): The program name for the QC configuration
+        otn_collection_code (str): OTN collection code identifier
+        data_dir (Path): Directory path containing the input data files
+        qc_output_path (Path): Directory path where QC output will be written
+        user (str): Username for database authentication
+        password (str): Password for database authentication
+        cid (str): Client/customer identifier
+        drop_ids (list[str]): List of drop/tag IDs to process
+        time_step (int, optional): Time step interval for model calculations. Defaults to 3.
+        common_name (str, optional): Common name of the species. Defaults to None.
+        species (str, optional): Scientific species name. Defaults to None.
+        release_site (str, optional): Location where the animal was released. Defaults to None.
+        state_country (str, optional): State or country of the release site. Defaults to None.
 
     Returns:
         List containing the configuration template
@@ -260,19 +296,19 @@ def create_smru_qc_config(
         {
             "setup": {
                 "program": program,
-                "data.dir": data_dir,
+                "data.dir": f'{qc_input_path}/mdb/{program}_{cid}',
                 "meta.file": None,
-                "maps.dir": f"output/maps/{project_id}",
-                "diag.dir": f"output/diag/{project_id}",
-                "output.dir": f"output/{program}/{project_id}",
+                "maps.dir": f"{qc_output_path}/maps/{program}_{cid}",
+                "diag.dir": f"output/diag/{program}_{cid}",
+                "output.dir": f"output/{program}/{program}_{cid}",
                 "return.R": True
             },
             "harvest": {
                 "download": False,
-                "owner.id": collaborator.split(' - ')[-1],
-                "wc.akey": a_key,
-                "wc.skey": s_key,
-                "tag.list": f"{program}_{project_id}_tags.csv",
+                # "owner.id": collaborator.split(' - ')[-1],
+                # "wc.akey": a_key,
+                # "wc.skey": s_key,
+                # "tag.list": f"{program}_{project_id}_tags.csv",
                 "dropIDs": None
             },
             "model": {
@@ -298,11 +334,11 @@ def create_smru_qc_config(
             }
         }
     ]
-    output_path = os.path.join(dest_path, f'{program}_{project_id}_wc.json')
-    with open(output_path, 'w') as f:
-        json.dump(wc_qc_config, f, indent=2, ensure_ascii=False)
-    tag_list_file = os.path.join(dest_path, f'{program}_{project_id}_tags.csv')
-    with open(tag_list_file, 'w') as f:
-        f.write('\n'.join(['uuid'] + tag_uuid_list))
+    # output_path = os.path.join(dest_path, f'{program}_{project_id}_wc.json')
+    # with open(output_path, 'w') as f:
+    #     json.dump(wc_qc_config, f, indent=2, ensure_ascii=False)
+    # tag_list_file = os.path.join(dest_path, f'{program}_{project_id}_tags.csv')
+    # with open(tag_list_file, 'w') as f:
+    #     f.write('\n'.join(['uuid'] + tag_uuid_list))
     print(f'wc_qc config file is written to {output_path}')
     print(f'tag list config file is written to {tag_list_file}')
