@@ -61,6 +61,25 @@ import shutil
 import time
 
 
+def get_path_from_strings(path_string_parts: []) ->Path:
+    """
+    Construct a Path object from a list of string parts.
+
+    Args:
+        path_string_parts (List[str]): List of path components to join
+
+    Returns:
+        Path: Combined Path object
+    """
+    if not path_string_parts:
+        return Path()
+
+    path = Path(path_string_parts[0])
+    for part in path_string_parts[1:]:
+        path = path / part
+    return path
+
+
 def smru_get_mdb(program: str, cid: str,  user: str, pwd: str, qc_input_path: str, otn_collection_code: str='', timeout: int = 120, verbose: bool = False) -> None:
     """
     Download and extract SMRU database files.
@@ -80,7 +99,7 @@ def smru_get_mdb(program: str, cid: str,  user: str, pwd: str, qc_input_path: st
     if not os.path.exists(qc_input_path):
         Path(qc_input_path).mkdir(parents=True, exist_ok=True)
 
-    download_path = Path(qc_input_path) / f"{program}_{cid}/mdb"
+    download_path = get_path_from_strings([qc_input_path, f"{program}_{cid}", 'mdb'])
     download_path.mkdir(parents=True, exist_ok=True)
     print(f"Downloading {cid}.mdb to '{download_path}'")
 
@@ -103,7 +122,6 @@ def download_and_extract(mdb_url: str, cid: str, dest_path: Path, timeout: int=1
     # Destination paths
     zip_path = dest_path / f"{cid}.zip"
     extract_path = dest_path
-
     try:
 
         response = requests.get(
@@ -137,9 +155,6 @@ def download_and_extract(mdb_url: str, cid: str, dest_path: Path, timeout: int=1
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             zip_ref.extractall(extract_path)
 
-        # Remove zip file
-        # os.remove(zip_path)
-
     except requests.exceptions.RequestException as e:
         print(f"Error downloading {cid}: {e}")
         # Clean up partial download if it exists
@@ -158,12 +173,13 @@ def download_and_extract(mdb_url: str, cid: str, dest_path: Path, timeout: int=1
         raise
 
 
-def extract_deployments(cid: str, input_path: str, verbose: bool=False) -> dict[str, pd.DataFrame]:
+def extract_deployments(program: str, cid: str, input_path: str, verbose: bool=False) -> dict[str, pd.DataFrame]:
     """
     Extract deployments table from <cid>.mdb (Access DB)
 
     Args:
-        cid: Collection ID for the Access database file
+        program: program ID
+        cid: Collection ID
         input_path: Path to the directory containing the <cid>.mdb file
         verbose: If True, print additional information during execution
 
@@ -173,7 +189,7 @@ def extract_deployments(cid: str, input_path: str, verbose: bool=False) -> dict[
     """
     mdb_file = cid + '.mdb'
     table = 'deployments'
-    return extract_table_from_mdb(input_path, mdb_file, table, verbose)
+    return extract_table_from_mdb(get_path_from_strings([input_path, f'{program}_{cid}', 'mdb']), mdb_file, table, verbose)
 
 
 def extract_tacks(cid: str, input_path: str, exclude_tag_ref: list[str], verbose: bool=False) -> tuple[str, pd.DataFrame]:
