@@ -286,58 +286,61 @@ def extract_table_from_mdb(input_path: str, mdb_file: str, table: str, verbose=F
 
 def create_smru_qc_config(
         program: str,
+        cid: str,
+        drop_ids: list[str],
         otn_collection_code: str,
         qc_input_path: Path,
         qc_output_path: Path,
         user: str,
         password: str,
-        cid: str,
-        drop_ids: list[str],
+        timeout: int=180,
         time_step: int = 3,
         common_name: str = None,
         species: str = None,
         release_site: str = None,
-        state_country: str = None
+        state_country: str = None,
+        verbose=False
 ) -> list:
     """
     Create a configuration file for smru_qc with customizable parameters.
 
     Args:
         program (str): The program name for the QC configuration
+        cid (str): Collection/collaboration identifier
+        drop_ids (list[str]): List of drop/tag IDs to process
         otn_collection_code (str): OTN collection code identifier
-        data_dir (Path): Directory path containing the input data files
-        qc_output_path (Path): Directory path where QC output will be written
+        qc_input_path (Path): Directory path containing input data files
+        qc_output_path (Path): Directory path for QC output files
         user (str): Username for database authentication
         password (str): Password for database authentication
-        cid (str): Client/customer identifier
-        drop_ids (list[str]): List of drop/tag IDs to process
-        time_step (int, optional): Time step interval for model calculations. Defaults to 3.
-        common_name (str, optional): Common name of the species. Defaults to None.
-        species (str, optional): Scientific species name. Defaults to None.
-        release_site (str, optional): Location where the animal was released. Defaults to None.
-        state_country (str, optional): State or country of the release site. Defaults to None.
+        timeout (int, optional): Time step interval in hours. Defaults to 180 (seconds).
+        time_step (int, optional): Time step interval in hours. Defaults to 3.
+        common_name (Optional[str], optional): Common name of the species. Defaults to None.
+        species (Optional[str], optional): Scientific species name. Defaults to None.
+        release_site (Optional[str], optional): Release location. Defaults to None.
+        state_country (Optional[str], optional): State or country of release. Defaults to None.
 
     Returns:
         List containing the configuration template
     """
-    wc_qc_config = [
+    smru_qc_config = [
         {
             "setup": {
                 "program": program,
                 "data.dir": f'{qc_input_path}/mdb/{program}_{cid}',
                 "meta.file": None,
                 "maps.dir": f"{qc_output_path}/maps/{program}_{cid}",
-                "diag.dir": f"output/diag/{program}_{cid}",
-                "output.dir": f"output/{program}/{program}_{cid}",
-                "return.R": True
+                "diag.dir": f"{qc_output_path}/diag/{program}_{cid}",
+                "output.dir": f"{qc_output_path}/{program}/{program}_{cid}",
+                "return.R": {verbose}
             },
             "harvest": {
-                "download": False,
-                # "owner.id": collaborator.split(' - ')[-1],
-                # "wc.akey": a_key,
-                # "wc.skey": s_key,
-                # "tag.list": f"{program}_{project_id}_tags.csv",
-                "dropIDs": None
+                "download": True,
+                "cid": cid,
+                "smru.usr": user,
+                "smru.pwd": password,
+                "timeout": timeout,
+                "dropIDs": drop_ids if drop_ids else '',
             },
             "model": {
                 "model": "rw",
@@ -362,11 +365,8 @@ def create_smru_qc_config(
             }
         }
     ]
-    # output_path = os.path.join(dest_path, f'{program}_{project_id}_wc.json')
-    # with open(output_path, 'w') as f:
-    #     json.dump(wc_qc_config, f, indent=2, ensure_ascii=False)
-    # tag_list_file = os.path.join(dest_path, f'{program}_{project_id}_tags.csv')
-    # with open(tag_list_file, 'w') as f:
-    #     f.write('\n'.join(['uuid'] + tag_uuid_list))
-    print(f'wc_qc config file is written to {output_path}')
-    print(f'tag list config file is written to {tag_list_file}')
+    qc_config_file = get_path_from_strings([qc_input_path, f'{program}_{cid}.json'])
+    with open(qc_config_file, 'w') as f:
+        json.dump(smru_qc_config, f, indent=2, ensure_ascii=False)
+    print(f'wc_qc config file is written to {qc_config_file}')
+    # print(f'tag list config file is written to {tag_list_file}')
