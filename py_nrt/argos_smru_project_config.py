@@ -19,6 +19,11 @@ import zipfile
 import shutil
 from datetime import datetime
 from typing import List, Tuple
+import subprocess
+import pandas as pd
+import os
+import tempfile
+from typing import Tuple
 
 import numpy as np
 import pandas as pd
@@ -56,13 +61,13 @@ import shutil
 import time
 
 
-def smru_get_mdb(cid: List[str], dest: str,user: str, pwd: str, timeout: int = 120, verbose: bool = False) -> None:
+def smru_get_mdb(cid: str, dest: str,user: str, pwd: str, timeout: int = 120, verbose: bool = False) -> None:
     """
     Download and extract SMRU database files.
 
     Args:
-    cid : List[str]
-        List of collection IDs to download
+    cid : str
+        collection IDs to download
     dest : str
         Destination directory for downloaded files
     user : str
@@ -85,10 +90,11 @@ def smru_get_mdb(cid: List[str], dest: str,user: str, pwd: str, timeout: int = 1
     dest_path = Path(dest)
 
     # Download each CID
-    for cid in tqdm(cid, desc=f"Downloading .mdb for {cid}", disable=not verbose):
+    for cid in tqdm([cid], desc=f"Downloading .mdb for {cid}", disable=not verbose):
         # Construct request URL for mdb.zip
         url = f"http://{user}:{pwd}@{SMRU_API_ENDPOINT}/protected/{cid}/db/{cid}.zip"
         download_and_extract(url, cid, dest_path)
+
 
 def download_and_extract(mdb_url: str, cid: str, dest_path:Path, timeout: int=180, verbose: bool=False) -> None:
     """Download and extract a single CID file."""
@@ -148,14 +154,44 @@ def download_and_extract(mdb_url: str, cid: str, dest_path:Path, timeout: int=18
         if zip_path.exists():
             os.remove(zip_path)
         raise
-def extract_deployments(cids: List[str], input_path: str, verbose: bool=False) -> dict[str, pd.dataFrame]:
 
 
-import subprocess
-import pandas as pd
-import os
-import tempfile
-from typing import Tuple
+def extract_deployments(cid: str, input_path: str, verbose: bool=False) -> dict[str, pd.DataFrame]:
+    """
+    Extract deployments table from <cid>.mdb (Access DB)
+
+    Args:
+        cid: Collection ID for the Access database file
+        input_path: Path to the directory containing the <cid>.mdb file
+        verbose: If True, print additional information during execution
+
+    Returns:
+        Dictionary containing DataFrames with deployment data, typically including
+        tables like 'deployments', 'sensors', or other related tables from the Access DB
+    """
+    mdb_file = cid + '.mdb'
+    table = 'deployments'
+    return extract_table_from_mdb(input_path, mdb_file, table, verbose)
+
+
+def extract_tacks(cid: str, input_path: str, exclude_tag_ref: list[str], verbose: bool=False) -> tuple[str, pd.DataFrame]:
+    """
+    Extract tracks data (ctd table) from <cid>.mdb (Access DB) and filter out excluded tags
+
+    Args:
+        cid: Collection ID for the Access database file
+        input_path: Path to the directory containing the <cid>.mdb file
+        exclude_tag_ref: List of tag references to exclude from the extracted tracks
+        verbose: If True, print additional information during execution
+
+    Returns:
+        Tuple of .mdb file and dataFrame of all tracks excluding specified tags
+    """
+    mdb_file = cid + '.mdb'
+    table = 'ctd'
+    mdb_file, tracks_df = extract_table_from_mdb(input_path, mdb_file, table, verbose)
+    tracks_df = tracks_df[~tracks_df['REF'].isin(exclude_tag_ref)]
+    return mdb_file, tracks_df
 
 
 def extract_table_from_mdb(input_path: str, mdb_file: str, table: str, verbose=False) -> Tuple[str, pd.DataFrame]:
