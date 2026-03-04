@@ -214,6 +214,18 @@ def extract_tacks(program: str, cid: str, input_path: str, exclude_tag_ref: list
 
 
 def export_for_kepler(cid: str, tracks_df: pd.DataFrame) -> None:
+    """
+    Export animal tracking data to a format compatible with Kepler.gl visualization.
+
+    This function processes and exports telemetry/tracking data for use in Kepler.gl,
+    an open-source geospatial data visualization tool. The exported file can be
+    directly loaded into Kepler.gl for interactive mapping and temporal analysis.
+
+    Args:
+        cid (str): Collection ID.
+        tracks_df (pd.DataFrame): DataFrame containing tag location data
+    Returns: None
+    """
     filename = f"{cid}_tracks_{datetime.now().strftime('%Y%m%d')}.csv"
     tracks_subset = tracks_df[['REF', 'END_DATE', 'lat', 'lon']].copy().rename(columns={
         'REF': 'tag_ref',
@@ -237,7 +249,6 @@ def export_for_kepler(cid: str, tracks_df: pd.DataFrame) -> None:
                         }
                     }
                 ])
-
 
 def extract_table_from_mdb(input_path: str, mdb_file: str, table: str, verbose=False) -> Tuple[str, pd.DataFrame]:
     """
