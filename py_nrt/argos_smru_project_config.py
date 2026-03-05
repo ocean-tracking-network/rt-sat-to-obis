@@ -313,6 +313,7 @@ def create_smru_qc_config(
         otn_collection_code (str): OTN collection code identifier
         qc_input_path (Path): Directory path containing input data files
         qc_output_path (Path): Directory path for QC output files
+        mdb_tables_path (Path): .mdb file path
         user (str): Username for database authentication
         password (str): Password for database authentication
         timeout (int, optional): Time step interval in hours. Defaults to 180 (seconds).
@@ -326,15 +327,18 @@ def create_smru_qc_config(
         List containing the configuration template
     """
     drop_ids_file = 'exclude_tags.csv'
+    project_id = f'{program}_{cid}'
+    if otn_collection_code:
+        project_id = otn_collection_code + '_' + project_id
     smru_qc_config = [
         {
             "setup": {
                 "program": program,
                 "data.dir": f'{qc_input_path}/{program}_{cid}/mdb',
                 "meta.file": None,
-                "maps.dir": f"{qc_output_path}/maps/{program}_{cid}",
-                "diag.dir": f"{qc_output_path}/diag/{program}_{cid}",
-                "output.dir": f"{qc_output_path}/aodn/{program}_{cid}",
+                "maps.dir": f"{qc_output_path}/maps/{project_id}",
+                "diag.dir": f"{qc_output_path}/diag/{project_id}",
+                "output.dir": f"{qc_output_path}/aodn/{project_id}",
                 "return.R": verbose
             },
             "harvest": {

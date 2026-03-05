@@ -49,47 +49,61 @@ WC_API_ENDPOINT = 'https://my.wildlifecomputers.com/services/'
 
 
 def create_wc_qc_config(
-        data_dir: Path = None,
-        dest_path: Path = None,
-        a_key: str = None,
-        s_key: str = None,
-        collaborator: str = None,
+        program: str,
+        collaborator: str,
+        tag_uuid_list: list[str],
+        otn_collection_code: str,
+        qc_input_path: Path,
+        qc_output_path: Path,
+        a_key: str,
+        s_key: str,
+        timeout: int=180,
         time_step: int = 3,
-        program: str=None,
-        project_id: str =None,
         common_name: str = None,
         species: str = None,
         release_site: str = None,
         state_country: str = None,
-        tag_uuid_list: list[str] = []
+        verbose=False
 ) -> list:
     """
     Create a configuration file for wc_qc with customizable parameters.
 
     Args:
-        owner_id: Owner ID for harvest section
-        time_step: Time step for model section
-        common_name: Common name for meta section
-        species: Species name for meta section
-        release_site: Release site for meta section
-        state_country: State/Country for meta section
+        program: Program name
+        collaborator: Collaborator name
+        tag_uuid_list: List of tag UUIDs to process
+        otn_collection_code: OTN collection code
+        qc_input_path: Path to input QC files
+        qc_output_path: Path for output QC files
+        a_key: AWS access key
+        s_key: AWS secret key
+        timeout: Request timeout in seconds (default: 180)
+        time_step: Time step value (default: 3)
+        common_name: Common name of species (optional)
+        species: Scientific species name (optional)
+        release_site: Release site location (optional)
+        state_country: State or country (optional)
+        verbose: Enable verbose output (default: False)
 
     Returns:
         List containing the configuration template
     """
+    project_id = f'{collaborator.split("@")[0]}_{common_name.replace(" ","_")}'
+    if otn_collection_code:
+        project_id = otn_collection_code + '_' + project_id
     wc_qc_config = [
         {
             "setup": {
                 "program": program,
-                "data.dir": data_dir,
+                "data.dir": qc_input_path,
                 "meta.file": None,
-                "maps.dir": f"output/maps/{project_id}",
-                "diag.dir": f"output/diag/{project_id}",
-                "output.dir": f"output/{program}/{project_id}",
-                "return.R": True
+                "maps.dir": f"{qc_output_path}/maps/{project_id}",
+                "diag.dir": f"{qc_output_path}/diag/{project_id}",
+                "output.dir": f"{qc_output_path}/{program}/{project_id}",
+                "return.R": verbose
             },
             "harvest": {
-                "download": False,
+                "download": True,
                 "owner.id": collaborator.split(' - ')[-1],
                 "wc.akey": a_key,
                 "wc.skey": s_key,
@@ -119,10 +133,10 @@ def create_wc_qc_config(
             }
         }
     ]
-    output_path = os.path.join(dest_path, f'{program}_{project_id}_wc.json')
+    output_path = os.path.join(qc_input_path, f'{project_id}_wc.json')
     with open(output_path, 'w') as f:
         json.dump(wc_qc_config, f, indent=2, ensure_ascii=False)
-    tag_list_file = os.path.join(dest_path, f'{program}_{project_id}_tags.csv')
+    tag_list_file = os.path.join(qc_input_path, f'{program}_{project_id}_tags.csv')
     with open(tag_list_file, 'w') as f:
         f.write('\n'.join(['uuid'] + tag_uuid_list))
     print(f'wc_qc config file is written to {output_path}')
