@@ -96,7 +96,7 @@ def create_wc_qc_config(
         {
             "setup": {
                 "program": program,
-                "data.dir": qc_input_path,
+                "data.dir": f"{qc_input_path}/{program}",
                 "meta.file": None,
                 "maps.dir": f"{qc_output_path}/maps/{program}/{project_id}",
                 "diag.dir": f"{qc_output_path}/diag/{program}/{project_id}",
