@@ -400,3 +400,44 @@ def build_combobox(option_lst: list[str]) -> widgets.Combobox :
         disabled=False,
     )
 
+
+def export_for_kepler(collaborator: str, deployment_df: pd.DataFrame) -> None:
+    """
+    Export animal tracking data to a format compatible with Kepler.gl visualization.
+
+    This function processes and exports telemetry/tracking data for use in Kepler.gl,
+    an open-source geospatial data visualization tool. The exported file can be
+    directly loaded into Kepler.gl for interactive mapping and temporal analysis.
+
+    Args:
+        collaborator (str): selected collaborator
+        deployment_df (pd.DataFrame): DataFrame containing tag location data
+    Returns: None
+    """
+    if not collaborator:
+        print('Select a collaborator_id to proceed')
+        return pd.DataFrame
+
+    filename = f"{collaborator.split('@')[0]}_latest_{datetime.now().strftime('%Y%m%d')}.csv"
+    latest_loc_df = deployment_df[['tag_uuid', 'last_update_date', 'last_loc_lat', 'last_loc_lon']].copy().rename(columns={
+        'last_loc_lat': 'latitude',
+        'last_loc_lon': 'longitude'
+    })
+    itables.options.maxBytes = 0
+    itables.show(latest_loc_df,
+                 buttons=[
+                    'copy',
+                    {
+                        'extend': 'csv',
+                        'filename': filename.replace('.csv', '')
+                    },
+                    {
+                        'extend': 'excel',
+                        'filename': filename.replace('.csv', ''),
+                        'exportOptions': {
+                            'modifier': {
+                                'page': 'all'
+                            }
+                        }
+                    }
+                ])
