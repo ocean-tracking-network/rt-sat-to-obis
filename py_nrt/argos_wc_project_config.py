@@ -419,25 +419,25 @@ def export_for_kepler(collaborator: str, deployment_df: pd.DataFrame) -> None:
         return pd.DataFrame
 
     filename = f"{collaborator.split('@')[0]}_latest_{datetime.now().strftime('%Y%m%d')}.csv"
-    latest_loc_df = deployment_df[['tag_uuid', 'last_update_date', 'last_loc_lat', 'last_loc_lon']].copy().rename(columns={
+    latest_loc_df = deployment_df[['tag_uuid', 'ptt', 'last_update_date', 'last_loc_lat', 'last_loc_lon']].copy().rename(columns={
         'last_loc_lat': 'latitude',
         'last_loc_lon': 'longitude'
     })
     itables.options.maxBytes = 0
     itables.show(latest_loc_df,
                  buttons=[
-                    'copy',
-                    {
-                        'extend': 'csv',
-                        'filename': filename.replace('.csv', '')
-                    },
-                    {
-                        'extend': 'excel',
-                        'filename': filename.replace('.csv', ''),
-                        'exportOptions': {
-                            'modifier': {
-                                'page': 'all'
-                            }
-                        }
-                    }
-                ])
+                     'copy',
+                     {
+                         'extend': 'csv',
+                         'filename': filename.replace('.csv', '')
+                     },
+                     {
+                         'extend': 'excel',
+                         'filename': filename.replace('.csv', ''),
+                         'exportOptions': {
+                             'modifier': {
+                                 'page': 'all'
+                             }
+                         }
+                     }
+                 ])
