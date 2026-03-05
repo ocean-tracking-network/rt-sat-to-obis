@@ -74,6 +74,9 @@ def get_path_from_strings(path_string_parts: []) ->Path:
     """
     if not path_string_parts:
         return Path()
+    parent_path = Path(os.path.sep.join(path_string_parts[0:-1]))
+    if not os.path.exists(parent_path):
+        parent_path.mkdir(parents=True, exist_ok=True)
 
     path = Path(path_string_parts[0])
     for part in path_string_parts[1:]:

@@ -41,6 +41,7 @@ import pandas as pd
 from xml.etree import ElementTree as ET
 import warnings
 
+from py_nrt.argos_smru_project_config import get_path_from_strings
 from py_nrt.common import run_from_ipython
 
 itables.init_notebook_mode()
@@ -97,8 +98,8 @@ def create_wc_qc_config(
                 "program": program,
                 "data.dir": qc_input_path,
                 "meta.file": None,
-                "maps.dir": f"{qc_output_path}/maps/{project_id}",
-                "diag.dir": f"{qc_output_path}/diag/{project_id}",
+                "maps.dir": f"{qc_output_path}/maps/{program}/{project_id}",
+                "diag.dir": f"{qc_output_path}/diag/{program}/{project_id}",
                 "output.dir": f"{qc_output_path}/{program}/{project_id}",
                 "return.R": verbose
             },
@@ -107,7 +108,7 @@ def create_wc_qc_config(
                 "owner.id": collaborator.split(' - ')[-1],
                 "wc.akey": a_key,
                 "wc.skey": s_key,
-                "tag.list": f"{program}_{project_id}_tags.csv",
+                "tag.list": f"{qc_input_path}/{program}/{project_id}_tags.csv",
                 "dropIDs": None
             },
             "model": {
@@ -133,14 +134,14 @@ def create_wc_qc_config(
             }
         }
     ]
-    output_path = os.path.join(qc_input_path, f'{project_id}_wc.json')
+    output_path = get_path_from_strings([qc_input_path, program, f'config_{project_id}_wc.json'])
     with open(output_path, 'w') as f:
         json.dump(wc_qc_config, f, indent=2, ensure_ascii=False)
-    tag_list_file = os.path.join(qc_input_path, f'{program}_{project_id}_tags.csv')
+    tag_list_file = get_path_from_strings([qc_input_path, program, f'{project_id}_tags.csv'])
     with open(tag_list_file, 'w') as f:
         f.write('\n'.join(['uuid'] + tag_uuid_list))
-    print(f'wc_qc config file is written to {output_path}')
-    print(f'tag list config file is written to {tag_list_file}')
+    print(f'wc_qc config file is written to {output_path.as_posix()}')
+    # print(f'tag list config file is written to {tag_list_file.as_posix()}')
 
 
 def wc_get_collab_ids(a_key: str = None, s_key: str = None, verbose: bool = False) -> pd.DataFrame:
