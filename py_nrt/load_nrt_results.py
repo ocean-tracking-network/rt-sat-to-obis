@@ -3,6 +3,7 @@ import io
 import os
 from pathlib import Path
 from typing import List, Union
+from contextlib import closing
 
 import pandas as pd
 from dbtools.common import has_schema
@@ -116,51 +117,35 @@ def get_project_qc_results_for_program(qc_output_path: str, program: str=None) -
                 print(f"-- No SSM result found.")
     return project_path_map
 
+def load_to_nrt_db(engine: Engine, proj_ssmourput_map: dict[str, str]):
+    for proj, csv in proj_ssmourput_map.items():
+        load_csv_to_unlogged_table(engine, proj, csv, OTN_NRT_SCHEMA)
+    print(f'Uploaded SSM results to  HOST: {engine.url.host} DB: {engine.url.database} Schema: {OTN_NRT_SCHEMA}.{proj}')
 
-def load_csv_to_unlogged_table(engine, csv_path, table_name, schema=OTN_NRT_SCHEMA):
+def load_csv_to_unlogged_table(engine: Engine, table_name: str, csv_path: str,
+                               schema: str = 'public'):
     """
-    Load CSV to PostgreSQL unlogged table using COPY command
+    Load CSV to PostgreSQL unlogged table
     """
-    # Read CSV to get structure
-    df_sample = pd.read_csv(csv_path, nrows=1)
+    full_table_name = f"{schema}.{table_name}" if schema else table_name
 
-    dtype_mapping = {
-        'int64': 'BIGINT',
-        'float64': 'DOUBLE PRECISION',
-        'object': 'TEXT',
-        'datetime64[ns]': 'TIMESTAMP',
-        'bool': 'BOOLEAN'
-    }
+    # Create table using SQLAlchemy
+    with engine.begin() as conn:
+        conn.execute(text(f'DROP TABLE IF EXISTS {full_table_name}'))
 
-    columns = []
-    for col, dtype in df_sample.dtypes.items():
-        sql_type = dtype_mapping.get(str(dtype), 'TEXT')
-        columns.append(f'"{col}" {sql_type}')
-
-    # Create unlogged table
-    with engine.connect() as conn:
-        conn.execute(text(f'DROP TABLE IF EXISTS {schema}.{table_name}'))
-
-        create_sql = f'CREATE UNLOGGED TABLE {schema}.{table_name} (\n  ' + ',\n  '.join(columns) + '\n)'
+        df_header = pd.read_csv(csv_path, nrows=0)
+        col_defs = [f'"{col}" TEXT' for col in df_header.columns]
+        create_sql = f'CREATE UNLOGGED TABLE {full_table_name} (\n  ' + ',\n  '.join(
+            col_defs) + '\n)'
         conn.execute(text(create_sql))
-        conn.commit()
 
-    # Use COPY for fast loading
-    df = pd.read_csv(csv_path)
-
-    # Create a buffer for COPY
-    buffer = io.StringIO()
-    df.to_csv(buffer, index=False, header=False)
-    buffer.seek(0)
-
-    # Copy data
-    with engine.raw_connection() as conn:
-        with conn.cursor() as cursor:
-            cursor.copy_expert(f"COPY {table_name} FROM STDIN WITH CSV", buffer)
-            conn.commit()
-
-    print(f"Loaded {len(df)} rows to unlogged table {table_name}")
-    return len(df)
+    # Load data using raw connection with closing
+    with open(csv_path, 'r') as f:
+        next(f)  # Skip header
+        with closing(engine.raw_connection()) as raw_conn:
+            with closing(raw_conn.cursor()) as cursor:
+                cursor.copy_expert(f"COPY {full_table_name} FROM STDIN WITH CSV", f)
+            raw_conn.commit()
 
 
 class OTNRealtimeLoader:
@@ -385,7 +370,6 @@ class OTNRealtimeLoader:
         with psycopg2.connect(self.db_url) as conn:
             with conn.cursor() as cur:
                 execute_values(cur, query, data_tuples, page_size=10000)
-                conn.commit()
                 return cur.rowcount
 
     def run(self, use_fast_method=True):
@@ -400,16 +384,13 @@ class OTNRealtimeLoader:
                 logger.info("No data to process after filtering")
                 return 0
 
-            # Step 2: Prepare DataFrame
             df_prepared = self.prepare_dataframe(df)
             logger.info(f"Processing {len(df_prepared)} rows")
 
-            # Step 3: Upsert data
             if use_fast_method and len(df_prepared) > 1000:
                 # Use COPY + MERGE for large datasets
                 upserted = self.upsert_with_copy_then_merge(df_prepared)
             else:
-                # Use optimized execute_values for smaller datasets
                 upserted = self.optimized_upsert(df_prepared)
 
             logger.info(f"Successfully processed {upserted} rows")
