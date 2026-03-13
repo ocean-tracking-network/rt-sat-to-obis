@@ -1,12 +1,33 @@
+import glob
+import io
+import os
 from pathlib import Path
 from typing import List, Union
 
 import pandas as pd
+from dbtools.common import has_schema
 
-from py_nrt.common import print_error
-
-OTN_NRT_SCHEMA = 'otn_realtime'
+from py_nrt.common import print_error, get_engine
 from sqlalchemy.engine import Engine
+
+# OTN_NRT_SCHEMA = 'otn_realtime'
+OTN_NRT_SCHEMA = 'test'
+
+def check_otn_nrt_backend(engine: Engine, verbose: bool=True) -> bool:
+    """
+    Get loaners in dataframe
+    :param engine:
+    :param verbose:
+    :return:
+    """
+    get_engine()
+    if has_schema(engine, OTN_NRT_SCHEMA):
+        print(f'Will upload QCed results into HOST: {engine.url.host} DB: {engine.url.database} schema: {OTN_NRT_SCHEMA}')
+        return True
+    else:
+        print(f'Schema: {OTN_NRT_SCHEMA} is not found in HOST: {engine.url.host} DB: {engine.url.database}')
+        return False
+
 
 
 def get_files_by_pattern(folder: str, file_pattern: str) -> List[Path]:
@@ -45,6 +66,101 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+exclude_folders=['maps', 'diag']
+
+
+def get_qced_programs(qc_output_path: str) -> list[str]:
+    """
+    Get first-level folders(program) in qc_output_path, excluding specified folders.
+    Args:
+        qc_output_path: Path to the QC output directory
+
+    Returns:
+        list[str]: List of first-level folder names (excluding those in exclude_folders)
+    """
+    if (not os.path.exists(qc_output_path)) or (not os.path.isdir(qc_output_path)):
+        print(f"Warning: Path {qc_output_path} does not exist or not a directory")
+        return []
+
+    programs = []
+    for sub_folder in os.listdir(qc_output_path):
+        if sub_folder not in exclude_folders and not sub_folder.startswith('.'):
+            programs.append(sub_folder)
+
+    return sorted(programs)
+
+
+def get_project_qc_results_for_program(qc_output_path: str, program: str=None) -> dict[str, str]:
+    """
+    Get QCed projects for given program.
+    Args:
+        qc_output_path: Path to the QC output directory
+        program: NRT program
+
+    Returns:
+        dict[str]: a map of program_project to the QCed results
+    """
+    program_path = os.path.join(qc_output_path, program)
+    project_path_map = {}
+    for sub_folder in os.listdir(program_path):
+        project_path = os.path.join(qc_output_path, program, sub_folder)
+        if sub_folder not in exclude_folders and not sub_folder.startswith('.'):
+            print(f'Found project folder for {program}: {project_path}')
+            ssmoutputs_files = list(Path(project_path).glob('*ssmoutputs*_nrt.csv'))
+            if ssmoutputs_files:
+                project_ssmoutputs = str(ssmoutputs_files[0])
+                project_path_map[sub_folder] = project_ssmoutputs
+                last_modified = datetime.fromtimestamp(os.path.getmtime(ssmoutputs_files[0]))
+                print(f"-- Found SSM results: {ssmoutputs_files[0]} - last updated on {last_modified.strftime('%Y-%m-%d %H:%M:%S')}")
+            else:
+                print(f"-- No SSM result found.")
+    return project_path_map
+
+
+def load_csv_to_unlogged_table(engine, csv_path, table_name, schema=OTN_NRT_SCHEMA):
+    """
+    Load CSV to PostgreSQL unlogged table using COPY command
+    """
+    # Read CSV to get structure
+    df_sample = pd.read_csv(csv_path, nrows=1)
+
+    dtype_mapping = {
+        'int64': 'BIGINT',
+        'float64': 'DOUBLE PRECISION',
+        'object': 'TEXT',
+        'datetime64[ns]': 'TIMESTAMP',
+        'bool': 'BOOLEAN'
+    }
+
+    columns = []
+    for col, dtype in df_sample.dtypes.items():
+        sql_type = dtype_mapping.get(str(dtype), 'TEXT')
+        columns.append(f'"{col}" {sql_type}')
+
+    # Create unlogged table
+    with engine.connect() as conn:
+        conn.execute(text(f'DROP TABLE IF EXISTS {schema}.{table_name}'))
+
+        create_sql = f'CREATE UNLOGGED TABLE {schema}.{table_name} (\n  ' + ',\n  '.join(columns) + '\n)'
+        conn.execute(text(create_sql))
+        conn.commit()
+
+    # Use COPY for fast loading
+    df = pd.read_csv(csv_path)
+
+    # Create a buffer for COPY
+    buffer = io.StringIO()
+    df.to_csv(buffer, index=False, header=False)
+    buffer.seek(0)
+
+    # Copy data
+    with engine.raw_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.copy_expert(f"COPY {table_name} FROM STDIN WITH CSV", buffer)
+            conn.commit()
+
+    print(f"Loaded {len(df)} rows to unlogged table {table_name}")
+    return len(df)
 
 
 class OTNRealtimeLoader:
