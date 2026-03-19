@@ -9,7 +9,7 @@ import pandas as pd
 from dbtools.common import has_schema
 
 from py_nrt.common import print_error, get_engine
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import Engine, inspect
 
 # OTN_NRT_SCHEMA = 'otn_realtime'
 OTN_NRT_SCHEMA = 'test'
@@ -122,7 +122,7 @@ def load_to_nrt_db(engine: Engine, proj_ssmourput_map: dict[str, str]):
         load_csv_to_unlogged_table(engine, proj, csv, OTN_NRT_SCHEMA)
     print(f'Uploaded SSM results to  HOST: {engine.url.host} DB: {engine.url.database} Schema: {OTN_NRT_SCHEMA}.{proj}')
 
-def log_upload_result(engine: Engine, schema: str):
+def log_upload_result(engine: Engine, schema: str, update_dict: dict[str, str|bool]):
     """
     Create the upload_log table in the specified schema if it does not already exist.
 
@@ -151,6 +151,23 @@ def log_upload_result(engine: Engine, schema: str):
     with engine.begin() as conn:
         conn.execute(text(create_table_sql))
 
+    with engine.begin() as conn:
+        conn.execute(
+            text(f"""
+                INSERT INTO {schema}.upload_log
+                (start_datetime, end_datetime, source_file, raw_table_created, constraint_applied, loaded_rows)
+                VALUES (:start, :end, :file, :table, :constraint, :rows)
+            """),
+            {
+                'start': log_entry['start_datetime'],
+                'end': log_entry['end_datetime'],
+                'file': log_entry['source_file'],
+                'table': log_entry['raw_table_created'],
+                'constraint': log_entry['constraint_applied'],
+                'rows': log_entry['loaded_rows']
+            }
+        )
+
 def load_csv_to_unlogged_table(engine: Engine, table_name: str, csv_path: str, schema: str = OTN_NRT_SCHEMA) -> bool:
     """
     Args:
@@ -163,28 +180,62 @@ def load_csv_to_unlogged_table(engine: Engine, table_name: str, csv_path: str, s
         bool: True if the CSV was successfully loaded.
     """
     full_table_name = f'{schema}.{table_name}'
-    backup_table_name = table_name + '_' + datetime.today().strftime('%Y_%m_%d')
-    # Backup existing
-    with engine.begin() as conn:
+    today_str = datetime.utcnow().strftime('%Y_%m_')
+    backup_table_name = f'{table_name}_{today_str}'
+    start_time = datetime.utcnow()
 
-        conn.execute(text(f'ALTER TABLE {full_table_name} RENAME TO {backup_table_name}'))
+    inspector = inspect(engine)
+    table_exists = inspector.has_table(table_name, schema=schema)
 
-        try:
+    if table_exists:
+        with engine.begin() as conn:
+            conn.execute(text(f'ALTER TABLE {full_table_name} RENAME TO {backup_table_name}'))
+
+    rows_loaded = 0
+    load_successful = False
+    try:
+        with engine.begin() as conn:
+            # Read header to define columns (all as TEXT for simplicity)
             df_header = pd.read_csv(csv_path, nrows=0)
             col_defs = [f'"{col}" TEXT' for col in df_header.columns]
-            create_sql = f'CREATE UNLOGGED TABLE {full_table_name} (\n  ' + ',\n  '.join(
-                col_defs) + '\n)'
+            create_sql = f'CREATE UNLOGGED TABLE {full_table_name} (\n  ' + ',\n  '.join(col_defs) + '\n)'
             conn.execute(text(create_sql))
 
-        # Load data using raw connection with closing
-        with open(csv_path, 'r') as f:
-            next(f)  # Skip header
-            with closing(engine.raw_connection()) as raw_conn:
-                with closing(raw_conn.cursor()) as cursor:
-                    cursor.copy_expert(f"COPY {full_table_name} FROM STDIN WITH CSV", f)
-                raw_conn.commit()
-        except Exception as e:
-            print_error(f'Failed to load {csv_path}: {e}')
-            conn.execute(text(f'ALTER TABLE {schema}.{backup_table_name} RENAME TO {table_name}'))
-        fianlly:
+            # Copy data using COPY FROM STDIN
+            with open(csv_path, 'r') as f:
+                next(f)  # skip header
+                with closing(engine.raw_connection()) as raw_conn:
+                    with closing(raw_conn.cursor()) as cursor:
+                        cursor.copy_expert(f"COPY {full_table_name} FROM STDIN WITH CSV", f)
+                        # rowcount may not be reliable for COPY; we'll query count after commit
+                    raw_conn.commit()
 
+            # Get number of rows inserted
+            result = conn.execute(text(f'SELECT COUNT(*) FROM {full_table_name}'))
+            rows_loaded = result.scalar()
+
+        load_successful = True
+
+    except Exception as e:
+        # If load failed and we had renamed an original table, try to restore it
+        if table_exists:
+            try:
+                with engine.begin() as conn_restore:
+                    # Drop the failed new table
+                    conn_restore.execute(text(f'DROP TABLE IF EXISTS {full_table_name}'))
+                    # Rename backup back to original name
+                    conn_restore.execute(text(f'ALTER TABLE {schema}.{backup_table_name} RENAME TO {table_name}'))
+            except Exception as restore_error:
+                print(f"Critical: Failed to restore original table after load error: {restore_error}")
+        raise RuntimeError(f"CSV load failed: {e}") from e
+
+    end_time = datetime.now(datetime.UTC)
+    log_entry = {
+        'start_datetime': start_time,
+        'end_datetime': end_time,
+        'source_file': csv_path,
+        'raw_table_created': full_table_name,
+        'constraint_applied': False,   # adjust if you later add constraints
+        'loaded_rows': rows_loaded
+    }
+    log_upload_result(engine, schema, log_entry)
