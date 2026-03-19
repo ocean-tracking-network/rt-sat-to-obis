@@ -275,6 +275,7 @@ def transform_nrt_table(engine: Engine, schema: str, table_name: str,
     }
 
     with engine.begin() as conn:
+        conn.execute(text(f'ALTER TABLE {full_table_name} SET LOGGED'))
         # Apply column type changes
         for col, target_type in column_types.items():
             # Check if target_type includes a length spec (e.g., 'varchar(255)')
