@@ -239,3 +239,73 @@ def load_csv_to_unlogged_table(engine: Engine, table_name: str, csv_path: str, s
         'loaded_rows': rows_loaded
     }
     log_upload_result(engine, schema, log_entry)
+
+
+def transform_nrt_table(engine: Engine, schema: str, table_name: str,
+                        column_types: dict, add_indexes: list = None):
+    """
+    Transform columns of a table from TEXT to desired data types.
+
+    Args:
+        engine: SQLAlchemy engine.
+        schema: Database schema.
+        table_name: Name of the table to transform.
+        column_types: Dictionary mapping column names to target PostgreSQL types.
+                      Supported types: 'float', 'int', 'varchar', 'timestamp', 'date', 'boolean'.
+                      For varchar, you can specify length like 'varchar(50)'.
+        add_indexes: List of column names (or expressions) to create indexes on.
+                     Each entry can be a string (column name) or a dict with 'columns' and 'index_name'.
+
+    Returns:
+        None
+
+    Raises:
+        SQLAlchemyError: If any ALTER or CREATE INDEX statement fails.
+    """
+    full_table_name = f'{schema}.{table_name}'
+
+    # Mapping from our shorthand to PostgreSQL type with USING clause
+    type_mapping = {
+        'float': 'DOUBLE PRECISION USING {col}::DOUBLE PRECISION',
+        'int': 'INTEGER USING {col}::INTEGER',
+        'varchar': 'VARCHAR USING {col}::VARCHAR',  # base, can include length
+        'timestamp': 'TIMESTAMP USING {col}::TIMESTAMP',
+        'date': 'DATE USING {col}::DATE',
+        'boolean': 'BOOLEAN USING {col}::BOOLEAN'
+    }
+
+    with engine.begin() as conn:
+        # Apply column type changes
+        for col, target_type in column_types.items():
+            # Check if target_type includes a length spec (e.g., 'varchar(255)')
+            if target_type.startswith('varchar'):
+                base_type = 'varchar'
+                # Use the exact type as given (e.g., VARCHAR(255))
+                using_sql = f"{target_type} USING {col}::{target_type}"
+            else:
+                base_type = target_type.lower()
+                if base_type not in type_mapping:
+                    raise ValueError(f"Unsupported type: {target_type}. Supported: {list(type_mapping.keys())}")
+                using_sql = type_mapping[base_type].format(col=col)
+
+            alter_sql = f'ALTER TABLE {full_table_name} ALTER COLUMN "{col}" TYPE {using_sql}'
+            conn.execute(text(alter_sql))
+
+        # Add indexes
+        if add_indexes:
+            for idx_def in add_indexes:
+                if isinstance(idx_def, str):
+                    # Simple index on one column
+                    idx_name = f"idx_{table_name}_{idx_def}"
+                    idx_sql = f'CREATE INDEX {idx_name} ON {full_table_name} ("{idx_def}")'
+                elif isinstance(idx_def, dict):
+                    idx_name = idx_def.get('index_name', f"idx_{table_name}_custom")
+                    columns = idx_def['columns']
+                    if isinstance(columns, list):
+                        col_list = ', '.join([f'"{c}"' for c in columns])
+                    else:
+                        col_list = f'"{columns}"'
+                    idx_sql = f'CREATE INDEX {idx_name} ON {full_table_name} ({col_list})'
+                else:
+                    continue  # skip invalid definitions
+                conn.execute(text(idx_sql))
