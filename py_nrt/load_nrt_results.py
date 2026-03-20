@@ -16,6 +16,7 @@ from sqlalchemy import inspect
 # OTN_NRT_SCHEMA = 'otn_realtime'
 OTN_NRT_SCHEMA = 'test'
 NRT_UPLOAD_LOG_TABLE = 'nrt_ssm_upload_logs'
+OTN_NRT_SSM_SUMMARY_TABLE = 'otn_nrt_ssm_summary'
 
 
 def check_otn_nrt_backend(engine: Engine, verbose: bool=True) -> bool:
@@ -115,7 +116,8 @@ def get_project_qc_results_for_program(qc_output_path: str, program: str=None) -
                 project_ssmoutputs = str(ssmoutputs_files[0])
                 project_path_map[sub_folder] = project_ssmoutputs
                 last_modified = datetime.fromtimestamp(os.path.getmtime(ssmoutputs_files[0]))
-                print(f"-- Found SSM results: {ssmoutputs_files[0]} - last updated on {last_modified.strftime('%Y-%m-%d %H:%M:%S')}")
+                print(f"-- Found SSM results: "
+                      f"{ssmoutputs_files[0]} - last updated on {last_modified.strftime('%Y-%m-%d %H:%M:%S')}")
             else:
                 print(f"-- No SSM result found.")
     return project_path_map
@@ -217,7 +219,7 @@ def load_csv_to_unlogged_table(engine: Engine, table_name: str, csv_path: str, s
         print(f"Successfully loaded {rows_loaded} rows into {full_table_name}")
 
         transform_nrt_table(engine, schema,table_name)
-        update_log_checkpoint(engine, schema, log_id, {'constraint_applied': True})
+        update_log_checkpoint(engine, schema, log_id, {'loaded_rows': rows_loaded, 'constraint_applied': True, 'end_datetime': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')})
 
         with engine.connect() as conn:
             conn.execute(text(f'DROP TABLE IF EXISTS {schema}.{backup_table_name}'))
@@ -327,3 +329,57 @@ def get_ip_by_hostname():
     except Exception:
         print('Warning: can not get IP address.')
     return ip_address
+
+
+def create_otn_nrt_ssm_summary(engine: Engine, schema: str):
+    """
+    Create the OTN NRT catalog table to track all data tables with tag and species info.
+    """
+    full_table_name = f'{schema}.{OTN_NRT_SSM_SUMMARY_TABLE}'
+    create_sql = f'''
+    CREATE TABLE IF NOT EXISTS {full_table_name} (
+        nrt_table_name VARCHAR(200) NOT NULL UNIQUE,
+        tag_id TEXT NOT NULL,
+        program TEXT NULL,
+        cid TEXT NULL,
+        collectioncode TEXT NULL,
+        row_count INTEGER,
+        min_date TIMESTAMPTZ,
+        max_date TIMESTAMPTZ,
+        latest_lat float8 NULL,
+        latest_log float8 NULL,
+        common_name TEXT NULL,
+        PRIMARY KEY (nrt_table_name, tag_id)
+    );
+    '''
+    with engine.begin() as conn:
+        conn.execute(text(create_sql))
+
+
+def update_otn_nrt_catalog(engine: Engine, schema: str, ssm_result_table: str):
+
+    with engine.begin() as conn:
+        # UPSERT
+        conn.execute(
+            text(f"""
+                INSERT INTO {schema}.{OTN_NRT_SSM_SUMMARY_TABLE}
+                (nrt_table_name, tag_id, min_date, max_date, row_count, cid)
+                SELECT 
+                    :source_table as nrt_table_name,
+                    tag_id,
+                    MIN(date) as min_date,
+                    MAX(date) as max_date,
+                    COUNT(*) as row_count,
+                    MODE() WITHIN GROUP (ORDER BY cid) as cid
+                FROM {schema}.{ssm_result_table}
+                WHERE tag_id IS NOT NULL AND tag_id != ''
+                GROUP BY tag_id
+                ON CONFLICT (nrt_table_name, tag_id) DO UPDATE SET
+                    min_date = EXCLUDED.min_date,
+                    max_date = EXCLUDED.max_date,
+                    row_count = EXCLUDED.row_count,
+                    cid = EXCLUDED.cid,
+                    last_updated = CURRENT_TIMESTAMP;
+        """))
+
+
