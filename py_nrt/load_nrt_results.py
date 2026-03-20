@@ -122,6 +122,7 @@ def get_project_qc_results_for_program(qc_output_path: str, program: str=None) -
                 print(f"-- No SSM result found.")
     return project_path_map
 
+
 def load_to_nrt_db(engine: Engine, proj_ssmourput_map: dict[str, str]):
     for proj, csv in proj_ssmourput_map.items():
         load_csv_to_unlogged_table(engine, proj, csv, OTN_NRT_SCHEMA)
@@ -223,7 +224,6 @@ def load_csv_to_unlogged_table(engine: Engine, table_name: str, csv_path: str, s
 
         with engine.connect() as conn:
             conn.execute(text(f'DROP TABLE IF EXISTS {schema}.{backup_table_name}'))
-
     except Exception as e:
         update_log_checkpoint(engine, schema, log_id, {'error_message': str(e)})
         # If load failed: renamed an original table, try to restore it
@@ -235,6 +235,8 @@ def load_csv_to_unlogged_table(engine: Engine, table_name: str, csv_path: str, s
                 conn_restore.execute(text(f'ALTER TABLE {schema}.{backup_table_name} RENAME TO {table_name}'))
                 print(f"Restored original table after load error: {table_name}")
         raise RuntimeError(f"CSV load failed: {e}") from e
+
+    update_otn_nrt_catalog(engine, schema, table_name)
 
 
 def transform_nrt_table(engine: Engine, schema: str, table_name: str):
@@ -338,7 +340,8 @@ def create_otn_nrt_ssm_summary(engine: Engine, schema: str):
     full_table_name = f'{schema}.{OTN_NRT_SSM_SUMMARY_TABLE}'
     create_sql = f'''
     CREATE TABLE IF NOT EXISTS {full_table_name} (
-        nrt_table_name VARCHAR(200) NOT NULL UNIQUE,
+        id SERIAL PRIMARY KEY,
+        nrt_ssm_table_name VARCHAR(200) NOT NULL,
         tag_id TEXT NOT NULL,
         program TEXT NULL,
         cid TEXT NULL,
@@ -346,40 +349,132 @@ def create_otn_nrt_ssm_summary(engine: Engine, schema: str):
         row_count INTEGER,
         min_date TIMESTAMPTZ,
         max_date TIMESTAMPTZ,
+        last_updated TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         latest_lat float8 NULL,
-        latest_log float8 NULL,
+        latest_lon float8 NULL,
         common_name TEXT NULL,
-        PRIMARY KEY (nrt_table_name, tag_id)
+        UNIQUE (nrt_ssm_table_name, tag_id)
     );
+    ALTER TABLE test.otn_nrt_ssm_summary ADD PRIMARY KEY (nrt_ssm_table_name, tag_id);
     '''
+
     with engine.begin() as conn:
         conn.execute(text(create_sql))
 
 
-def update_otn_nrt_catalog(engine: Engine, schema: str, ssm_result_table: str):
+def update_otn_nrt_catalog(engine: Engine, schema: str, ssm_result_table: str) -> pd.DataFrame:
+    """
+    Update OTN NRT catalog with dynamic CID detection.
+    """
+    inspector = inspect(engine)
+    if not inspector.has_table(OTN_NRT_SSM_SUMMARY_TABLE, schema=schema):
+        create_otn_nrt_ssm_summary(engine, schema)
 
-    with engine.begin() as conn:
-        # UPSERT
-        conn.execute(
-            text(f"""
-                INSERT INTO {schema}.{OTN_NRT_SSM_SUMMARY_TABLE}
-                (nrt_table_name, tag_id, min_date, max_date, row_count, cid)
+    # Check if CID column exists
+    source_columns = [col['name'] for col in inspector.get_columns(ssm_result_table, schema=schema)]
+    has_cid = 'cid' in source_columns
+
+    # Build dynamic SQL
+    if has_cid:
+        query = f"""
+            WITH 
+            tag_aggregates AS (
                 SELECT 
-                    :source_table as nrt_table_name,
                     tag_id,
                     MIN(date) as min_date,
                     MAX(date) as max_date,
-                    COUNT(*) as row_count,
-                    MODE() WITHIN GROUP (ORDER BY cid) as cid
+                    COUNT(*) as row_count
                 FROM {schema}.{ssm_result_table}
                 WHERE tag_id IS NOT NULL AND tag_id != ''
                 GROUP BY tag_id
-                ON CONFLICT (nrt_table_name, tag_id) DO UPDATE SET
-                    min_date = EXCLUDED.min_date,
-                    max_date = EXCLUDED.max_date,
-                    row_count = EXCLUDED.row_count,
-                    cid = EXCLUDED.cid,
-                    last_updated = CURRENT_TIMESTAMP;
-        """))
+            ),
+            tag_latest_info AS (
+                SELECT DISTINCT ON (tag_id)
+                    tag_id,
+                    lon as latest_lon,
+                    lat as latest_lat,
+                    cid as latest_cid
+                FROM {schema}.{ssm_result_table}
+                WHERE tag_id IS NOT NULL AND tag_id != ''
+                ORDER BY tag_id, date DESC
+            )
+            INSERT INTO {schema}.{OTN_NRT_SSM_SUMMARY_TABLE}
+            (nrt_ssm_table_name, tag_id, min_date, max_date, row_count, cid, latest_lon, latest_lat)
+            SELECT 
+                '{ssm_result_table}' as nrt_ssm_table_name,
+                a.tag_id,
+                a.min_date,
+                a.max_date,
+                a.row_count,
+                l.latest_cid,
+                l.latest_lon,
+                l.latest_lat
+            FROM tag_aggregates a
+            LEFT JOIN tag_latest_info l ON a.tag_id = l.tag_id
+            ON CONFLICT (nrt_ssm_table_name, tag_id) DO UPDATE SET
+                min_date = EXCLUDED.min_date,
+                max_date = EXCLUDED.max_date,
+                row_count = EXCLUDED.row_count,
+                cid = EXCLUDED.cid,
+                latest_lon = EXCLUDED.latest_lon,
+                latest_lat = EXCLUDED.latest_lat,
+                last_updated = CURRENT_TIMESTAMP
+            RETURNING *
+        """
+    else:
+        query = f"""
+            WITH 
+            tag_aggregates AS (
+                SELECT 
+                    tag_id,
+                    MIN(date) as min_date,
+                    MAX(date) as max_date,
+                    COUNT(*) as row_count
+                FROM {schema}.{ssm_result_table}
+                WHERE tag_id IS NOT NULL AND tag_id != ''
+                GROUP BY tag_id
+            ),
+            tag_latest_info AS (
+                SELECT DISTINCT ON (tag_id)
+                    tag_id,
+                    lon as latest_lon,
+                    lat as latest_lat
+                FROM {schema}.{ssm_result_table}
+                WHERE tag_id IS NOT NULL AND tag_id != ''
+                ORDER BY tag_id, date DESC
+            )
+            INSERT INTO {schema}.{OTN_NRT_SSM_SUMMARY_TABLE}
+            (nrt_ssm_table_name, tag_id, min_date, max_date, row_count, latest_lon, latest_lat)
+            SELECT 
+                '{ssm_result_table}' as nrt_ssm_table_name,
+                a.tag_id,
+                a.min_date,
+                a.max_date,
+                a.row_count,
+                l.latest_lon,
+                l.latest_lat
+            FROM tag_aggregates a
+            LEFT JOIN tag_latest_info l ON a.tag_id = l.tag_id
+            ON CONFLICT (nrt_ssm_table_name, tag_id) DO UPDATE SET
+                min_date = EXCLUDED.min_date,
+                max_date = EXCLUDED.max_date,
+                row_count = EXCLUDED.row_count,
+                latest_lon = EXCLUDED.latest_lon,
+                latest_lat = EXCLUDED.latest_lat,
+                last_updated = CURRENT_TIMESTAMP
+            RETURNING *
+        """
 
+    with engine.begin() as conn:
+        result = conn.execute(text(query))
+        rows = result.fetchall()
+
+        if not rows:
+            print(f"No tags found in {ssm_result_table}")
+            return pd.DataFrame()
+
+        summary_df = pd.DataFrame(rows, columns=result.keys())
+        print(f"Updated catalog with {len(summary_df)} tag records for {ssm_result_table}")
+
+        return summary_df
 
