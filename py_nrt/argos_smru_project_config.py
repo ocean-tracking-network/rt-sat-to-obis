@@ -48,6 +48,7 @@ from xml.etree import ElementTree as ET
 import warnings
 
 from py_nrt.common import run_from_ipython
+from py_nrt.load_nrt_results import get_files_by_pattern
 
 itables.init_notebook_mode()
 # SMRU API endpoint
@@ -193,7 +194,7 @@ def extract_deployments(program: str, cid: str, input_path: str, verbose: bool=F
     """
     mdb_file = cid + '.mdb'
     table = 'deployments'
-    return extract_table_from_mdb(get_path_from_strings([input_path, program,f'{program}_{cid}', 'mdb']), mdb_file, table, verbose)
+    return extract_table_from_mdb(get_path_from_strings([input_path, program, f'{program}_{cid}', 'mdb']), mdb_file, table, verbose)
 
 
 def extract_tacks(program: str, cid: str, input_path: str, exclude_tag_ref: list[str], verbose: bool=False) -> tuple[str, pd.DataFrame]:
@@ -212,12 +213,12 @@ def extract_tacks(program: str, cid: str, input_path: str, exclude_tag_ref: list
     """
     mdb_file = cid + '.mdb'
     table = 'ctd'
-    mdb_file, tracks_df = extract_table_from_mdb(get_path_from_strings([input_path, f'{program}_{cid}', 'mdb']), mdb_file, table, verbose)
+    mdb_file, tracks_df = extract_table_from_mdb(get_path_from_strings([input_path, program, f'{program}_{cid}', 'mdb']), mdb_file, table, verbose)
     tracks_df = tracks_df[~tracks_df['REF'].isin(exclude_tag_ref)]
     return mdb_file, tracks_df
 
 
-def export_for_kepler(cid: str, tracks_df: pd.DataFrame, subset_tags: list[str] = []) -> None:
+def export_for_kepler(cid: str, tracks_df: pd.DataFrame, subset_tags: list[str] = []) -> pd.DataFrame:
     """
     Export animal tracking data to a format compatible with Kepler.gl visualization.
 
@@ -228,7 +229,7 @@ def export_for_kepler(cid: str, tracks_df: pd.DataFrame, subset_tags: list[str] 
     Args:
         cid (str): Collection ID.
         tracks_df (pd.DataFrame): DataFrame containing tag location data
-    Returns: None
+    Returns: tracks_subset
     """
     filename = f"{cid}_tracks_{datetime.now().strftime('%Y%m%d')}.csv"
     tracks_subset = tracks_df[['REF', 'END_DATE', 'lat', 'lon']].copy().rename(columns={
@@ -261,6 +262,7 @@ def export_for_kepler(cid: str, tracks_df: pd.DataFrame, subset_tags: list[str] 
                         }
                     }
                 ])
+    return tracks_subset
 
 def extract_table_from_mdb(input_path: str, mdb_file: str, table: str, verbose=False) -> Tuple[str, pd.DataFrame]:
     """
@@ -390,3 +392,44 @@ def create_smru_qc_config(
         f.write('\n'.join(drop_ids))
     print(f'smru_qc config file is written to:\n{Path(qc_config_file).as_posix()}')
     return [qc_config_file, exclude_tags_file]
+
+
+def extract_ssmoutput_tracks(program: str, cid: str, qc_output_path: str, subset_tags: list[str]=[], verbose=False) -> pd.DataFrame:
+    ssmoutput_folder = get_path_from_strings([qc_output_path, program, f'{program}_{cid}'])
+    ssmoutput_files = get_files_by_pattern(ssmoutput_folder, '*ssmoutputs*.csv')
+    if not ssmoutput_files:
+        print(f'No SSM output file found in {ssmoutput_folder}')
+        return pd.DataFrame()
+
+    ssmoutputs_df = pd.read_csv(ssmoutput_files[0])
+    itables.show(ssmoutputs_df)
+    ssmoutputs_df = ssmoutputs_df[['ref', 'date', 'lat', 'lon']].copy().rename(columns={
+        'ref': 'tag_ref',
+        'date': 'date_time'
+    })
+    ssmoutputs_df['date_time'] = pd.to_datetime(
+        ssmoutputs_df['date_time'],
+        format='mixed',
+        dayfirst=True
+    )
+    if subset_tags:
+        ssmoutputs_df = ssmoutputs_df[ssmoutputs_df['tag_ref'].isin(subset_tags)]
+    filename = f"{cid}_ssmoutput_{datetime.now().strftime('%Y%m%d')}.csv"
+    itables.show(ssmoutputs_df,
+                 buttons=[
+                     'copy',
+                     {
+                         'extend': 'csv',
+                         'filename': filename.replace('.csv', '')
+                     },
+                     {
+                         'extend': 'excel',
+                         'filename': filename.replace('.csv', ''),
+                         'exportOptions': {
+                             'modifier': {
+                                 'page': 'all'
+                             }
+                         }
+                     }
+                 ])
+    return ssmoutputs_df
