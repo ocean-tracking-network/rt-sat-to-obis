@@ -103,7 +103,7 @@ def smru_get_mdb(program: str, cid: str,  user: str, pwd: str, qc_input_path: st
     if not os.path.exists(qc_input_path):
         Path(qc_input_path).mkdir(parents=True, exist_ok=True)
 
-    download_path = get_path_from_strings([qc_input_path, f"{program}_{cid}", 'mdb'])
+    download_path = get_path_from_strings([qc_input_path, program, f"{program}_{cid}", 'mdb'])
     download_path.mkdir(parents=True, exist_ok=True)
     print(f"Downloading {cid}.mdb to '{download_path}'")
 
@@ -193,7 +193,7 @@ def extract_deployments(program: str, cid: str, input_path: str, verbose: bool=F
     """
     mdb_file = cid + '.mdb'
     table = 'deployments'
-    return extract_table_from_mdb(get_path_from_strings([input_path, f'{program}_{cid}', 'mdb']), mdb_file, table, verbose)
+    return extract_table_from_mdb(get_path_from_strings([input_path, program,f'{program}_{cid}', 'mdb']), mdb_file, table, verbose)
 
 
 def extract_tacks(program: str, cid: str, input_path: str, exclude_tag_ref: list[str], verbose: bool=False) -> tuple[str, pd.DataFrame]:
@@ -217,7 +217,7 @@ def extract_tacks(program: str, cid: str, input_path: str, exclude_tag_ref: list
     return mdb_file, tracks_df
 
 
-def export_for_kepler(cid: str, tracks_df: pd.DataFrame) -> None:
+def export_for_kepler(cid: str, tracks_df: pd.DataFrame, subset_tags: list[str] = []) -> None:
     """
     Export animal tracking data to a format compatible with Kepler.gl visualization.
 
@@ -235,6 +235,14 @@ def export_for_kepler(cid: str, tracks_df: pd.DataFrame) -> None:
         'REF': 'tag_ref',
         'END_DATE': 'date_time'
     })
+    tracks_subset['date_time'] = pd.to_datetime(
+        tracks_subset['date_time'],
+        format='mixed',
+        dayfirst=True
+    )
+    if subset_tags:
+        tracks_subset = tracks_subset[tracks_subset['tag_ref'].isin(subset_tags)]
+
     itables.options.maxBytes = 0
     itables.show(tracks_subset,
                  buttons=[
@@ -331,17 +339,15 @@ def create_smru_qc_config(
     """
     drop_ids_file = 'exclude_tags.csv'
     project_id = f'{program}_{cid}'
-    if otn_collection_code:
-        project_id = otn_collection_code + '_' + project_id
     smru_qc_config = [
         {
             "setup": {
                 "program": program,
-                "data.dir": f'{qc_input_path}/{program}_{cid}/mdb',
+                "data.dir": f'{qc_input_path}/{program}/{program}_{cid}/mdb',
                 "meta.file": None,
-                "maps.dir": f"{qc_output_path}/maps/{project_id}",
-                "diag.dir": f"{qc_output_path}/diag/{project_id}",
-                "output.dir": f"{qc_output_path}/aodn/{project_id}",
+                "maps.dir": f"{qc_output_path}/{program}/maps/{program}_{cid}",
+                "diag.dir": f"{qc_output_path}/{program}/diag/{program}_{cid}",
+                "output.dir": f"{qc_output_path}/{program}/{program}_{cid}",
                 "return.R": verbose
             },
             "harvest": {
@@ -376,11 +382,11 @@ def create_smru_qc_config(
             }
         }
     ]
-    qc_config_file = get_path_from_strings([qc_input_path, f'{program}_{cid}', f'config_{cid}.json'])
+    qc_config_file = get_path_from_strings([qc_input_path, program, f'{program}_{cid}', f'config_{cid}.json'])
     with open(qc_config_file, 'w') as f:
         json.dump(smru_qc_config, f, indent=2, ensure_ascii=False)
-    exclude_tags_file = get_path_from_strings([qc_input_path, f'{program}_{cid}', drop_ids_file])
+    exclude_tags_file = get_path_from_strings([qc_input_path, program, f'{program}_{cid}', drop_ids_file])
     with open(exclude_tags_file, 'w') as f:
         f.write('\n'.join(drop_ids))
-    print(f'smru_qc config file is written to:\n{qc_config_file}')
+    print(f'smru_qc config file is written to:\n{Path(qc_config_file).as_posix()}')
     return [qc_config_file, exclude_tags_file]
