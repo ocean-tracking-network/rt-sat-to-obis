@@ -499,3 +499,45 @@ def export_for_kepler(collaborator: str, deployment_df: pd.DataFrame) -> None:
                          }
                      }
                  ])
+
+
+def extract_ssmoutput_tracks(program: str, tag_owner: str, common_name: str, qc_output_path: str, subset_tags: list[str]=[], verbose=False) -> pd.DataFrame:
+    proj_folder = tag_owner.split('@'[0].replace('.', '')) + '_' + common_name.replace(' ', '_')
+    ssmoutput_folder = get_path_from_strings([qc_output_path, program, proj_folder])
+    ssmoutput_files = get_files_by_pattern(ssmoutput_folder, 'ssmoutputs*.csv')
+    if not ssmoutput_files:
+        print(f'No SSM output file found in {ssmoutput_folder}')
+        return pd.DataFrame()
+
+    ssmoutputs_df = pd.read_csv(ssmoutput_files[0])
+    itables.show(ssmoutputs_df)
+    ssmoutputs_df = ssmoutputs_df[['DeploymentID', 'date', 'lat', 'lon']].copy().rename(columns={
+        'ref': 'tag_ref',
+        'date': 'date_time'
+    })
+    ssmoutputs_df['date_time'] = pd.to_datetime(
+        ssmoutputs_df['date_time'],
+        format='mixed',
+        dayfirst=True
+    )
+    if subset_tags:
+        ssmoutputs_df = ssmoutputs_df[ssmoutputs_df['tag_ref'].isin(subset_tags)]
+    filename = f"{proj_folder}_ssmoutput_{datetime.now().strftime('%Y%m%d')}.csv"
+    itables.show(ssmoutputs_df,
+                 buttons=[
+                     'copy',
+                     {
+                         'extend': 'csv',
+                         'filename': filename.replace('.csv', '')
+                     },
+                     {
+                         'extend': 'excel',
+                         'filename': filename.replace('.csv', ''),
+                         'exportOptions': {
+                             'modifier': {
+                                 'page': 'all'
+                             }
+                         }
+                     }
+                 ])
+    return ssmoutputs_df
