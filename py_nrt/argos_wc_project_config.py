@@ -501,8 +501,8 @@ def export_for_kepler(collaborator: str, deployment_df: pd.DataFrame) -> None:
                  ])
 
 
-def extract_ssmoutput_tracks(program: str, tag_owner: str, common_name: str, qc_output_path: str, subset_tags: list[str]=[], verbose=False) -> pd.DataFrame:
-    proj_folder = tag_owner.split('@'[0].replace('.', '')) + '_' + common_name.replace(' ', '_')
+def extract_ssmoutput_tracks(program: str, collaborator: str, common_name: str, qc_output_path: str, subset_tags: list[str]=[], verbose=False) -> pd.DataFrame:
+    proj_folder = collaborator.split('@')[0].replace('.', '') + '_' + common_name.replace(' ', '_')
     ssmoutput_folder = get_path_from_strings([qc_output_path, program, proj_folder])
     ssmoutput_files = get_files_by_pattern(ssmoutput_folder, 'ssmoutputs*.csv')
     if not ssmoutput_files:
@@ -512,7 +512,7 @@ def extract_ssmoutput_tracks(program: str, tag_owner: str, common_name: str, qc_
     ssmoutputs_df = pd.read_csv(ssmoutput_files[0])
     itables.show(ssmoutputs_df)
     ssmoutputs_df = ssmoutputs_df[['DeploymentID', 'date', 'lat', 'lon']].copy().rename(columns={
-        'ref': 'tag_ref',
+        'DeploymentID': 'tag_ref',
         'date': 'date_time'
     })
     ssmoutputs_df['date_time'] = pd.to_datetime(
