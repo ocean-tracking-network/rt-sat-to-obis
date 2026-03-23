@@ -43,6 +43,7 @@ import warnings
 
 from py_nrt.argos_smru_project_config import get_path_from_strings
 from py_nrt.common import run_from_ipython
+from py_nrt.load_nrt_results import get_files_by_pattern
 
 itables.init_notebook_mode()
 # WC API endpoint
@@ -89,9 +90,7 @@ def create_wc_qc_config(
     Returns:
         List containing the configuration template
     """
-    project_id = f'{collaborator.split("@")[0]}_{common_name.replace(" ","_")}'
-    if otn_collection_code:
-        project_id = otn_collection_code + '_' + project_id
+    project_id = f'{collaborator.split("@")[0].replace(".","")}_{common_name.replace(" ","_")}'
     wc_qc_config = [
         {
             "setup": {
@@ -300,7 +299,7 @@ def build_request_header(a_key: str, s_key: str, payload: str):
     return {"X-Access": a_key, "X-Hash": sha256_hmac(payload, s_key)}
 
 
-def unzip_file(extract_dest_path: Path) -> None:
+def unzip_file(extract_dest_path: Path) -> str:
     """
     Unzip files despite extraction error may occur
     Args:
@@ -338,10 +337,11 @@ def unzip_file(extract_dest_path: Path) -> None:
 
     except Exception as e:
         print(f'Warning: Failed to process zip file - {e}')
+    return extract_dest_path
 
 
 def perform_download(a_key: str, s_key: str, tag_uuid_combobox: widgets.Dropdown = None,
-                     deployment_df: pd.DataFrame = None, verbose=False, button: Button = None) -> Path:
+                     deployment_df: pd.DataFrame = None,  program: str='', qc_input_path:str='', verbose=False, button: Button = None) -> Path:
     tag_uuid = tag_uuid_combobox.value
     payload = f"action=download_deployment&id={tag_uuid}"
     print(f'Downloading: {tag_uuid}...', sep=' ')
@@ -350,14 +350,56 @@ def perform_download(a_key: str, s_key: str, tag_uuid_combobox: widgets.Dropdown
         headers=build_request_header(a_key, s_key, payload),
         data=payload
     )
-    dest_path = Path(deployment_df[deployment_df['tag_uuid'] == tag_uuid]['owner'].iloc[0])
+    tag_owner = deployment_df[deployment_df['tag_uuid'] == tag_uuid]['owner'].iloc[0]
+    tag_owner = tag_owner.split('@')[0].replace('.', '')
+    dest_path = get_path_from_strings([qc_input_path, program, f'{program}_{tag_owner}'])
     dest_path.mkdir(parents=True, exist_ok=True)
     outfile = Path(os.path.join(dest_path, f"{tag_uuid}.zip"))
     outfile.write_bytes(response.content)
     print(f'Downloaded to: "{outfile}')
 
-    unzip_file(dest_path / tag_uuid)
-    return outfile
+    unzipped_file = unzip_file(dest_path / tag_uuid)
+
+    location_files = get_files_by_pattern(unzipped_file, '*Locations.csv')
+
+    if location_files:
+        print(f'Extracted raw track for {tag_uuid}')
+        location_df = pd.read_csv(location_files[0])
+        location_df = location_df[['DeployID', 'Date', 'Latitude', 'Longitude']].copy().rename(
+            columns={
+                'DeployID': 'tag_ref',
+                'Date': 'date_time',
+                'Latitude': 'lat',
+                'Longitude': 'lon'
+            })
+
+        location_df['date_time'] = pd.to_datetime(
+            location_df['date_time'],
+            format='mixed',
+            dayfirst=True
+        )
+        filename = f"{tag_uuid}_track_{datetime.now().strftime('%Y%m%d')}.csv"
+        itables.show(location_df,
+                     buttons=[
+                         'copy',
+                         {
+                             'extend': 'csv',
+                             'filename': filename.replace('.csv', '')
+                         },
+                         {
+                             'extend': 'excel',
+                             'filename': filename.replace('.csv', ''),
+                             'exportOptions': {
+                                 'modifier': {
+                                     'page': 'all'
+                                 }
+                             }
+                         }
+                     ])
+    else:
+        print(f'Waring: no locations file found in {unzipped_file}. Please contact PI or OTN data team.')
+
+    return unzipped_file
 
 
 def get_deployments_for_owner_id(a_key: str, s_key: str, collaborator: str = None, verbose=False) -> pd.DataFrame:
@@ -372,7 +414,6 @@ def get_deployments_for_owner_id(a_key: str, s_key: str, collaborator: str = Non
     # Parse deployment nodes
     flattened_dicts = parse_xml_to_dict(response, 'deployment')
     deployment_df = pd.DataFrame(flattened_dicts)
-
     rename_dict = {
         'id': 'tag_uuid',
         'argos_ptt_decimal': 'ptt',
@@ -383,29 +424,31 @@ def get_deployments_for_owner_id(a_key: str, s_key: str, collaborator: str = Non
         'last_location_latitude': 'last_loc_lat',
         'last_location_longitude': 'last_loc_lon',
         'tag_tag_type': 'tag_type',
+        'source_source': 'tag_type',
         'tag_serial_number': 'serial_number'
     }
     columns = [
         'tag_uuid', 'ptt', 'tag_program_number', 'status', 'tag_type', 'serial_number', 'last_update_date', 'label_name', 'label',
         'last_loc_date','last_loc_lat', 'last_loc_lon',
         'deploy_id','deployment_start_date', 'deployment_end_date',
-        'deployment_start_latitude','argos_first_uplink_date', 'argos_last_uplink_date'
+        'deployment_start_latitude', 'argos_first_uplink_date', 'argos_last_uplink_date'
     ]
     deployment_df = deployment_df.rename(columns=rename_dict)
     # Convert epoch to datetime
     for col in [col for col in deployment_df.columns if col.endswith('_date')]:
-        # Convert integer timestamps to UTC datetime
-        deployment_df[col] = pd.to_datetime(deployment_df[col], unit='s', utc=True)
+        # Ensure numeric conversion first, then parse as Unix timestamp (seconds)
+        numeric_values = pd.to_numeric(deployment_df[col], errors='coerce')
+        deployment_df[col] = pd.to_datetime(numeric_values, unit='s', utc=True)
     print(f'Showing {len(deployment_df)} tag(s) for collaborator: {collaborator}')
     itables.show(deployment_df[columns], buttons=['pageLength', "copyHtml5", "csvHtml5"])
     return deployment_df
 
 
-def download_tag(a_key: str, s_key: str, deployment_df: pd.DataFrame, verbose=False):
+def download_tag(a_key: str, s_key: str, deployment_df: pd.DataFrame, program:str, qc_input_path:str, verbose=False):
     tag_uuid_combobox = build_combobox(deployment_df['tag_uuid'].tolist())
     download_button = Button(description="Download", button_style='primary')
     display(tag_uuid_combobox, download_button)
-    download_button.on_click(partial(perform_download, a_key, s_key, tag_uuid_combobox, deployment_df, verbose))
+    download_button.on_click(partial(perform_download, a_key, s_key, tag_uuid_combobox, deployment_df, program, qc_input_path, verbose))
 
 
 def build_combobox(option_lst: list[str]) -> widgets.Combobox :
