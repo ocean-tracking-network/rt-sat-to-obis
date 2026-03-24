@@ -95,10 +95,10 @@ def create_wc_qc_config(
         {
             "setup": {
                 "program": program,
-                "data.dir": f"{qc_input_path}/{program}",
+                "data.dir": f"{qc_input_path}/{program}/{project_id}",
                 "meta.file": None,
-                "maps.dir": f"{qc_output_path}/maps/{program}/{project_id}",
-                "diag.dir": f"{qc_output_path}/diag/{program}/{project_id}",
+                "maps.dir": f"{qc_output_path}/{program}/{project_id}/maps",
+                "diag.dir": f"{qc_output_path}/{program}/{project_id}/diag",
                 "output.dir": f"{qc_output_path}/{program}/{project_id}",
                 "return.R": verbose
             },

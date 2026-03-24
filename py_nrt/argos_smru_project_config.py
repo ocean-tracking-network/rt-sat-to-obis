@@ -347,8 +347,8 @@ def create_smru_qc_config(
                 "program": program,
                 "data.dir": f'{qc_input_path}/{program}/{program}_{cid}/mdb',
                 "meta.file": None,
-                "maps.dir": f"{qc_output_path}/{program}/maps/{program}_{cid}",
-                "diag.dir": f"{qc_output_path}/{program}/diag/{program}_{cid}",
+                "maps.dir": f"{qc_output_path}/{program}/{program}_{cid}/maps",
+                "diag.dir": f"{qc_output_path}/{program}/{program}_{cid}/diag",
                 "output.dir": f"{qc_output_path}/{program}/{program}_{cid}",
                 "return.R": verbose
             },
