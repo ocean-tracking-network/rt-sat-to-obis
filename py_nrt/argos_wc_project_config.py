@@ -90,7 +90,7 @@ def create_wc_qc_config(
     Returns:
         List containing the configuration template
     """
-    project_id = f'{collaborator.split("@")[0].replace(".","")}_{common_name.replace(" ","_")}'
+    project_id = build_project_id_wc(program, collaborator, common_name)
     wc_qc_config = [
         {
             "setup": {
@@ -133,7 +133,7 @@ def create_wc_qc_config(
             }
         }
     ]
-    output_path = get_path_from_strings([qc_input_path, program, f'config_{project_id}_wc.json'])
+    output_path = get_path_from_strings([qc_input_path, program, f'{program}_{project_id}', f'config_{project_id}_wc.json'])
     with open(output_path, 'w') as f:
         json.dump(wc_qc_config, f, indent=2, ensure_ascii=False)
     tag_list_file = get_path_from_strings([qc_input_path, program, f'{project_id}_tags.csv'])
@@ -141,6 +141,20 @@ def create_wc_qc_config(
         f.write('\n'.join(['uuid'] + tag_uuid_list))
     print(f'wc_qc config file is written to {output_path.as_posix()}')
     # print(f'tag list config file is written to {tag_list_file.as_posix()}')
+
+
+def build_project_id_wc(program: str, collaborator: str, common_name: str) -> str:
+    """
+    Build a project ID from program, collaborator email, and common name.
+    Args:
+        program: The program name
+        collaborator: Collaborator email address (e.g., name@domain.com)
+        common_name: Common name of the species or project
+    Returns:
+        Formatted project ID string: {program}_{collaborator_local_part}_{common_name_with_underscores}
+    """
+    project_id = f'{program}_{collaborator.split("@")[0].replace(".","")}_{common_name.replace(" ","_")}'
+    return project_id
 
 
 def wc_get_collab_ids(a_key: str = None, s_key: str = None, verbose: bool = False) -> pd.DataFrame:
@@ -219,6 +233,7 @@ def wc_get_collab_ids(a_key: str = None, s_key: str = None, verbose: bool = Fals
         raise Exception(f"Failed to parse XML response: {e}")
     except Exception as e:
         raise Exception(f"Unexpected error: {e}")
+
 
 def sha256_hmac(message: str, key: str) -> str:
     """Return HMAC-SHA256 hex digest (WC API uses this)."""

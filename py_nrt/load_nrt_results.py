@@ -4,10 +4,6 @@ import os
 import socket
 from pathlib import Path
 from typing import List, Union, Dict, Any
-from contextlib import closing
-
-import pandas as pd
-from dbtools.common import has_schema
 
 from py_nrt.common import print_error, get_engine
 from sqlalchemy.engine import Engine
@@ -19,6 +15,16 @@ NRT_UPLOAD_LOG_TABLE = 'nrt_ssm_upload_logs'
 OTN_NRT_SSM_SUMMARY_TABLE = 'otn_nrt_ssm_summary'
 
 
+import pandas as pd
+from datetime import datetime, timedelta
+from sqlalchemy import create_engine, text
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+exclude_folders=['maps', 'diag', 'aodn']
+
+
 def check_otn_nrt_backend(engine: Engine, verbose: bool=True) -> bool:
     """
     Get loaners in dataframe
@@ -26,13 +32,15 @@ def check_otn_nrt_backend(engine: Engine, verbose: bool=True) -> bool:
     :param verbose:
     :return:
     """
-    get_engine()
-    if has_schema(engine, OTN_NRT_SCHEMA):
+    inspector = inspect(engine)
+
+    if OTN_NRT_SCHEMA in inspector.get_schema_names():
         print(f'Will upload QCed results into HOST: {engine.url.host} DB: {engine.url.database} schema: {OTN_NRT_SCHEMA}')
         return True
-    else:
-        print(f'Schema: {OTN_NRT_SCHEMA} is not found in HOST: {engine.url.host} DB: {engine.url.database}')
-        return False
+
+    if verbose:
+        print(f'Schema {OTN_NRT_SCHEMA} does not exist')
+    return False
 
 
 def get_files_by_pattern(folder: str, file_pattern: str) -> List[Path]:
@@ -50,28 +58,6 @@ def get_files_by_pattern(folder: str, file_pattern: str) -> List[Path]:
         return []
     csv_files = list(folder_path.rglob(file_pattern))
     return csv_files
-
-
-def load_nrt_to_datastore(engine: Engine, nrt_file_pattern = 'ssmoutputs_*.csv'):
-    """
-
-    """
-    nrt_qc_folder = 'output'
-    for qced_nrt_file in get_files_by_pattern(nrt_qc_folder, nrt_file_pattern):
-        nrt_df = pd.read_csv(qced_nrt_file)
-        print(nrt_df)
-
-
-import pandas as pd
-import psycopg2
-from io import StringIO
-from datetime import datetime, timedelta
-from sqlalchemy import create_engine, text
-import logging
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-exclude_folders=['maps', 'diag']
 
 
 def get_qced_programs(qc_output_path: str) -> list[str]:
@@ -95,7 +81,7 @@ def get_qced_programs(qc_output_path: str) -> list[str]:
     return sorted(programs)
 
 
-def get_project_qc_results_for_program(qc_output_path: str, program: str=None) -> dict[str, str]:
+def get_project_qc_results_for_program(qc_output_path: str, program: str=None) -> dict[str, datetime]:
     """
     Get QCed projects for given program.
     Args:
@@ -103,10 +89,10 @@ def get_project_qc_results_for_program(qc_output_path: str, program: str=None) -
         program: NRT program
 
     Returns:
-        dict[str]: a map of program_project to the QCed results
+        dict[str]: a map of the QCed results to last_modified
     """
     program_path = os.path.join(qc_output_path, program)
-    project_path_map = {}
+    ssmoutput_last_modified_map = {}
     for sub_folder in os.listdir(program_path):
         project_path = os.path.join(qc_output_path, program, sub_folder)
         if sub_folder not in exclude_folders and not sub_folder.startswith('.'):
@@ -114,19 +100,52 @@ def get_project_qc_results_for_program(qc_output_path: str, program: str=None) -
             ssmoutputs_files = list(Path(project_path).glob('*ssmoutputs*_nrt.csv'))
             if ssmoutputs_files:
                 project_ssmoutputs = str(ssmoutputs_files[0])
-                project_path_map[sub_folder] = project_ssmoutputs
                 last_modified = datetime.fromtimestamp(os.path.getmtime(ssmoutputs_files[0]))
-                print(f"-- Found SSM results: "
-                      f"{ssmoutputs_files[0]} - last updated on {last_modified.strftime('%Y-%m-%d %H:%M:%S')}")
+                print(f"Found SSM results: "
+                      f"{ssmoutputs_files[0]} - last updated on {last_modified}")
+                ssmoutput_last_modified_map[project_ssmoutputs] = last_modified
             else:
                 print(f"-- No SSM result found.")
-    return project_path_map
+    return ssmoutput_last_modified_map
 
 
-def load_to_nrt_db(engine: Engine, proj_ssmourput_map: dict[str, str]):
-    for proj, csv in proj_ssmourput_map.items():
-        load_csv_to_unlogged_table(engine, proj, csv, OTN_NRT_SCHEMA)
-    print(f'Uploaded SSM results to  HOST: {engine.url.host} DB: {engine.url.database} Schema: {OTN_NRT_SCHEMA}.{proj}')
+def load_to_nrt_db(engine: Engine, ssmoutput_last_modified_map: dict[str, str]):
+    for output_csv, last_modified in ssmoutput_last_modified_map.items():
+        proj = output_csv.split(os.path.sep)[-2]
+        prev_load_df = get_loaded_proj_table_info(engine, proj)
+        if prev_load_df is not None and len(prev_load_df) > 0:
+            prev_timestamp = pd.to_datetime(prev_load_df.iloc[0]['source_file_last_modified']).tz_localize(None)
+            current_timestamp = pd.to_datetime(last_modified).tz_localize(None)
+            if abs((current_timestamp - prev_timestamp).total_seconds()) < 2:
+                print(f"SSM results have been loaded for table {proj} - last modified on {prev_timestamp.strftime('%Y_%m_%d_%H_%M_%S')}. Skipping...")
+                continue
+
+        summary_df = load_csv_to_db(engine, proj, output_csv, last_modified, OTN_NRT_SCHEMA)
+        print(f'Uploaded SSM results to  HOST: {engine.url.host} DB: {engine.url.database} Schema: {OTN_NRT_SCHEMA}.{proj}')
+        return summary_df
+
+
+def get_loaded_proj_table_info(engine: Engine, table_name: str, schema: str=OTN_NRT_SCHEMA) -> dict[str, str]:
+    inspector = inspect(engine)
+    if not inspector.has_table(NRT_UPLOAD_LOG_TABLE, schema=OTN_NRT_SCHEMA) or (not inspector.has_table(table_name, schema=schema)):
+        return {}
+
+    log_sql = f"""
+        SELECT ssmoutput_table, source_file_last_modified 
+        FROM {schema}.{NRT_UPLOAD_LOG_TABLE}
+        WHERE constraint_applied = true
+        AND ssmoutput_table = '{table_name}'
+        ORDER BY source_file_last_modified DESC
+        LIMIT 1
+    """
+    with engine.begin() as conn:
+        result = conn.execute(text(log_sql))
+        rows = result.fetchall()
+
+        if not rows:
+            return pd.DataFrame()
+
+    return pd.DataFrame(rows, columns=result.keys())
 
 
 def init_nrt_upload_log_table(engine, schema, start_datetime, table_name):
@@ -143,6 +162,7 @@ def init_nrt_upload_log_table(engine, schema, start_datetime, table_name):
             start_datetime TIMESTAMPTZ NOT NULL,
             end_datetime TIMESTAMPTZ NULL,
             error_message TEXT NULL,
+            ssmoutput_table TEXT NULL,
             source_file TEXT NULL,
             source_file_last_modified TIMESTAMPTZ NULL,
             raw_table_created BOOLEAN NULL,
@@ -170,7 +190,7 @@ def init_nrt_upload_log_table(engine, schema, start_datetime, table_name):
     return log_id
 
 
-def load_csv_to_unlogged_table(engine: Engine, table_name: str, csv_path: str, schema: str = OTN_NRT_SCHEMA) -> bool:
+def load_csv_to_db(engine: Engine, table_name: str, csv_path: str, source_file_last_modified: datetime,  schema: str = OTN_NRT_SCHEMA) -> pd.DataFrame:
     """
     Args:
         engine: SQLAlchemy engine instance connected to the PostgreSQL database.
@@ -211,7 +231,7 @@ def load_csv_to_unlogged_table(engine: Engine, table_name: str, csv_path: str, s
                     cursor.copy_expert(f"COPY {full_table_name} FROM STDIN WITH CSV", f)
                 raw_conn.commit()
 
-            update_log_checkpoint(engine, schema, log_id, {'source_file': csv_path,'raw_table_created': True})
+            update_log_checkpoint(engine, schema, log_id, {'source_file': csv_path, 'source_file_last_modified': source_file_last_modified.strftime('%Y-%m-%d %H:%M:%S'), 'raw_table_created': True})
 
         with engine.connect() as conn:
             result = conn.execute(text(f'SELECT COUNT(*) FROM {full_table_name}'))
@@ -219,8 +239,8 @@ def load_csv_to_unlogged_table(engine: Engine, table_name: str, csv_path: str, s
 
         print(f"Successfully loaded {rows_loaded} rows into {full_table_name}")
 
-        transform_nrt_table(engine, schema,table_name)
-        update_log_checkpoint(engine, schema, log_id, {'loaded_rows': rows_loaded, 'constraint_applied': True, 'end_datetime': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')})
+        transform_nrt_table(engine, schema, table_name)
+        update_log_checkpoint(engine, schema, log_id, {'ssmoutput_table': table_name, 'loaded_rows': rows_loaded, 'constraint_applied': True, 'end_datetime': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')})
 
         with engine.connect() as conn:
             conn.execute(text(f'DROP TABLE IF EXISTS {schema}.{backup_table_name}'))
@@ -236,7 +256,8 @@ def load_csv_to_unlogged_table(engine: Engine, table_name: str, csv_path: str, s
                 print(f"Restored original table after load error: {table_name}")
         raise RuntimeError(f"CSV load failed: {e}") from e
 
-    update_otn_nrt_catalog(engine, schema, table_name)
+    summary_df = update_otn_nrt_catalog(engine, schema, table_name)
+    return summary_df
 
 
 def transform_nrt_table(engine: Engine, schema: str, table_name: str):
@@ -366,6 +387,7 @@ def update_otn_nrt_catalog(engine: Engine, schema: str, ssm_result_table: str) -
     """
     Update OTN NRT catalog with dynamic CID detection.
     """
+    summary_df = pd.DataFrame
     inspector = inspect(engine)
     if not inspector.has_table(OTN_NRT_SSM_SUMMARY_TABLE, schema=schema):
         create_otn_nrt_ssm_summary(engine, schema)
@@ -471,10 +493,10 @@ def update_otn_nrt_catalog(engine: Engine, schema: str, ssm_result_table: str) -
 
         if not rows:
             print(f"No tags found in {ssm_result_table}")
-            return pd.DataFrame()
+            return summary_df
 
         summary_df = pd.DataFrame(rows, columns=result.keys())
         print(f"Updated catalog with {len(summary_df)} tag records for {ssm_result_table}")
 
-        return summary_df
+    return summary_df
 

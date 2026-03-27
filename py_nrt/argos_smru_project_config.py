@@ -264,6 +264,7 @@ def export_for_kepler(cid: str, tracks_df: pd.DataFrame, subset_tags: list[str] 
                 ])
     return tracks_subset
 
+
 def extract_table_from_mdb(input_path: str, mdb_file: str, table: str, verbose=False) -> Tuple[str, pd.DataFrame]:
     """
     Extract a table from an .mdb file using mdbtools on Windows.
@@ -282,12 +283,14 @@ def extract_table_from_mdb(input_path: str, mdb_file: str, table: str, verbose=F
 
     # Export table to CSV
     with open(temp_csv_path, 'w', newline='', encoding='utf-8') as csv_file:
-        subprocess.run(
-            ['mdb-export', mdb_full_path, table],
-            stdout=csv_file,
-            check=True,
-            shell=True
-        )
+        # Construct the command
+        cmd = ['mdb-export', mdb_full_path, table]
+
+        # Print the full command
+        print(f"Running command: {' '.join(cmd)}")
+
+        # Run the command
+        subprocess.run(cmd, stdout=csv_file, check=True)
 
     # Read CSV into DataFrame
     df = pd.read_csv(temp_csv_path)
@@ -340,16 +343,16 @@ def create_smru_qc_config(
         List containing the configuration template
     """
     drop_ids_file = 'exclude_tags.csv'
-    project_id = f'{program}_{cid}'
+    project_id = build_project_id_smru(program, cid)
     smru_qc_config = [
         {
             "setup": {
                 "program": program,
-                "data.dir": f'{qc_input_path}/{program}/{program}_{cid}/mdb',
+                "data.dir": f'{qc_input_path}/{program}/{project_id}/mdb',
                 "meta.file": None,
-                "maps.dir": f"{qc_output_path}/{program}/{program}_{cid}/maps",
-                "diag.dir": f"{qc_output_path}/{program}/{program}_{cid}/diag",
-                "output.dir": f"{qc_output_path}/{program}/{program}_{cid}",
+                "maps.dir": f"{qc_output_path}/{program}/{project_id}/maps",
+                "diag.dir": f"{qc_output_path}/{program}/{project_id}/diag",
+                "output.dir": f"{qc_output_path}/{program}/{project_id}",
                 "return.R": verbose
             },
             "harvest": {
@@ -392,6 +395,19 @@ def create_smru_qc_config(
         f.write('\n'.join(drop_ids))
     print(f'smru_qc config file is written to:\n{Path(qc_config_file).as_posix()}')
     return [qc_config_file, exclude_tags_file]
+
+
+def build_project_id_smru(program: str, cid: str) -> str:
+    """
+    Build a project ID from program, collaborator email, and common name.
+    Args:
+        program: The program name
+        cid: CID of the project
+    Returns:
+        Formatted project ID string: {program}_{cid}
+    """
+    project_id = f'{program}_{cid}'
+    return project_id
 
 
 def extract_ssmoutput_tracks(program: str, cid: str, qc_output_path: str, subset_tags: list[str]=[], verbose=False) -> pd.DataFrame:
