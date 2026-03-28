@@ -238,8 +238,9 @@ def export_for_kepler(cid: str, tracks_df: pd.DataFrame, subset_tags: list[str] 
     })
     tracks_subset['date_time'] = pd.to_datetime(
         tracks_subset['date_time'],
-        format='mixed',
-        dayfirst=True
+        format='%d/%m/%y %H:%M:%S',  # Explicit format
+        dayfirst=True,
+        errors='coerce'
     )
     if subset_tags:
         tracks_subset = tracks_subset[tracks_subset['tag_ref'].isin(subset_tags)]
