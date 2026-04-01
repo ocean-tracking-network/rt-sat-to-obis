@@ -343,7 +343,7 @@ def create_smru_qc_config(
     Returns:
         List containing the configuration template
     """
-    drop_ids_file = 'exclude_tags.csv'
+    drop_ids_file = f'exclude_tags.csv'
     project_id = build_project_id_smru(program, cid)
     smru_qc_config = [
         {
@@ -362,7 +362,7 @@ def create_smru_qc_config(
                 "smru.usr": user,
                 "smru.pwd": password,
                 "timeout": timeout,
-                "dropIDs": drop_ids_file,
+                "dropIDs": f'{qc_output_path}/{program}/{project_id}/{drop_ids_file}',
                 "p2mdbtools": mdb_tables_path
             },
             "model": {
