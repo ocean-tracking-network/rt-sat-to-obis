@@ -136,7 +136,7 @@ def create_wc_qc_config(
     output_path = get_path_from_strings([qc_input_path, program, f'{program}_{project_id}', f'config_{project_id}_wc.json'])
     with open(output_path, 'w') as f:
         json.dump(wc_qc_config, f, indent=2, ensure_ascii=False)
-    tag_list_file = get_path_from_strings([qc_input_path, program, f'{project_id}_tags.csv'])
+    tag_list_file = get_path_from_strings([qc_input_path, program, f'{program}_{project_id}', f'{project_id}_tags.csv'])
     with open(tag_list_file, 'w') as f:
         f.write('\n'.join(['uuid'] + tag_uuid_list))
     print(f'wc_qc config file is written to {output_path.as_posix()}')
