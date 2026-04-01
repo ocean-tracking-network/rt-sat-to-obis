@@ -16,7 +16,7 @@ from typing import Dict, Any, List
 
 # Default configuration file to search
 DEFAULT_SEARCH_PATTERN = "*config*.json"
-DEFAULT_SEARCH_ROOT = '../input'
+DEFAULT_SEARCH_ROOT = './input'
 DEFAULT_R_SCRIPT = "run_ArgosQC.R"
 DEFAULT_LOG_DIR = "/var/log/argosqc"
 DEFAULT_MAX_THREADS = 4
@@ -37,7 +37,7 @@ def parse_args():
     )
     parser.add_argument(
         'search_root', nargs='?', default=DEFAULT_SEARCH_ROOT,
-        help='Root directory to search for config files (default: ../input)'
+        help='Root directory to search for config files (default: ./input)'
     )
     parser.add_argument(
         '-t', '--threads', type=int, default=DEFAULT_MAX_THREADS,
