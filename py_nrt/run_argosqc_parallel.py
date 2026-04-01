@@ -87,25 +87,6 @@ def find_config_files(search_root: str, pattern: str) -> List[str]:
 def run_r_script(config_file: str, log_dir: str, use_sudo: bool) -> Dict[str, Any]:
     """
     Run the R script with a given config file and capture output to a log file.
-
-    This function executes an R script, passing the configuration file as an argument.
-    All output (stdout and stderr) is captured and written to a timestamped log file
-    inside the specified log directory. The function returns a dictionary containing
-    the execution status, log file path, and any error details.
-
-    Args:
-        config_file (str): Path to the configuration file that the R script expects.
-        log_dir (str): Directory where log files will be stored. Created if it does not exist.
-        use_sudo (bool): Whether to run the R script with elevated privileges (via sudo).
-
-    Returns:
-        Dict[str, Any]: A dictionary with the following keys:
-            - 'config' (str): Path to the config file
-            - 'log' (str): Path to the generated log file
-            - 'returncode' (int): The exit code of the R process
-            - 'timestamp' (str): Timestamp of execution
-            - 'vendor' (str): Detected vendor (SMRU or WC)
-            - 'error' (str or None): Description of any error that occurred, if any
     """
     config_path = Path(config_file)
 
@@ -123,8 +104,10 @@ def run_r_script(config_file: str, log_dir: str, use_sudo: bool) -> Dict[str, An
         else:
             raise Exception(f"Unknown vendor: {vendor}")
 
-        # Construct full path to R script - assume it's in the r_nrt directory relative to this script
-        script_dir = Path(__file__).parent
+        # Construct full path to R script - look in the parent directory's r_nrt folder
+        # The script is in /opt/otn_nrt/rt-sat-to-obis/py_nrt/
+        # The R scripts are in /opt/otn_nrt/rt-sat-to-obis/r_nrt/
+        script_dir = Path(__file__).parent.parent  # Go up one level from py_nrt to rt-sat-to-obis
         r_script_path = script_dir / DEFAULT_R_SCRIPT_DIR / r_script_name
 
         if not r_script_path.exists():
