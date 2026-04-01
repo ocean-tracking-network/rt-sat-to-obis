@@ -43,10 +43,6 @@ def parse_args():
         help='Root directory to search for config files (default: ./input)'
     )
     parser.add_argument(
-        '-s', '--script', required=True,
-        help='Path to the R script directory (required)'
-    )
-    parser.add_argument(
         '-t', '--threads', type=int, default=DEFAULT_MAX_THREADS,
         help=f'Number of parallel threads (default: {DEFAULT_MAX_THREADS})'
     )
