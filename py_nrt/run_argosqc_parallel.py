@@ -88,8 +88,7 @@ def find_config_files(search_root: str, pattern: str) -> List[str]:
     return config_files
 
 
-def run_r_script(config_file: str, r_script_dir: str, log_dir: str, use_sudo: bool) -> Dict[
-    str, Any]:
+def run_r_script(config_file: str, log_dir: str, use_sudo: bool) -> Dict[str, Any]:
     """
     Run the R script with a given config file and capture output to a log file.
 
@@ -100,37 +99,51 @@ def run_r_script(config_file: str, r_script_dir: str, log_dir: str, use_sudo: bo
 
     Args:
         config_file (str): Path to the configuration file that the R script expects.
-        r_script_dir (str): Path to the directory containing R scripts.
         log_dir (str): Directory where log files will be stored. Created if it does not exist.
         use_sudo (bool): Whether to run the R script with elevated privileges (via sudo).
 
     Returns:
         Dict[str, Any]: A dictionary with the following keys:
-            - 'success' (bool): True if the script executed without errors, False otherwise.
-            - 'log_file' (str): Path to the generated log file.
-            - 'return_code' (int): The exit code of the R process.
-            - 'error_message' (str or None): Description of any error that occurred, if any.
+            - 'config' (str): Path to the config file
+            - 'log' (str): Path to the generated log file
+            - 'returncode' (int): The exit code of the R process
+            - 'timestamp' (str): Timestamp of execution
+            - 'vendor' (str): Detected vendor (SMRU or WC)
+            - 'error' (str or None): Description of any error that occurred, if any
     """
     config_path = Path(config_file)
 
     # Parse vendor from config to determine which R script to use
-    config_df = parse_vendor_config(config_path)
+    try:
+        config_df = parse_vendor_config(config_path)
 
-    # Determine which R script to use based on vendor
-    vendor = config_df['vendor'].iloc[0] if not config_df.empty else None
+        # Determine which R script to use based on vendor
+        vendor = config_df['vendor'].iloc[0] if not config_df.empty else None
 
-    if vendor == 'SMRU':
-        r_script_name = 'run_ArgosQC_smru_qc.R'
-    elif vendor == 'WC':
-        r_script_name = 'run_ArgosQC_wc_qc.R'
-    else:
-        raise Exception(f"Unknown vendor: {vendor}")
+        if vendor == 'SMRU':
+            r_script_name = 'run_ArgosQC_smru_qc.R'
+        elif vendor == 'WC':
+            r_script_name = 'run_ArgosQC_wc_qc.R'
+        else:
+            raise Exception(f"Unknown vendor: {vendor}")
 
-    # Construct full path to R script
-    r_script_path = Path(r_script_dir) / r_script_name
+        # Construct full path to R script - assume it's in the r_nrt directory relative to this script
+        script_dir = Path(__file__).parent
+        r_script_path = script_dir / DEFAULT_R_SCRIPT_DIR / r_script_name
 
-    if not r_script_path.exists():
-        raise Exception(f"R script not found: {r_script_path}")
+        if not r_script_path.exists():
+            raise Exception(f"R script not found: {r_script_path}")
+
+    except Exception as e:
+        logger.error(f"Error processing config {config_path}: {e}")
+        return {
+            'config': str(config_path),
+            'log': None,
+            'returncode': -1,
+            'timestamp': datetime.now().strftime("%Y%m%d_%H%M%S"),
+            'vendor': 'Unknown',
+            'error': str(e)
+        }
 
     config_name = config_path.stem
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -193,10 +206,9 @@ def run_r_script(config_file: str, r_script_dir: str, log_dir: str, use_sudo: bo
             'log': str(log_file),
             'returncode': -1,
             'timestamp': timestamp,
-            'vendor': vendor if 'vendor' in locals() else 'Unknown',
+            'vendor': vendor,
             'error': str(e)
         }
-
 
 def detect_vendor(row):
     wc_akey = str(row.get("harvest.wc.akey", "") or "").strip()
@@ -315,7 +327,6 @@ def main():
             future = executor.submit(
                 run_r_script,
                 config,
-                args.script,
                 args.log_dir,
                 not args.no_sudo
             )
@@ -353,15 +364,13 @@ def main():
     if failed:
         logger.info("\nFailed configurations:")
         for f in failed:
-            logger.info(
-                f"  - {f['config']} (vendor: {f.get('vendor', 'N/A')}, exit code: {f.get('returncode', 'N/A')})")
+            logger.info(f"  - {f['config']} (vendor: {f.get('vendor', 'N/A')}, exit code: {f.get('returncode', 'N/A')})")
             if f.get('log'):
                 logger.info(f"    Log: {f['log']}")
             if f.get('error'):
                 logger.info(f"    Error: {f['error']}")
 
     logger.info(f"\nLogs saved to: {args.log_dir}")
-
 
 if __name__ == "__main__":
     main()
