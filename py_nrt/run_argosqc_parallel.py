@@ -114,7 +114,11 @@ def run_r_script(config_file: str, r_script: str, log_dir: str, use_sudo: bool) 
     config_path = Path(config_file)
     config_df = parse_vendor_config(config_path)
     print(config_df)
-
+    if config_df['vendor'] =='SMRU':
+        r_command = 'run_ArgosQC_smru_qc.R'
+    elif config_df['vendor'] =='WC':
+        r_command = 'run_ArgosQC_wc_qc.R'
+    r_script += r_script+ '/'+ r_command
     config_name = config_path.stem
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_file = Path(log_dir) / f"{config_name}_{timestamp}.log"
