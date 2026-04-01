@@ -13,11 +13,15 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List
+from pathlib import Path
+import json
+import pandas as pd
+
 
 # Default configuration file to search
 DEFAULT_SEARCH_PATTERN = "*config*.json"
 DEFAULT_SEARCH_ROOT = './input'
-DEFAULT_R_SCRIPT = "run_ArgosQC.R"
+DEFAULT_R_SCRIPT_DIR = "r_nrt"
 DEFAULT_LOG_DIR = "/var/log/argosqc"
 DEFAULT_MAX_THREADS = 4
 
@@ -52,8 +56,8 @@ def parse_args():
         help=f'Glob pattern for config files (default: "{DEFAULT_SEARCH_PATTERN}")'
     )
     parser.add_argument(
-        '-s', '--script', default=DEFAULT_R_SCRIPT,
-        help=f'R script to execute (default: {DEFAULT_R_SCRIPT})'
+        '-s', '--script-dir', default=DEFAULT_R_SCRIPT_DIR,
+        help=f'R script to R execute dir (default: {DEFAULT_R_SCRIPT_DIR})'
     )
     parser.add_argument(
         '--no-sudo', action='store_true',
@@ -108,13 +112,15 @@ def run_r_script(config_file: str, r_script: str, log_dir: str, use_sudo: bool) 
             - 'error_message' (str or None): Description of any error that occurred, if any.
     """
     config_path = Path(config_file)
+    config_df = parse_vendor_config(config_path)
+    print(config_df)
+
     config_name = config_path.stem
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_file = Path(log_dir) / f"{config_name}_{timestamp}.log"
 
     # Ensure log directory exists
     os.makedirs(log_dir, exist_ok=True)
-
     # Build the command
     cmd = []
     if use_sudo:
@@ -164,6 +170,79 @@ def run_r_script(config_file: str, r_script: str, log_dir: str, use_sudo: bool) 
             'timestamp': timestamp,
             'error': str(e)
         }
+
+def detect_vendor(row):
+    wc_akey = str(row.get("harvest.wc.akey", "") or "").strip()
+    smru_user = str(
+        row.get("harvest.smru.user", row.get("harvest.smru.usr", "")) or ""
+    ).strip()
+
+    if wc_akey:
+        return "WC"
+    elif smru_user:
+        return "SMRU"
+    return None
+
+
+def parse_vendor_config(config_path: str) -> pd.DataFrame:
+    with open(config_path, "r", encoding="utf-8") as f:
+        config_json = json.load(f)
+
+    config_df = pd.json_normalize(config_json)
+
+    # Fix: Apply vendor detection to the config_df, not undefined 'df'
+    config_df["vendor"] = config_df.apply(detect_vendor, axis=1)
+
+    # Fix: Check if ANY value in the vendor column is valid, and handle properly
+    vendor_values = config_df["vendor"].dropna()
+    if len(vendor_values) == 0 or not vendor_values.isin(['SMRU', 'WC']).any():
+        raise Exception(f'Can not determine vendor in configuration file: {config_path}')
+
+    # Call appropriate parser based on vendor
+    vendor = vendor_values.iloc[0]  # Get the first valid vendor
+
+    if vendor == 'SMRU':
+        return parse_smru_config(config_df)
+    elif vendor == 'WC':
+        return parse_wc_config(config_df)
+
+
+def parse_smru_config(config_df: pd.DataFrame) -> pd.DataFrame:
+    cols_map = {
+        "setup.program": "program",
+        "setup.output.dir": "output_dir",
+        "meta.common_name": "common_name",
+        "meta.species": "species",
+        "meta.release_site": "release_site",
+        "meta.state_country": "state_country"
+    }
+
+    config_df['proj_id'] = config_df['output_dir'].split('/')[-1]
+    # Select, rename, and add vendor in one chain
+    config_df = (config_df[list(cols_map.keys())]
+                 .rename(columns=cols_map)
+                 .assign(vendor='SMRU'))
+
+    return config_df
+
+def parse_wc_config(config_df: pd.DataFrame) -> pd.DataFrame:
+    cols_map = {
+        "setup.program": "program",
+        "harvest.cid": "cid",
+        "setup.output.dir": "output_dir",
+        "meta.common_name": "common_name",
+        "meta.species": "species",
+        "meta.release_site": "release_site",
+        "meta.state_country": "state_country"
+    }
+
+    config_df['proj_id'] = config_df['output_dir'].split('/')[-1]
+    # Select, rename, and add vendor in one chain
+    config_df = (config_df[list(cols_map.keys())]
+                 .rename(columns=cols_map)
+                 .assign(vendor='WC'))
+
+    return config_df
 
 
 def main():
