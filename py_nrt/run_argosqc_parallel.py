@@ -56,10 +56,6 @@ def parse_args():
         help=f'Glob pattern for config files (default: "{DEFAULT_SEARCH_PATTERN}")'
     )
     parser.add_argument(
-        '-s', '--script-dir', default=DEFAULT_R_SCRIPT_DIR,
-        help=f'R script to R execute dir (default: {DEFAULT_R_SCRIPT_DIR})'
-    )
-    parser.add_argument(
         '--no-sudo', action='store_true',
         help='Do not use sudo when running the R script (run as current user)'
     )
