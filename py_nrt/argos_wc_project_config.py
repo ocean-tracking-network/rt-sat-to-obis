@@ -107,7 +107,7 @@ def create_wc_qc_config(
                 "owner.id": collaborator.split(' - ')[-1],
                 "wc.akey": a_key,
                 "wc.skey": s_key,
-                "tag.list": f"{qc_input_path}/{program}/{project_id}_tags.csv",
+                "tag.list": f"{qc_input_path}/{program}/{project_id}/{project_id}_tags.csv",
                 "dropIDs": None
             },
             "model": {
