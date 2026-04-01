@@ -104,10 +104,8 @@ def run_r_script(config_file: str, log_dir: str, use_sudo: bool) -> Dict[str, An
         else:
             raise Exception(f"Unknown vendor: {vendor}")
 
-        # Construct full path to R script - look in the parent directory's r_nrt folder
-        # The script is in /opt/otn_nrt/rt-sat-to-obis/py_nrt/
-        # The R scripts are in /opt/otn_nrt/rt-sat-to-obis/r_nrt/
-        script_dir = Path(__file__).parent.parent  # Go up one level from py_nrt to rt-sat-to-obis
+        # Construct full path to R script in /opt/otn_nrt/rt-sat-to-obis/py_nrt/
+        script_dir = Path(__file__).parent.parent
         r_script_path = script_dir / DEFAULT_R_SCRIPT_DIR / r_script_name
 
         if not r_script_path.exists():
@@ -188,6 +186,7 @@ def run_r_script(config_file: str, log_dir: str, use_sudo: bool) -> Dict[str, An
             'vendor': vendor,
             'error': str(e)
         }
+
 
 def detect_vendor(row):
     wc_akey = str(row.get("harvest.wc.akey", "") or "").strip()
@@ -294,7 +293,7 @@ def main():
         logger.error("No config files found matching the pattern.")
         sys.exit(1)
 
-    logger.info(f"Found {len(config_files)} config files")
+    logger.info(f"Found {len(config_files)} config files: \n {config_files}")
 
     # Use ThreadPoolExecutor
     results = []
