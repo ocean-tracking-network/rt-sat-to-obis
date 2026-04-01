@@ -17,7 +17,6 @@ from pathlib import Path
 import json
 import pandas as pd
 
-
 # Default configuration file to search
 DEFAULT_SEARCH_PATTERN = "*config*.json"
 DEFAULT_SEARCH_ROOT = './input'
@@ -42,6 +41,10 @@ def parse_args():
     parser.add_argument(
         'search_root', nargs='?', default=DEFAULT_SEARCH_ROOT,
         help='Root directory to search for config files (default: ./input)'
+    )
+    parser.add_argument(
+        '-s', '--script', required=True,
+        help='Path to the R script directory (required)'
     )
     parser.add_argument(
         '-t', '--threads', type=int, default=DEFAULT_MAX_THREADS,
@@ -85,7 +88,8 @@ def find_config_files(search_root: str, pattern: str) -> List[str]:
     return config_files
 
 
-def run_r_script(config_file: str, r_script: str, log_dir: str, use_sudo: bool) -> Dict[str, Any]:
+def run_r_script(config_file: str, r_script_dir: str, log_dir: str, use_sudo: bool) -> Dict[
+    str, Any]:
     """
     Run the R script with a given config file and capture output to a log file.
 
@@ -96,7 +100,7 @@ def run_r_script(config_file: str, r_script: str, log_dir: str, use_sudo: bool) 
 
     Args:
         config_file (str): Path to the configuration file that the R script expects.
-        r_script (str): Path to the R script to be executed.
+        r_script_dir (str): Path to the directory containing R scripts.
         log_dir (str): Directory where log files will be stored. Created if it does not exist.
         use_sudo (bool): Whether to run the R script with elevated privileges (via sudo).
 
@@ -108,30 +112,50 @@ def run_r_script(config_file: str, r_script: str, log_dir: str, use_sudo: bool) 
             - 'error_message' (str or None): Description of any error that occurred, if any.
     """
     config_path = Path(config_file)
+
+    # Parse vendor from config to determine which R script to use
     config_df = parse_vendor_config(config_path)
-    print(config_df)
-    if config_df['vendor'] =='SMRU':
-        r_command = 'run_ArgosQC_smru_qc.R'
-    elif config_df['vendor'] =='WC':
-        r_command = 'run_ArgosQC_wc_qc.R'
-    r_script += r_script+ '/'+ r_command
+
+    # Determine which R script to use based on vendor
+    vendor = config_df['vendor'].iloc[0] if not config_df.empty else None
+
+    if vendor == 'SMRU':
+        r_script_name = 'run_ArgosQC_smru_qc.R'
+    elif vendor == 'WC':
+        r_script_name = 'run_ArgosQC_wc_qc.R'
+    else:
+        raise Exception(f"Unknown vendor: {vendor}")
+
+    # Construct full path to R script
+    r_script_path = Path(r_script_dir) / r_script_name
+
+    if not r_script_path.exists():
+        raise Exception(f"R script not found: {r_script_path}")
+
     config_name = config_path.stem
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_file = Path(log_dir) / f"{config_name}_{timestamp}.log"
 
     # Ensure log directory exists
     os.makedirs(log_dir, exist_ok=True)
+
     # Build the command
     cmd = []
     if use_sudo:
         cmd.append("sudo")
-    cmd.extend(["Rscript", r_script, str(config_path)])
+    cmd.extend(["Rscript", str(r_script_path), str(config_path)])
 
-    logger.info(f"Starting: {config_path}")
+    logger.info(f"Starting: {config_path} with {r_script_name}")
 
     try:
         # Open log file and run the process
         with open(log_file, 'w') as log_f:
+            log_f.write(f"Command: {' '.join(cmd)}\n")
+            log_f.write(f"Config file: {config_path}\n")
+            log_f.write(f"R script: {r_script_path}\n")
+            log_f.write("=" * 60 + "\n\n")
+            log_f.flush()
+
             process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
@@ -158,6 +182,7 @@ def run_r_script(config_file: str, r_script: str, log_dir: str, use_sudo: bool) 
             'log': str(log_file),
             'returncode': returncode,
             'timestamp': timestamp,
+            'vendor': vendor,
             'error': None
         }
 
@@ -168,8 +193,10 @@ def run_r_script(config_file: str, r_script: str, log_dir: str, use_sudo: bool) 
             'log': str(log_file),
             'returncode': -1,
             'timestamp': timestamp,
+            'vendor': vendor if 'vendor' in locals() else 'Unknown',
             'error': str(e)
         }
+
 
 def detect_vendor(row):
     wc_akey = str(row.get("harvest.wc.akey", "") or "").strip()
@@ -190,10 +217,10 @@ def parse_vendor_config(config_path: str) -> pd.DataFrame:
 
     config_df = pd.json_normalize(config_json)
 
-    # Fix: Apply vendor detection to the config_df, not undefined 'df'
+    # Apply vendor detection to the config_df
     config_df["vendor"] = config_df.apply(detect_vendor, axis=1)
 
-    # Fix: Check if ANY value in the vendor column is valid, and handle properly
+    # Check if ANY value in the vendor column is valid, and handle properly
     vendor_values = config_df["vendor"].dropna()
     if len(vendor_values) == 0 or not vendor_values.isin(['SMRU', 'WC']).any():
         raise Exception(f'Can not determine vendor in configuration file: {config_path}')
@@ -217,13 +244,22 @@ def parse_smru_config(config_df: pd.DataFrame) -> pd.DataFrame:
         "meta.state_country": "state_country"
     }
 
-    config_df['proj_id'] = config_df['output_dir'].split('/')[-1]
-    # Select, rename, and add vendor in one chain
-    config_df = (config_df[list(cols_map.keys())]
+    # Ensure output_dir exists and split for proj_id
+    if 'setup.output.dir' in config_df.columns:
+        config_df['proj_id'] = config_df['setup.output.dir'].str.split('/').str[-1]
+    else:
+        config_df['proj_id'] = None
+
+    # Select, rename, and add vendor
+    result_df = (config_df[list(cols_map.keys())]
                  .rename(columns=cols_map)
                  .assign(vendor='SMRU'))
 
-    return config_df
+    # Add proj_id to result
+    result_df['proj_id'] = config_df['proj_id'].values if 'proj_id' in config_df.columns else None
+
+    return result_df
+
 
 def parse_wc_config(config_df: pd.DataFrame) -> pd.DataFrame:
     cols_map = {
@@ -236,13 +272,21 @@ def parse_wc_config(config_df: pd.DataFrame) -> pd.DataFrame:
         "meta.state_country": "state_country"
     }
 
-    config_df['proj_id'] = config_df['output_dir'].split('/')[-1]
-    # Select, rename, and add vendor in one chain
-    config_df = (config_df[list(cols_map.keys())]
+    # Ensure output_dir exists and split for proj_id
+    if 'setup.output.dir' in config_df.columns:
+        config_df['proj_id'] = config_df['setup.output.dir'].str.split('/').str[-1]
+    else:
+        config_df['proj_id'] = None
+
+    # Select, rename, and add vendor
+    result_df = (config_df[list(cols_map.keys())]
                  .rename(columns=cols_map)
                  .assign(vendor='WC'))
 
-    return config_df
+    # Add proj_id to result
+    result_df['proj_id'] = config_df['proj_id'].values if 'proj_id' in config_df.columns else None
+
+    return result_df
 
 
 def main():
@@ -290,6 +334,7 @@ def main():
                     'log': None,
                     'returncode': -1,
                     'timestamp': datetime.now().strftime("%Y%m%d_%H%M%S"),
+                    'vendor': 'Unknown',
                     'error': str(exc)
                 })
 
@@ -308,7 +353,8 @@ def main():
     if failed:
         logger.info("\nFailed configurations:")
         for f in failed:
-            logger.info(f"  - {f['config']} (exit code: {f.get('returncode', 'N/A')})")
+            logger.info(
+                f"  - {f['config']} (vendor: {f.get('vendor', 'N/A')}, exit code: {f.get('returncode', 'N/A')})")
             if f.get('log'):
                 logger.info(f"    Log: {f['log']}")
             if f.get('error'):
