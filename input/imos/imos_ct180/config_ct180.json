@@ -1,0 +1,43 @@
+[
+  {
+    "setup": {
+      "program": "imos",
+      "data.dir": "input/imos/imos_ct180/mdb",
+      "meta.file": null,
+      "maps.dir": "qc/imos/imos_ct180/maps",
+      "diag.dir": "qc/imos/imos_ct180/diag",
+      "output.dir": "qc/imos/imos_ct180",
+      "return.R": false
+    },
+    "harvest": {
+      "download": true,
+      "cid": "ct180",
+      "smru.usr": "imos",
+      "smru.pwd": "imos",
+      "timeout": 180,
+      "dropIDs": "exclude_tags.csv",
+      "p2mdbtools": ""
+    },
+    "model": {
+      "model": "crw",
+      "vmax": 3,
+      "time.step": 3,
+      "proj": "+proj=stere +lat_0=-90 +lat_ts=-71 +lon_0=100 +k=1 +ellps=WGS84 +units=km +no_defs",
+      "reroute": true,
+      "dist": 500,
+      "barrier": null,
+      "buffer": 0.5,
+      "centroids": true,
+      "cut": false,
+      "min.gap": 72,
+      "QCmode": "nrt",
+      "pred.int": 12
+    },
+    "meta": {
+      "common_name": "southern elephant seal",
+      "species": "Mirounga leonina",
+      "release_site": "Kerguelen",
+      "state_country": " French Southern and Antarctic Lands"
+    }
+  }
+]
