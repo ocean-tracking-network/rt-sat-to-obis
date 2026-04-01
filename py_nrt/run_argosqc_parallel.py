@@ -255,14 +255,13 @@ def parse_smru_config(config_df: pd.DataFrame) -> pd.DataFrame:
 def parse_wc_config(config_df: pd.DataFrame) -> pd.DataFrame:
     cols_map = {
         "setup.program": "program",
-        "harvest.cid": "cid",
         "setup.output.dir": "output_dir",
         "meta.common_name": "common_name",
         "meta.species": "species",
         "meta.release_site": "release_site",
         "meta.state_country": "state_country"
     }
-
+    config_df['cid'] = ''
     # Ensure output_dir exists and split for proj_id
     if 'setup.output.dir' in config_df.columns:
         config_df['proj_id'] = config_df['setup.output.dir'].str.split('/').str[-1]
