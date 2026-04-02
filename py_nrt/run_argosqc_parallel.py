@@ -17,7 +17,6 @@ from typing import Dict, Any, List
 from pathlib import Path
 import json
 import pandas as pd
-from mpl_toolkits.axisartist.angle_helper import select_step360
 
 # Default configuration file to search
 DEFAULT_SEARCH_PATTERN = "*config*.json"
