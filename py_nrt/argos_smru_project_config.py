@@ -362,7 +362,7 @@ def create_smru_qc_config(
                 "smru.usr": user,
                 "smru.pwd": password,
                 "timeout": timeout,
-                "dropIDs": f'{qc_output_path}/{program}/{project_id}/{drop_ids_file}',
+                "dropIDs": f'{qc_input_path}/{program}/{project_id}/{drop_ids_file}',
                 "p2mdbtools": mdb_tables_path
             },
             "model": {
