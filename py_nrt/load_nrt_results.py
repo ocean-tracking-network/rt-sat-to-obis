@@ -501,13 +501,17 @@ def update_otn_nrt_catalog(engine: Engine, schema: str, ssm_result_table: str) -
     return summary_df
 
 
-def get_today_argosqc_run_details(argosqc_run_details_csv: str = 'argosqc_run_details.csv')-> pd.DataFrame:
+def get_today_argosqc_run_details(argosqc_run_details_csv: str = '../argosqc_run_details.csv')-> pd.DataFrame:
     """Read argosqc_run_details.csv to parse today's results"""
     all_detail_df = pd.read_csv(argosqc_run_details_csv)
+    all_detail_df['qc_start_datetime'] = pd.to_datetime(all_detail_df['qc_start_datetime'], errors='coerce')
 
     # Filter for rows >= today 0 AM
-    today_detail_df = all_detail_df[all_detail_df['qc_start_datetime'] >= pd.Timestamp.now().normalize()]
-    print(f"Rows from {today_start.date()} 00:00:00 onwards: {len(today_rows)}")
+    today_detail_df = all_detail_df[all_detail_df['qc_start_datetime'] >= pd.Timestamp.now().normalize()].copy()
+    # Remove qc_start_datetime and duplicates
+    today_detail_df.drop(columns=['qc_start_datetime'], inplace=True)
+    today_detail_df.drop_duplicates(subset=['program', 'output_dir', 'common_name'], inplace=True)
+    print(f"Rows from {datetime.now().date()} 00:00:00 onwards: {len(today_detail_df)}")
     if today_detail_df.empty:
         latest_runs = all_detail_df.nlargest(5, 'qc_start_datetime')[['qc_start_datetime', 'program', 'common_name']]
         raise Exception(

@@ -1,0 +1,17 @@
+program,output_dir,common_name,species,release_site,state_country,vendor,proj_id,qc_start_datetime
+irap,qc/irap/irap_damianlidgard_grey_seal,grey seal,Halichoerus grypus,BRION ISLAND,Canada,WC,irap_damianlidgard_grey_seal,2026-04-02 13:20:32
+program,output_dir,common_name,species,release_site,state_country,vendor,proj_id,qc_start_datetime
+imos,qc/imos/imos_ct182,southern elephant seal,Mirounga leonina,Iles Kerguelen,French Overseas Territory,SMRU,imos_ct182,2026-04-02 13:20:32
+imos,qc/imos/imos_ct180,southern elephant seal,Mirounga leonina,Kerguelen, French Southern and Antarctic Lands,SMRU,imos_ct180,2026-04-02 13:20:32
+imos,qc/imos/imos_ct182,southern elephant seal,Mirounga leonina,Iles Kerguelen,French Overseas Territory,SMRU,imos_ct182,2026-04-02 13:31:19
+imos,qc/imos/imos_ct180,southern elephant seal,Mirounga leonina,Kerguelen, French Southern and Antarctic Lands,SMRU,imos_ct180,2026-04-02 13:31:19
+irap,qc/irap/irap_damianlidgard_grey_seal,grey seal,Halichoerus grypus,BRION ISLAND,Canada,WC,irap_damianlidgard_grey_seal,2026-04-02 13:31:19
+imos,qc/imos/imos_ct182,southern elephant seal,Mirounga leonina,Iles Kerguelen,French Overseas Territory,SMRU,imos_ct182,2026-04-02 14:48:15
+irap,qc/irap/irap_damianlidgard_grey_seal,grey seal,Halichoerus grypus,BRION ISLAND,Canada,WC,irap_damianlidgard_grey_seal,2026-04-02 14:48:15
+imos,qc/imos/imos_ct180,southern elephant seal,Mirounga leonina,Kerguelen, French Southern and Antarctic Lands,SMRU,imos_ct180,2026-04-02 14:48:15
+imos,qc/imos/imos_ct182,southern elephant seal,Mirounga leonina,Iles Kerguelen,French Overseas Territory,SMRU,imos_ct182,2026-04-02 15:00:02
+imos,qc/imos/imos_ct180,southern elephant seal,Mirounga leonina,Kerguelen, French Southern and Antarctic Lands,SMRU,imos_ct180,2026-04-02 15:00:02
+irap,qc/irap/irap_damianlidgard_grey_seal,grey seal,Halichoerus grypus,BRION ISLAND,Canada,WC,irap_damianlidgard_grey_seal,2026-04-02 15:00:02
+irap,qc/irap/irap_damianlidgard_grey_seal,grey seal,Halichoerus grypus,BRION ISLAND,Canada,WC,irap_damianlidgard_grey_seal,2026-04-02 16:00:02
+imos,qc/imos/imos_ct182,southern elephant seal,Mirounga leonina,Iles Kerguelen,French Overseas Territory,SMRU,imos_ct182,2026-04-02 16:00:02
+imos,qc/imos/imos_ct180,southern elephant seal,Mirounga leonina,Kerguelen, French Southern and Antarctic Lands,SMRU,imos_ct180,2026-04-02 16:00:02
