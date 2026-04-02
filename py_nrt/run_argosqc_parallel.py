@@ -9,6 +9,7 @@ import logging
 import os
 import subprocess
 import sys
+import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
@@ -16,6 +17,7 @@ from typing import Dict, Any, List
 from pathlib import Path
 import json
 import pandas as pd
+from mpl_toolkits.axisartist.angle_helper import select_step360
 
 # Default configuration file to search
 DEFAULT_SEARCH_PATTERN = "*config*.json"
@@ -103,6 +105,16 @@ def run_r_script(config_file: str, log_dir: str, use_sudo: bool) -> Dict[str, An
             r_script_name = 'run_ArgosQC_wc_qc.R'
         else:
             raise Exception(f"Unknown vendor: {vendor}")
+
+        # Write to run details
+        config_df['qc_start_datetime'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        csv_path = Path.cwd() / "argosqc_run_details.csv"
+        _csv_write_lock = threading.Lock()
+        with _csv_write_lock:
+            # Write header only if the file does not exist
+            file_exists = csv_path.exists()
+            config_df.to_csv(csv_path, mode='a', header=not file_exists, index=False)
 
         # Construct full path to R script in /opt/otn_nrt/rt-sat-to-obis/py_nrt/
         script_dir = Path(__file__).parent.parent
