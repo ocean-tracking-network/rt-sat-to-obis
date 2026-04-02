@@ -500,3 +500,17 @@ def update_otn_nrt_catalog(engine: Engine, schema: str, ssm_result_table: str) -
 
     return summary_df
 
+
+def get_today_argosqc_run_details(argosqc_run_details_csv: str = 'argosqc_run_details.csv')-> pd.DataFrame:
+    """Read argosqc_run_details.csv to parse today's results"""
+    all_detail_df = pd.read_csv(argosqc_run_details_csv)
+
+    # Filter for rows >= today 0 AM
+    today_detail_df = all_detail_df[all_detail_df['qc_start_datetime'] >= pd.Timestamp.now().normalize()]
+    print(f"Rows from {today_start.date()} 00:00:00 onwards: {len(today_rows)}")
+    if today_detail_df.empty:
+        latest_runs = all_detail_df.nlargest(5, 'qc_start_datetime')[['qc_start_datetime', 'program', 'common_name']]
+        raise Exception(
+            f'No ArgosQC results found for today.\n\nThe latest runs (top 5 by qc_start_datetime DESC):\n{latest_runs.to_string(index=False)}')
+    return today_detail_df
+
