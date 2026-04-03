@@ -18,7 +18,15 @@ from typing import Dict, Any, List
 from pathlib import Path
 import json
 import pandas as pd
-from .load_nrt_results import *
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+# Use absolute import instead of relative
+from py_nrt.load_nrt_results import (
+    get_engine,
+    check_otn_nrt_backend,
+    get_today_argosqc_run_details,
+    load_single_ssmoutput_to_nrt_db
+)
 
 DEFAULT_LOG_DIR = "/var/log/argosqc"
 DEFAULT_MAX_THREADS = 4
