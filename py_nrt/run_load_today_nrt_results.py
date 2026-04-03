@@ -29,7 +29,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def get_basic_engine():
+def get_basic_engine(authfile: str):
     if not (os.path.isfile(authfile) and os.path.exists(authfile)):
         print(f"{CLR.error}:{authfile} was not found.")
         return False
