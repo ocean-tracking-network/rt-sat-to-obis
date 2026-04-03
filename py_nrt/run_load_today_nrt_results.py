@@ -50,7 +50,7 @@ def get_today_argosqc_run_details(argosqc_run_details_csv: str = '../argosqc_run
     return today_detail_df
 
 
-def load_today_ssmoutput(auth_file: str = 'database_conn_string.auth', argosqc_run_details: str='argosqc_run_details.csv'):
+def load_today_ssmoutput(auth_file: str = './py_nrt/database_conn_string.auth', argosqc_run_details: str='argosqc_run_details.csv'):
     engine = get_engine(auth_file)
     today_argosqc_df = get_today_argosqc_run_details(argosqc_run_details)
 
