@@ -15,7 +15,7 @@
       "smru.usr": "imos",
       "smru.pwd": "imos",
       "timeout": 180,
-      "dropIDs": "qc/imos/imos_ct182/exclude_tags.csv",
+      "dropIDs": "input/imos/imos_ct182/exclude_tags.csv",
       "p2mdbtools": ""
     },
     "model": {
