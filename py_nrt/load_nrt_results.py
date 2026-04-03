@@ -109,7 +109,28 @@ def get_project_qc_results_for_program(qc_output_path: str, program: str=None) -
     return ssmoutput_last_modified_map
 
 
+def load_single_ssmoutput_to_nrt_db(engine: Engine, proj_table_name: str, ssmoutput_csv: str, last_modified: datetime) -> pd.DataFrame:
+    """
+    Load a single ssmoutput into NRT DB as proj_table_name - if file last modified date is newer than previously loaded.
+
+    """
+    summary_df = pd.DataFrame()
+    prev_load_df = get_loaded_proj_table_info(engine, proj_table_name)
+    if (prev_load_df is None) or (len(prev_load_df) == 0):
+        print(f'This is the first time loading {proj_table_name}. Will create {OTN_NRT_SCHEMA}.{proj_table_name}...')
+    else:
+        prev_timestamp = pd.to_datetime(prev_load_df.iloc[0]['source_file_last_modified']).tz_localize(None)
+        current_timestamp = pd.to_datetime(last_modified).tz_localize(None)
+        if abs((current_timestamp - prev_timestamp).total_seconds()) < 2:
+            print(f"SSM results have been loaded for table {proj_table_name} - last modified on {prev_timestamp.strftime('%Y_%m_%d_%H_%M_%S')}. Skipping...")
+            return summary_df
+
+    summary_df = load_csv_to_db(engine, proj_table_name, ssmoutput_csv, last_modified, OTN_NRT_SCHEMA)
+    return summary_df
+
+
 def load_to_nrt_db(engine: Engine, ssmoutput_last_modified_map: dict[str, str]):
+    summary_df_list = []
     for output_csv, last_modified in ssmoutput_last_modified_map.items():
         proj = output_csv.split(os.path.sep)[-2]
         prev_load_df = get_loaded_proj_table_info(engine, proj)
@@ -121,8 +142,8 @@ def load_to_nrt_db(engine: Engine, ssmoutput_last_modified_map: dict[str, str]):
                 continue
 
         summary_df = load_csv_to_db(engine, proj, output_csv, last_modified, OTN_NRT_SCHEMA)
-        print(f'Uploaded SSM results to  HOST: {engine.url.host} DB: {engine.url.database} Schema: {OTN_NRT_SCHEMA}.{proj}')
-        return summary_df
+    print(f'Uploaded SSM results to  HOST: {engine.url.host} DB: {engine.url.database} Schema: {OTN_NRT_SCHEMA}.{proj}')
+    return summary_df
 
 
 def get_loaded_proj_table_info(engine: Engine, table_name: str, schema: str=OTN_NRT_SCHEMA) -> dict[str, str]:
@@ -361,7 +382,6 @@ def create_otn_nrt_ssm_summary(engine: Engine, schema: str):
     full_table_name = f'{schema}.{OTN_NRT_SSM_SUMMARY_TABLE}'
     create_sql = f'''
     CREATE TABLE IF NOT EXISTS {full_table_name} (
-        id SERIAL PRIMARY KEY,
         nrt_ssm_table_name VARCHAR(200) NOT NULL,
         tag_id TEXT NOT NULL,
         program TEXT NULL,
@@ -499,22 +519,3 @@ def update_otn_nrt_catalog(engine: Engine, schema: str, ssm_result_table: str) -
         print(f"Updated catalog with {len(summary_df)} tag records for {ssm_result_table}")
 
     return summary_df
-
-
-def get_today_argosqc_run_details(argosqc_run_details_csv: str = '../argosqc_run_details.csv')-> pd.DataFrame:
-    """Read argosqc_run_details.csv to parse today's results"""
-    all_detail_df = pd.read_csv(argosqc_run_details_csv)
-    all_detail_df['qc_start_datetime'] = pd.to_datetime(all_detail_df['qc_start_datetime'], errors='coerce')
-
-    # Filter for rows >= today 0 AM
-    today_detail_df = all_detail_df[all_detail_df['qc_start_datetime'] >= pd.Timestamp.now().normalize()].copy()
-    # Remove qc_start_datetime and duplicates
-    today_detail_df.drop(columns=['qc_start_datetime'], inplace=True)
-    today_detail_df.drop_duplicates(subset=['program', 'output_dir', 'common_name'], inplace=True)
-    print(f"Rows from {datetime.now().date()} 00:00:00 onwards: {len(today_detail_df)}")
-    if today_detail_df.empty:
-        latest_runs = all_detail_df.nlargest(5, 'qc_start_datetime')[['qc_start_datetime', 'program', 'common_name']]
-        raise Exception(
-            f'No ArgosQC results found for today.\n\nThe latest runs (top 5 by qc_start_datetime DESC):\n{latest_runs.to_string(index=False)}')
-    return today_detail_df
-

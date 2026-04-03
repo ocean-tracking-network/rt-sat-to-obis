@@ -1,1 +1,3 @@
-user=postgres password=otndb host=localhost dbname=postgres port=5432
+user=yniu password=NoTeBoOkFiShTrEe host=db.load.oceantrack.org dbname=otnunit port=5432
+
+# user=postgres password=otndb host=localhost dbname=postgres port=5432
