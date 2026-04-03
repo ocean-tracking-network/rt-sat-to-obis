@@ -102,7 +102,6 @@ def main():
     logger.info("=" * 60)
     logger.info("STARTING SSMOUTPUT LOADER")
     logger.info("=" * 60)
-    logger.info(f"Using {DEFAULT_MAX_THREADS} parallel threads")
 
     # Load today's ssmoutput files in parallel
     load_today_ssmoutput()
