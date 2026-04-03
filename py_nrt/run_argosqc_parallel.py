@@ -360,5 +360,14 @@ def main():
 
     logger.info(f"\nLogs saved to: {args.log_dir}")
 
+    # Exit code 1 when any thread failed
+    if failed:
+        logger.error(f"{len(failed)} thread(s) failed. Exiting with code 1.")
+        sys.exit(1)
+    else:
+        logger.info(f"All {len(successful)} thread(s) succeeded. Exiting with code 0.")
+        sys.exit(0)
+
+
 if __name__ == "__main__":
     main()
