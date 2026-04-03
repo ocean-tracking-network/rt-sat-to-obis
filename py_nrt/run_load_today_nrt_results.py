@@ -18,18 +18,8 @@ from typing import Dict, Any, List
 from pathlib import Path
 import json
 import pandas as pd
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-# Use absolute import instead of relative
-from py_nrt.load_nrt_results import (
-    get_engine,
-    check_otn_nrt_backend,
-    get_today_argosqc_run_details,
-    load_single_ssmoutput_to_nrt_db
-)
 
 DEFAULT_LOG_DIR = "/var/log/argosqc"
-DEFAULT_MAX_THREADS = 4
 
 # Setup log format
 logging.basicConfig(
@@ -39,6 +29,29 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def get_basic_engine():
+    if not (os.path.isfile(authfile) and os.path.exists(authfile)):
+        print(f"{CLR.error}:{authfile} was not found.")
+        return False
+
+    _file_name, file_ext = os.path.splitext(authfile)
+    connection_string = \
+        f"postgresql://{entry.username}:{urllib.parse.quote(entry.password)}@{entry.url}:" \
+        f"{entry.get_custom_property('port')}/{entry.get_custom_property('dbname')}"
+    if entry.notes != '':
+        print(f'Connection keyfile notes: {entry.notes}')
+
+    if disable_ssl is True:
+        engine = create_engine(connection_string,
+                               connect_args={
+                                   "application_name": f"OTN NRT notebooks: {engine_uuid}",
+                                   "gssencmode ": "disable", "sslmode": "disable"})
+    else:
+        engine = create_engine(connection_string,
+                               connect_args={
+                                   "application_name": f"OTN NRT notebooks: {engine_uuid}"})
+    return engine
+
 
 def get_today_argosqc_run_details(argosqc_run_details_csv: str = '../argosqc_run_details.csv')-> pd.DataFrame:
     """Read argosqc_run_details.csv to parse today's results"""
@@ -46,8 +59,7 @@ def get_today_argosqc_run_details(argosqc_run_details_csv: str = '../argosqc_run
     all_detail_df['qc_start_datetime'] = pd.to_datetime(all_detail_df['qc_start_datetime'], errors='coerce')
 
     # Filter for rows >= today 0 AM
-    today_detail_df = all_detail_df.copy()
-    # today_detail_df = all_detail_df[all_detail_df['qc_start_datetime'] >= pd.Timestamp.now().normalize()].copy()
+    today_detail_df = all_detail_df[all_detail_df['qc_start_datetime'] >= pd.Timestamp.now().normalize()].copy()
     # Remove qc_start_datetime and duplicates
     today_detail_df.drop(columns=['qc_start_datetime'], inplace=True)
     today_detail_df.drop_duplicates(subset=['program', 'output_dir', 'common_name'], inplace=True)
@@ -59,7 +71,7 @@ def get_today_argosqc_run_details(argosqc_run_details_csv: str = '../argosqc_run
 
 
 def load_today_ssmoutput(auth_file: str = 'database_conn_string.auth', argosqc_run_details: str='argosqc_run_details.csv'):
-    engine = get_engine(auth_file)
+    engine = get_basic_engine(auth_file)
     check_otn_nrt_backend(engine)
     today_argosqc_df = get_today_argosqc_run_details(argosqc_run_details)
 
