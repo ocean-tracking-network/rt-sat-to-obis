@@ -18,7 +18,6 @@ from typing import Dict, Any, List
 from pathlib import Path
 import json
 import pandas as pd
-from py_nrt.load_nrt_results import *
 
 DEFAULT_LOG_DIR = "/var/log/argosqc"
 DEFAULT_MAX_THREADS = 4
