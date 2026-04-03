@@ -18,6 +18,7 @@ from typing import Dict, Any, List
 from pathlib import Path
 import json
 import pandas as pd
+from .load_nrt_results import *
 
 DEFAULT_LOG_DIR = "/var/log/argosqc"
 DEFAULT_MAX_THREADS = 4
@@ -28,7 +29,6 @@ logging.basicConfig(
     format='%(asctime)s - %(threadName)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
-
 
 
 
@@ -67,9 +67,12 @@ def load_today_ssmoutput(auth_file: str = 'database_conn_string.auth', argosqc_r
         if not ssmoutput_csvs:
             print(f"WARNING: *ssmoutputs*_nrt.csv not found in {ssmoutput_folder}")
             continue
-        last_modified = datetime.fromtimestamp(os.path.getmtime(ssmoutput_csvs[0]))
-        print(f"Found: {ssmoutput_csvs[0]} (modified: {last_modified})")
-        load_single_ssmoutput_to_nrt_db(engine, project_id, str(ssmoutput_csvs[0]), last_modified)
+        try:
+            last_modified = datetime.fromtimestamp(os.path.getmtime(ssmoutput_csvs[0]))
+            print(f"Found: {ssmoutput_csvs[0]} (modified: {last_modified})")
+            load_single_ssmoutput_to_nrt_db(engine, project_id, str(ssmoutput_csvs[0]), last_modified)
+        except Exception as e:
+            print(f'Exception occurred loading {str(ssmoutput_csvs[0])}')
 
 
 def main():
@@ -77,7 +80,7 @@ def main():
     Main function to load today's ssmoutput files in parallel.
     """
     logger.info("=" * 60)
-    logger.info("STARTING PARALLEL SSMOUTPUT LOADER")
+    logger.info("STARTING SSMOUTPUT LOADER")
     logger.info("=" * 60)
     logger.info(f"Using {DEFAULT_MAX_THREADS} parallel threads")
 
