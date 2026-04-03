@@ -18,6 +18,8 @@ from typing import Dict, Any, List
 from pathlib import Path
 import json
 import pandas as pd
+sys.path.insert(0, os.getcwd())
+from load_nrt_results import load_single_ssmoutput_to_nrt_db
 
 DEFAULT_LOG_DIR = "/var/log/argosqc"
 
@@ -72,7 +74,6 @@ def get_today_argosqc_run_details(argosqc_run_details_csv: str = '../argosqc_run
 
 def load_today_ssmoutput(auth_file: str = 'database_conn_string.auth', argosqc_run_details: str='argosqc_run_details.csv'):
     engine = get_basic_engine(auth_file)
-    check_otn_nrt_backend(engine)
     today_argosqc_df = get_today_argosqc_run_details(argosqc_run_details)
 
     if today_argosqc_df.empty:
