@@ -71,7 +71,7 @@ def load_today_ssmoutput(auth_file: str = 'database_conn_string.auth', argosqc_r
             print(f"Found: {ssmoutput_csvs[0]} (modified: {last_modified})")
             load_single_ssmoutput_to_nrt_db(engine, project_id, str(ssmoutput_csvs[0]), last_modified)
         except Exception as e:
-            print(f'Exception occurred loading {str(ssmoutput_csvs[0])}')
+            print(f'Exception occurred loading {str(ssmoutput_csvs[0])}: \n {str(e)}')
 
 
 def main():
