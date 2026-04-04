@@ -33,7 +33,7 @@ if [ $EXIT_CODE -ne 0 ]; then
         echo "Last modified: $(stat -c %y "$RUN_DETAILS_CSV" 2>/dev/null || date -r "$RUN_DETAILS_CSV")" >> "$EMAIL_BODY"
         cat "$RUN_DETAILS_CSV" >> "$EMAIL_BODY"
     fi
-    mail -s "FAILED (Exit Code: $EXIT_CODE) - Cron Job: run_argosqc_parallel.sh" yinghuan.niu@oceantrack.org < "$EMAIL_BODY"
+    mail -s "FAILED (Exit Code: $EXIT_CODE) - Cron Job: run_load_today_ssmoutput.sh" yinghuan.niu@oceantrack.org < "$EMAIL_BODY"
 
 fi
 
