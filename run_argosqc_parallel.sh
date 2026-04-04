@@ -25,6 +25,7 @@ if [ $EXIT_CODE -ne 0 ]; then
         tail -20 "$RUN_DETAILS_CSV" >> "$EMAIL_BODY"
         echo "" >> "$EMAIL_BODY"
         echo "Total lines in file: $(wc -l < "$RUN_DETAILS_CSV")" >> "$EMAIL_BODY"
+    fi
     mail -s "FAILED (Exit Code: $EXIT_CODE) - Cron Job: run_argosqc_parallel.sh" yinghuan.niu@oceantrack.org < "$EMAIL_BODY"
 
 fi
