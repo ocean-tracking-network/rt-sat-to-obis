@@ -1,8 +1,8 @@
 #!/bin/bash
-LOG_FILE="/tmp/run_argosqc_parallel_$(date +\%Y\%m\%d_\%H\%M\%S).log"
+LOG_FILE="run_argosqc_parallel_$(date +\%Y\%m\%d_\%H\%M\%S).log"
 RUN_DETAILS_CSV="/opt/otn_nrt/rt-sat-to-obis/argosqc_run_details.csv"
 
-cd /opt/otn_nrt/rt-sat-to-obis &&  /opt/miniconda3/envs/rt-sat-to-obis/bin/python py_nrt/run_argosqc_parallel.py >> otn_nrt_pipeline_cron.log 2>&1
+cd /opt/otn_nrt/rt-sat-to-obis &&  /opt/miniconda3/envs/rt-sat-to-obis/bin/python py_nrt/run_argosqc_parallel.py > $LOG_FILE  2>&1
 EXIT_CODE=$?
 
 if [ $EXIT_CODE -ne 0 ]; then
