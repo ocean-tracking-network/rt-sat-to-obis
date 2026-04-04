@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Run R script with multiple config files in parallel threads.
 """

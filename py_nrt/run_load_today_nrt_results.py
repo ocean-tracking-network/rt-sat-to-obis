@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Run load SSM results to NRT backend DB with multiple config files in parallel threads.
 """
