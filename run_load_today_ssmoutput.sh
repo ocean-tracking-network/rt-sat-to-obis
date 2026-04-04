@@ -13,9 +13,8 @@ if [ $EXIT_CODE -ne 0 ]; then
           echo "=== SCRIPT OUTPUT ===" > "$EMAIL_BODY"
           cat "$LOG_FILE" >> "$EMAIL_BODY"
           echo "" >> "$EMAIL_BODY"
-
-        mail -s "FAILED (Exit Code: $EXIT_CODE) - Cron Job: run_argosqc_parallel.sh" yinghuan.niu@oceantrack.org < "$LOG_FILE"
     fi
+
     # Check if argosqc_run_details.csv exists
     if [ -f "$RUN_DETAILS_CSV" ]; then
         echo "=== LAST 20 ROWS OF argosqc_run_details.csv ===" >> "$EMAIL_BODY"
@@ -26,8 +25,10 @@ if [ $EXIT_CODE -ne 0 ]; then
         echo "" >> "$EMAIL_BODY"
         echo "Total lines in file: $(wc -l < "$RUN_DETAILS_CSV")" >> "$EMAIL_BODY"
     fi
+
     # Check if load_today_ssmoutput_summary.csv exists
     if [ -f "$RUN_LOAD_TAG_SUMMARY_CSV" ]; then
+        echo "" >> "$EMAIL_BODY"
         echo "=== The latest load_today_ssmoutput_summary.csv ===" >> "$EMAIL_BODY"
         echo "File: $RUN_DETAILS_CSV" >> "$EMAIL_BODY"
         echo "Last modified: $(stat -c %y "$RUN_DETAILS_CSV" 2>/dev/null || date -r "$RUN_DETAILS_CSV")" >> "$EMAIL_BODY"

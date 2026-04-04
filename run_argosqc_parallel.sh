@@ -17,6 +17,7 @@ if [ $EXIT_CODE -ne 0 ]; then
     fi
     # Check if argosqc_run_details.csv exists
     if [ -f "$RUN_DETAILS_CSV" ]; then
+        echo "" >> "$EMAIL_BODY"
         echo "=== LAST 20 ROWS OF argosqc_run_details.csv ===" >> "$EMAIL_BODY"
         echo "File: $RUN_DETAILS_CSV" >> "$EMAIL_BODY"
         echo "Last modified: $(stat -c %y "$RUN_DETAILS_CSV" 2>/dev/null || date -r "$RUN_DETAILS_CSV")" >> "$EMAIL_BODY"
