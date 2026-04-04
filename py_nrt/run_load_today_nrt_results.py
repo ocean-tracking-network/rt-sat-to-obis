@@ -51,6 +51,7 @@ def get_today_argosqc_run_details(argosqc_run_details_csv: str = '../argosqc_run
 
 def load_today_ssmoutput(auth_file: str = './py_nrt/database_conn_string.auth', argosqc_run_details: str='argosqc_run_details.csv'):
     engine = get_engine(auth_file)
+    error_occurred = False
     today_argosqc_df = get_today_argosqc_run_details(argosqc_run_details)
 
     if today_argosqc_df.empty:
@@ -72,9 +73,13 @@ def load_today_ssmoutput(auth_file: str = './py_nrt/database_conn_string.auth', 
             summary_df['ssmoutput_csv_last_modified'] = last_modified
             summary_df_list.append(summary_df)
         except Exception as e:
+            error_occurred = True
             print(f'Exception occurred loading {str(ssmoutput_csvs[0])}: \n {str(e)}')
     combined_summary_df = pd.concat(summary_df_list, ignore_index=True)
     combined_summary_df.to_csv(LOAD_TODAY_SSMOUTPUT_SUMMARY_FILE, index=False)
+    if error_occurred:
+        sys.exit(1)
+
 
 
 def main():
