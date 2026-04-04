@@ -22,7 +22,7 @@ from load_nrt_results import load_single_ssmoutput_to_nrt_db
 from common import get_engine
 
 DEFAULT_LOG_DIR = "/var/log/argosqc"
-
+LOAD_TODAY_SSMOUTPUT_SUMMARY_FILE = 'load_today_ssmoutput_summary.csv'
 # Setup log format
 logging.basicConfig(
     level=logging.INFO,
@@ -56,7 +56,7 @@ def load_today_ssmoutput(auth_file: str = './py_nrt/database_conn_string.auth', 
     if today_argosqc_df.empty:
         print("WARNING: No ArgosQC runs found for today")
         return
-
+    summary_df_list = []
     for index, argosqc_row in today_argosqc_df.iterrows():
         ssmoutput_folder = os.path.normpath(argosqc_row['output_dir'])
         ssmoutput_csvs = list(Path(ssmoutput_folder).rglob('*ssmoutputs*.csv'))
@@ -68,9 +68,13 @@ def load_today_ssmoutput(auth_file: str = './py_nrt/database_conn_string.auth', 
         try:
             last_modified = datetime.fromtimestamp(os.path.getmtime(ssmoutput_csvs[0]))
             print(f"Found: {ssmoutput_csvs[0]} (modified: {last_modified})")
-            load_single_ssmoutput_to_nrt_db(engine, project_id, str(ssmoutput_csvs[0]), last_modified)
+            summary_df = load_single_ssmoutput_to_nrt_db(engine, project_id, str(ssmoutput_csvs[0]), last_modified)
+            summary_df['ssmoutput_csv_last_modified'] = last_modified
+            summary_df_list.append(summary_df)
         except Exception as e:
             print(f'Exception occurred loading {str(ssmoutput_csvs[0])}: \n {str(e)}')
+    combined_summary_df = pd.concat(summary_df_list, ignore_index=True)
+    combined_summary_df.to_csv(LOAD_TODAY_SSMOUTPUT_SUMMARY_FILE, index=False)
 
 
 def main():
