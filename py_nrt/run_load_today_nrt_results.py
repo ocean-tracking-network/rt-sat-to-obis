@@ -38,8 +38,7 @@ def get_today_argosqc_run_details(argosqc_run_details_csv: str = '../argosqc_run
     all_detail_df['qc_start_datetime'] = pd.to_datetime(all_detail_df['qc_start_datetime'], errors='coerce')
 
     # Filter for rows >= today 0 AM
-    # today_detail_df = all_detail_df[all_detail_df['qc_start_datetime'] >= pd.Timestamp.now().normalize()].copy()
-    today_detail_df = all_detail_df.copy()
+    today_detail_df = all_detail_df[all_detail_df['qc_start_datetime'] >= pd.Timestamp.now().floor('D')].copy()
     # Remove qc_start_datetime and duplicates
     today_detail_df.drop(columns=['qc_start_datetime'], inplace=True)
     today_detail_df.drop_duplicates(subset=['program', 'output_dir', 'common_name'], inplace=True)
