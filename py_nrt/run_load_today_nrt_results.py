@@ -33,7 +33,8 @@ logger = logging.getLogger(__name__)
 
 def get_today_argosqc_run_details(argosqc_run_details_csv: str = '../argosqc_run_details.csv')-> pd.DataFrame:
     """Read argosqc_run_details.csv to parse today's results"""
-    all_detail_df = pd.read_csv(argosqc_run_details_csv)
+    all_detail_df = pd.read_csv(argosqc_run_details_csv, on_bad_lines='skip')
+
     all_detail_df['qc_start_datetime'] = pd.to_datetime(all_detail_df['qc_start_datetime'], errors='coerce')
 
     # Filter for rows >= today 0 AM
