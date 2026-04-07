@@ -1,6 +1,6 @@
 #!/bin/bash
-LOG_FILE="run_load_today_ssmoutput_$(date +\%Y\%m\%d_\%H\%M\%S).log"
 NRT_CODE_BASE="/opt/otn_nrt/rt-sat-to-obis"
+LOG_FILE="$NRT_CODE_BASE/logs/run_load_today_ssmoutput_$(date +\%Y\%m\%d_\%H\%M\%S).log"
 RUN_DETAILS_CSV="$NRT_CODE_BASE/argosqc_run_details.csv"
 EMAILTO="yinghuan.niu@oceantrack.org"
 
