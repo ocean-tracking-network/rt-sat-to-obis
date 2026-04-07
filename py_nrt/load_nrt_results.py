@@ -174,7 +174,7 @@ def init_otn_nrt_ssm_master_table(engine, schema):
     inspector = inspect(engine)
     if not inspector.has_table(OTN_NRT_SSM_SUMMARY_TABLE, schema=schema):
         create_table_sql = f'''
-            CREATE TABLE IF NOT EXISTS {schema}.{OTN_NRT_SSM_SUMMARY_TABLE} (
+            CREATE TABLE IF NOT EXISTS {schema}.{OTN_NRT_SSM_MASTER_TABLE} (
                 tag_id text NULL,
                 "date" timestamp NULL,
                 lon float8 NULL,
@@ -429,7 +429,7 @@ def create_otn_nrt_ssm_summary(engine: Engine, schema: str):
         common_name TEXT NULL,
         UNIQUE (nrt_ssm_table_name, tag_id)
     );
-    ALTER TABLE test.otn_nrt_ssm_summary ADD PRIMARY KEY (nrt_ssm_table_name, tag_id);
+    ALTER TABLE {schema}.{OTN_NRT_SSM_SUMMARY_TABLE} ADD PRIMARY KEY (nrt_ssm_table_name, tag_id);
     '''
 
     with engine.begin() as conn:
