@@ -18,7 +18,7 @@ from pathlib import Path
 import json
 import pandas as pd
 from py_nrt.load_nrt_results import *
-DEFAULT_LOG_DIR = "/var/log/argosqc"
+DEFAULT_LOG_DIR = "./"
 DEFAULT_MAX_THREADS = 4
 
 # Setup log format
@@ -29,8 +29,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def load_today_ssmoutput(
-        auth_file: str = r"G:\Niu_2020\2020_OTN\db_auth\000_local_timescale_conn_string.auth"):
+def load_today_ssmoutput(auth_file: str = r""):
     engine = get_engine(auth_file)
     today_argosqc_df = get_today_argosqc_run_details('argosqc_run_details.csv')
 
@@ -61,8 +60,6 @@ def load_today_ssmoutput(
 def main():
 
     load_to_nrt_db(engine, ssmoutput_last_modified_map)
-
-
 
     # Find all config files
     logger.info(f"Searching for '{args.pattern}' in '{args.search_root}'")
