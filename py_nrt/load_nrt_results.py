@@ -296,6 +296,7 @@ def transform_nrt_table(engine: Engine, schema: str, table_name: str):
     full_table_name = f'{schema}.{table_name}'
     float_columns = ['lon', 'lat', 'x', 'y', 'x_se', 'y_se', 'u', 'v', 'u_se', 'v_se', 's', 's_se']
     datetime_columns = ['date']
+    text_columns = ['cid', 'common_name']
     inspector = inspect(engine)
     columns = [col['name'] for col in inspector.get_columns(table_name, schema=schema)]
 
@@ -324,8 +325,11 @@ def transform_nrt_table(engine: Engine, schema: str, table_name: str):
         if 'ref' in columns:
             conn.execute(text(f'ALTER TABLE {full_table_name} RENAME COLUMN "ref" TO "tag_id"'))
         elif 'DeploymentID' in columns:
-            conn.execute(
-                text(f'ALTER TABLE {full_table_name} RENAME COLUMN "DeploymentID" TO "tag_id"'))
+            conn.execute(text(f'ALTER TABLE {full_table_name} RENAME COLUMN "DeploymentID" TO "tag_id"'))
+
+        for column in text_columns:
+            if column not in columns:
+                conn.execute(text(f'ALTER TABLE {full_table_name} ADD COLUMN "{column}" TEXT'))
 
     # Add index
     with engine.begin() as conn:
