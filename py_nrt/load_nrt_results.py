@@ -172,7 +172,7 @@ def get_loaded_proj_table_info(engine: Engine, table_name: str, schema: str=OTN_
 
 def init_otn_nrt_ssm_master_table(engine, schema):
     inspector = inspect(engine)
-    if not inspector.has_table(OTN_NRT_SSM_SUMMARY_TABLE, schema=schema):
+    if not inspector.has_table(OTN_NRT_SSM_MASTER_TABLE, schema=schema):
         create_table_sql = f'''
             CREATE TABLE IF NOT EXISTS {schema}.{OTN_NRT_SSM_MASTER_TABLE} (
                 tag_id text NULL,
