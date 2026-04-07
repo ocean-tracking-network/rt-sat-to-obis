@@ -1,5 +1,5 @@
 #!/bin/bash
-LOG_FILE="otn_nrt_pipeline_cron_$(date +\%Y\%m\%d_\%H\%M\%S).log"
+LOG_FILE="run_load_today_ssmoutput_(date +\%Y\%m\%d_\%H\%M\%S).log"
 NRT_CODE_BASE="/opt/otn_nrt/rt-sat-to-obis"
 RUN_DETAILS_CSV="$NRT_CODE_BASE/argosqc_run_details.csv"
 EMAILTO="yinghuan.niu@oceantrack.org"
