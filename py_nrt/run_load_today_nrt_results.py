@@ -21,7 +21,7 @@ sys.path.insert(0, os.getcwd())
 from load_nrt_results import load_single_ssmoutput_to_nrt_db
 from common import get_engine
 
-DEFAULT_LOG_DIR = "/var/log/argosqc"
+DEFAULT_LOG_DIR = "./"
 LOAD_TODAY_SSMOUTPUT_SUMMARY_FILE = 'load_today_ssmoutput_summary.csv'
 # Setup log format
 logging.basicConfig(
