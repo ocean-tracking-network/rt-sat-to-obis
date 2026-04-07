@@ -429,7 +429,7 @@ def create_otn_nrt_ssm_summary(engine: Engine, schema: str):
         common_name TEXT NULL,
         UNIQUE (nrt_ssm_table_name, tag_id)
     );
-    ALTER TABLE {schema}.{OTN_NRT_SSM_SUMMARY_TABLE} ADD PRIMARY KEY (nrt_ssm_table_name, tag_id);
+    ALTER TABLE {full_table_name} ADD PRIMARY KEY (nrt_ssm_table_name, tag_id);
     '''
 
     with engine.begin() as conn:

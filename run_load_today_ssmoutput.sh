@@ -2,7 +2,7 @@
 LOG_FILE="otn_nrt_pipeline_cron_$(date +\%Y\%m\%d_\%H\%M\%S).log"
 RUN_DETAILS_CSV="/opt/otn_nrt/rt-sat-to-obis/argosqc_run_details.csv"
 
-cd /opt/otn_nrt/rt-sat-to-obis && /opt/miniconda3/envs/rt-sat-to-obis/bin/python py_nrt/run_load_today_nrt_results.py > $LOG_FILE 2>&1
+sudo cd /opt/otn_nrt/rt-sat-to-obis && sudo /opt/miniconda3/envs/rt-sat-to-obis/bin/python py_nrt/run_load_today_nrt_results.py > $LOG_FILE 2>&1
 EXIT_CODE=$?
 
 if [ $EXIT_CODE -ne 0 ]; then
