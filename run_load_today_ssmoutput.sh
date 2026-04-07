@@ -4,7 +4,7 @@ NRT_CODE_BASE="/opt/otn_nrt/rt-sat-to-obis"
 RUN_DETAILS_CSV="$NRT_CODE_BASE/argosqc_run_details.csv"
 EMAILTO="yinghuan.niu@oceantrack.org"
 
-sudo cd "$NRT_CODE_BASE" && sudo /opt/miniconda3/envs/rt-sat-to-obis/bin/python  "$NRT_CODE_BASE/py_nrt/run_load_today_nrt_results.py" > $LOG_FILE  2>&1
+cd "$NRT_CODE_BASE" && /opt/miniconda3/envs/rt-sat-to-obis/bin/python  "$NRT_CODE_BASE/py_nrt/run_load_today_nrt_results.py" > $LOG_FILE  2>&1
 EXIT_CODE=$?
 
 if [ $EXIT_CODE -ne 0 ]; then
