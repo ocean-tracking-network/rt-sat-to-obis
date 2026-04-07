@@ -1,8 +1,10 @@
 #!/bin/bash
 LOG_FILE="otn_nrt_pipeline_cron_$(date +\%Y\%m\%d_\%H\%M\%S).log"
-RUN_DETAILS_CSV="/opt/otn_nrt/rt-sat-to-obis/argosqc_run_details.csv"
+NRT_CODE_BASE="/opt/otn_nrt/rt-sat-to-obis"
+RUN_DETAILS_CSV="$NRT_CODE_BASE/argosqc_run_details.csv"
+EMAILTO="OTNDC@dal.ca"
 
-sudo cd /opt/otn_nrt/rt-sat-to-obis && sudo /opt/miniconda3/envs/rt-sat-to-obis/bin/python ./py_nrt/run_load_today_nrt_results.py > $LOG_FILE 2>&1
+sudo cd "$NRT_CODE_BASE" && sudo /opt/miniconda3/envs/rt-sat-to-obis/bin/python  "$NRT_CODE_BASE/py_nrt/run_load_today_nrt_results.py" > $LOG_FILE  2>&1
 EXIT_CODE=$?
 
 if [ $EXIT_CODE -ne 0 ]; then
@@ -33,7 +35,7 @@ if [ $EXIT_CODE -ne 0 ]; then
         echo "Last modified: $(stat -c %y "$RUN_DETAILS_CSV" 2>/dev/null || date -r "$RUN_DETAILS_CSV")" >> "$EMAIL_BODY"
         cat "$RUN_DETAILS_CSV" >> "$EMAIL_BODY"
     fi
-    mail -s "FAILED (Exit Code: $EXIT_CODE) - Cron Job: run_load_today_ssmoutput.sh" yinghuan.niu@oceantrack.org < "$EMAIL_BODY"
+    mail -s "FAILED (Exit Code: $EXIT_CODE) - Cron Job: run_load_today_ssmoutput.sh" "$EMAILTO" < "$EMAIL_BODY"
 
 fi
 
