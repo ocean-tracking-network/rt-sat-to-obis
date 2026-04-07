@@ -2,7 +2,7 @@
 LOG_FILE="run_argosqc_parallel_$(date +\%Y\%m\%d_\%H\%M\%S).log"
 NRT_CODE_BASE="/opt/otn_nrt/rt-sat-to-obis"
 RUN_DETAILS_CSV="$NRT_CODE_BASE/argosqc_run_details.csv"
-EMAILTO="OTNDC@dal.ca"
+EMAILTO="yinghuan.niu@dal.ca"
 
 sudo cd "$NRT_CODE_BASE" && sudo /opt/miniconda3/envs/rt-sat-to-obis/bin/python  "$NRT_CODE_BASE/py_nrt/run_argosqc_parallel.py" > $LOG_FILE  2>&1
 EXIT_CODE=$?
@@ -30,7 +30,7 @@ if [ $EXIT_CODE -ne 0 ]; then
 
 fi
 
-# Clean up log filepwd
+# Clean up log files
 if [ -f "$LOG_FILE" ] && [ ! -s "$LOG_FILE" ]; then
     rm -f "$LOG_FILE"
 fi
