@@ -11,6 +11,7 @@ from sqlalchemy import inspect
 
 # OTN_NRT_SCHEMA = 'otn_realtime'
 OTN_NRT_SCHEMA = 'test'
+OTN_NRT_SSM_MASTER_TABLE = 'otn_nrt_ssm_master'
 NRT_UPLOAD_LOG_TABLE = 'nrt_ssm_upload_logs'
 OTN_NRT_SSM_SUMMARY_TABLE = 'otn_nrt_ssm_summary'
 
@@ -169,6 +170,32 @@ def get_loaded_proj_table_info(engine: Engine, table_name: str, schema: str=OTN_
     return pd.DataFrame(rows, columns=result.keys())
 
 
+def init_otn_nrt_ssm_master_table(engine, schema):
+    inspector = inspect(engine)
+    if not inspector.has_table(NRT_UPLOAD_LOG_TABLE, schema=schema):
+        create_table_sql = f'''
+            CREATE TABLE IF NOT EXISTS {schema}.{OTN_NRT_SSM_SUMMARY_TABLE} (
+                tag_id text NULL,
+                "date" timestamp NULL,
+                lon float8 NULL,
+                lat float8 NULL,
+                x float8 NULL,
+                y float8 NULL,
+                x_se float8 NULL,
+                y_se float8 NULL,
+                u float8 NULL,
+                v float8 NULL,
+                u_se float8 NULL,
+                v_se float8 NULL,
+                s float8 NULL,
+                s_se float8 NULL,
+                cid text null,
+                common_name text null
+            )'''
+        with engine.begin() as conn:
+            conn.execute(text(create_table_sql))
+
+
 def init_nrt_upload_log_table(engine, schema, start_datetime, table_name):
     """
     Initialize a new upload log entry and return the log_id.
@@ -293,6 +320,7 @@ def transform_nrt_table(engine: Engine, schema: str, table_name: str):
     Returns:
         None
     """
+    init_otn_nrt_ssm_master_table(engine, schema)
     full_table_name = f'{schema}.{table_name}'
     float_columns = ['lon', 'lat', 'x', 'y', 'x_se', 'y_se', 'u', 'v', 'u_se', 'v_se', 's', 's_se']
     datetime_columns = ['date']
@@ -331,9 +359,10 @@ def transform_nrt_table(engine: Engine, schema: str, table_name: str):
             if column not in columns:
                 conn.execute(text(f'ALTER TABLE {full_table_name} ADD COLUMN "{column}" TEXT'))
 
-    # Add index
+    # Add index and inheritance
     with engine.begin() as conn:
         conn.execute(text(f'CREATE INDEX IF NOT EXISTS idx_{table_name}_tag_id_date ON {full_table_name} ("tag_id", "date")'))
+        conn.execute(text(f'ALTER TABLE {full_table_name} INHERIT {schema}.{OTN_NRT_SSM_MASTER_TABLE}'))
 
 
 def update_log_checkpoint(engine: Engine, schema: str, log_id: int, updates: Dict[str, Any]) -> None:
