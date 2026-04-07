@@ -22,7 +22,7 @@ import pandas as pd
 DEFAULT_SEARCH_PATTERN = "*config*.json"
 DEFAULT_SEARCH_ROOT = './input'
 DEFAULT_R_SCRIPT_DIR = "r_nrt"
-DEFAULT_LOG_DIR = "/var/log/argosqc"
+DEFAULT_LOG_DIR = "./logs"
 DEFAULT_MAX_THREADS = 4
 
 # Setup log format
