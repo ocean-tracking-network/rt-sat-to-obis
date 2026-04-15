@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """
 Run R script with multiple config files in parallel threads.
+Pull git changes on jphub:
+ su - satnrt
+Password: otndc
+cd /opt/otn_nrt/rt-sat-to-obis
+git pull
 """
 
 import argparse
