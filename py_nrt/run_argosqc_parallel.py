@@ -17,6 +17,7 @@ from typing import Dict, Any, List
 from pathlib import Path
 import json
 import pandas as pd
+import getpass
 
 # Default configuration file to search
 DEFAULT_SEARCH_PATTERN = "*config*.json"
@@ -292,9 +293,10 @@ def parse_wc_config(config_df: pd.DataFrame) -> pd.DataFrame:
 def main():
     args = parse_args()
 
-    # Check if running as root or with sudo access (only for warning)
-    if not args.no_sudo and os.geteuid() != 0:
-        logger.warning("Not running as root. Commands will use sudo.")
+    if os.geteuid() == 0:
+        logger.warning("Running as root.")
+    else:
+        logger.warning(f"Running as {getpass.getuser()}.")
 
     # Find all config files
     logger.info(f"Searching for '{args.pattern}' in '{args.search_root}'")
