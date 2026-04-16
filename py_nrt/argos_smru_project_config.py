@@ -199,7 +199,7 @@ def extract_deployments(program: str, cid: str, input_path: str, verbose: bool=F
 
 def extract_tacks(program: str, cid: str, input_path: str, exclude_tag_ref: list[str], verbose: bool=False) -> tuple[str, pd.DataFrame]:
     """
-    Extract tracks data (ctd table) from <cid>.mdb (Access DB) and filter out excluded tags
+    Extract tracks data (diag table) from <cid>.mdb (Access DB) and filter out excluded tags
 
     Args:
         program: program ID
@@ -212,7 +212,7 @@ def extract_tacks(program: str, cid: str, input_path: str, exclude_tag_ref: list
         Tuple of .mdb file and dataFrame of all tracks excluding specified tags
     """
     mdb_file = cid + '.mdb'
-    table = 'ctd'
+    table = 'diag'
     mdb_file, tracks_df = extract_table_from_mdb(get_path_from_strings([input_path, program, f'{program}_{cid}', 'mdb']), mdb_file, table, verbose)
     tracks_df = tracks_df[~tracks_df['REF'].isin(exclude_tag_ref)]
     return mdb_file, tracks_df
