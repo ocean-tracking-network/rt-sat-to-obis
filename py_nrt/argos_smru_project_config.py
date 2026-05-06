@@ -221,11 +221,31 @@ def extract_tacks(program: str, cid: str, input_path: str, exclude_tag_ref: list
     return mdb_file, tracks_df
 
 def keep_min_max(dataframe: pd.DataFrame, column: str) -> pd.DataFrame:
+    """
+    Keep rows where a column equals its minimum or maximum value within the DataFrame.
+
+    Args:
+        dataframe: Input DataFrame
+        column: Name of the column to evaluate min/max on
+
+    Returns:
+        DataFrame containing only rows where the specified column
+    """
     min_date = dataframe[column].min()
     max_date = dataframe[column].max()
     return dataframe[dataframe[column].isin([min_date, max_date])]
 
-def show_df(dataframe:pd.DataFrame, save_as_file: str, show_all_rows=False) -> pd.DataFrame:
+def show_df(dataframe:pd.DataFrame, save_as_file: str, show_all_rows=False) -> None:
+    """
+    Display an interactive DataTable and enable CSV/Excel export with customizable filename.
+
+    Args:
+        dataframe: the DataFrame to be displayed
+        save_as_file: filename for export
+        show_all_rows: If True, display all rows without truncation; otherwise use default row limit
+
+    Returns: None
+    """
     if show_all_rows:
         itables.options.maxBytes = 0
     itables.show(dataframe,
