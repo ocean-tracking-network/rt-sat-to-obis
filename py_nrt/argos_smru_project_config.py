@@ -216,6 +216,7 @@ def extract_tacks(program: str, cid: str, input_path: str, exclude_tag_ref: list
     mdb_file, tracks_df = extract_table_from_mdb(get_path_from_strings([input_path, program, f'{program}_{cid}', 'mdb']), mdb_file, table, verbose)
     tracks_df = tracks_df[~tracks_df['REF'].isin(exclude_tag_ref)]
     tracks_min_max_date_df = tracks_df.groupby('REF', group_keys=False).apply(partial(keep_min_max, column='D_DATE'))
+    print(f'Showing min and max dates rows in the "diag" table for each REF ({tracks_min_max_date_df.shape[0]} out of {tracks_df.shape[0]}) rows,')
     show_df(tracks_min_max_date_df, 'tracks_min_max_date_df', True)
     return mdb_file, tracks_df
 
