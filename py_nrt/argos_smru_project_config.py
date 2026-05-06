@@ -215,8 +215,35 @@ def extract_tacks(program: str, cid: str, input_path: str, exclude_tag_ref: list
     table = 'diag'
     mdb_file, tracks_df = extract_table_from_mdb(get_path_from_strings([input_path, program, f'{program}_{cid}', 'mdb']), mdb_file, table, verbose)
     tracks_df = tracks_df[~tracks_df['REF'].isin(exclude_tag_ref)]
+    tracks_min_max_date_df = tracks_df.groupby('REF', group_keys=False).apply(partial(keep_min_max, column='D_DATE'))
+    show_df(tracks_min_max_date_df, 'tracks_min_max_date_df', True)
     return mdb_file, tracks_df
 
+def keep_min_max(dataframe: pd.DataFrame, column: str) -> pd.DataFrame:
+    min_date = dataframe[column].min()
+    max_date = dataframe[column].max()
+    return dataframe[dataframe[column].isin([min_date, max_date])]
+
+def show_df(dataframe:pd.DataFrame, save_as_file: str, show_all_rows=False) -> pd.DataFrame:
+    if show_all_rows:
+        itables.options.maxBytes = 0
+    itables.show(dataframe,
+                 buttons=[
+                    'copy',
+                    {
+                        'extend': 'csv',
+                        'filename': save_as_file.replace('.csv', '')
+                    },
+                    {
+                        'extend': 'excel',
+                        'filename': save_as_file.replace('.csv', ''),
+                        'exportOptions': {
+                            'modifier': {
+                                'page': 'all'
+                            }
+                        }
+                    }
+                ])
 
 def export_for_kepler(cid: str, tracks_df: pd.DataFrame, subset_tags: list[str] = []) -> pd.DataFrame:
     """
