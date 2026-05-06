@@ -232,9 +232,9 @@ def export_for_kepler(cid: str, tracks_df: pd.DataFrame, subset_tags: list[str] 
     Returns: tracks_subset
     """
     filename = f"{cid}_tracks_{datetime.now().strftime('%Y%m%d')}.csv"
-    tracks_subset = tracks_df[['REF', 'END_DATE', 'lat', 'lon']].copy().rename(columns={
+    tracks_subset = tracks_df[['REF', 'D_DATE', 'LAT', 'LON']].copy().rename(columns={
         'REF': 'tag_ref',
-        'END_DATE': 'date_time'
+        'D_DATE': 'date_time'
     })
     tracks_subset['date_time'] = pd.to_datetime(
         tracks_subset['date_time'],
