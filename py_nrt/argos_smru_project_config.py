@@ -47,7 +47,7 @@ import pandas as pd
 from xml.etree import ElementTree as ET
 import warnings
 
-from py_nrt.common import run_from_ipython
+from py_nrt.common import run_from_ipython, show_df
 from py_nrt.load_nrt_results import get_files_by_pattern
 
 itables.init_notebook_mode()
@@ -194,8 +194,9 @@ def extract_deployments(program: str, cid: str, input_path: str, verbose: bool=F
     """
     mdb_file = cid + '.mdb'
     table = 'deployments'
-    return extract_table_from_mdb(get_path_from_strings([input_path, program, f'{program}_{cid}', 'mdb']), mdb_file, table, verbose)
-
+    cid_mdb, deployment_df = extract_table_from_mdb(get_path_from_strings([input_path, program, f'{program}_{cid}', 'mdb']), mdb_file, table, verbose)
+    show_df(deployment_df, f'{cid}_deployment_df', True)
+    return cid_mdb, deployment_df
 
 def extract_tacks(program: str, cid: str, input_path: str, exclude_tag_ref: list[str], verbose: bool=False) -> tuple[str, pd.DataFrame]:
     """
@@ -217,7 +218,7 @@ def extract_tacks(program: str, cid: str, input_path: str, exclude_tag_ref: list
     tracks_df = tracks_df[~tracks_df['REF'].isin(exclude_tag_ref)]
     tracks_min_max_date_df = tracks_df.groupby('REF', group_keys=False).apply(partial(keep_min_max, column='D_DATE'))
     print(f'Showing min and max dates rows in the "diag" table for each REF ({tracks_min_max_date_df.shape[0]} out of {tracks_df.shape[0]}) rows,')
-    show_df(tracks_min_max_date_df, 'tracks_min_max_date_df', True)
+    show_df(tracks_min_max_date_df, f'{cid}_tracks_min_max_date_df', True)
     return mdb_file, tracks_df
 
 def keep_min_max(dataframe: pd.DataFrame, column: str) -> pd.DataFrame:
@@ -234,37 +235,6 @@ def keep_min_max(dataframe: pd.DataFrame, column: str) -> pd.DataFrame:
     min_date = dataframe[column].min()
     max_date = dataframe[column].max()
     return dataframe[dataframe[column].isin([min_date, max_date])]
-
-def show_df(dataframe:pd.DataFrame, save_as_file: str, show_all_rows=False) -> None:
-    """
-    Display an interactive DataTable and enable CSV/Excel export with customizable filename.
-
-    Args:
-        dataframe: the DataFrame to be displayed
-        save_as_file: filename for export
-        show_all_rows: If True, display all rows without truncation; otherwise use default row limit
-
-    Returns: None
-    """
-    if show_all_rows:
-        itables.options.maxBytes = 0
-    itables.show(dataframe,
-                 buttons=[
-                    'copy',
-                    {
-                        'extend': 'csv',
-                        'filename': save_as_file.replace('.csv', '')
-                    },
-                    {
-                        'extend': 'excel',
-                        'filename': save_as_file.replace('.csv', ''),
-                        'exportOptions': {
-                            'modifier': {
-                                'page': 'all'
-                            }
-                        }
-                    }
-                ])
 
 def export_for_kepler(cid: str, tracks_df: pd.DataFrame, subset_tags: list[str] = []) -> pd.DataFrame:
     """
@@ -292,25 +262,9 @@ def export_for_kepler(cid: str, tracks_df: pd.DataFrame, subset_tags: list[str] 
     )
     if subset_tags:
         tracks_subset = tracks_subset[tracks_subset['tag_ref'].isin(subset_tags)]
-
+    show_df(tracks_subset, filename, True)
     itables.options.maxBytes = 0
-    itables.show(tracks_subset,
-                 buttons=[
-                    'copy',
-                    {
-                        'extend': 'csv',
-                        'filename': filename.replace('.csv', '')
-                    },
-                    {
-                        'extend': 'excel',
-                        'filename': filename.replace('.csv', ''),
-                        'exportOptions': {
-                            'modifier': {
-                                'page': 'all'
-                            }
-                        }
-                    }
-                ])
+
     return tracks_subset
 
 
@@ -480,21 +434,5 @@ def extract_ssmoutput_tracks(program: str, cid: str, qc_output_path: str, subset
     if subset_tags:
         ssmoutputs_df = ssmoutputs_df[ssmoutputs_df['tag_ref'].isin(subset_tags)]
     filename = f"{cid}_ssmoutput_{datetime.now().strftime('%Y%m%d')}.csv"
-    itables.show(ssmoutputs_df,
-                 buttons=[
-                     'copy',
-                     {
-                         'extend': 'csv',
-                         'filename': filename.replace('.csv', '')
-                     },
-                     {
-                         'extend': 'excel',
-                         'filename': filename.replace('.csv', ''),
-                         'exportOptions': {
-                             'modifier': {
-                                 'page': 'all'
-                             }
-                         }
-                     }
-                 ])
+    show_df(ssmoutputs_df, filename, True)
     return ssmoutputs_df

@@ -7,6 +7,7 @@ from getpass import getpass
 from io import StringIO
 from typing import Union, Dict, List
 
+import itables
 import pandas as pd
 from IPython.core.display_functions import display
 from ipywidgets import Color
@@ -401,3 +402,35 @@ def get_file_line_count(file_path: str) -> int:
     """
 
     return sum(1 for i in open(file_path, 'rb'))
+
+def show_df(dataframe:pd.DataFrame, save_as_file: str, show_all_rows=False) -> None:
+    """
+    Display an interactive DataTable and enable CSV/Excel export with customizable filename.
+
+    Args:
+        dataframe: the DataFrame to be displayed
+        save_as_file: filename for export
+        show_all_rows: If True, display all rows without truncation; otherwise use default row limit
+
+    Returns: None
+    """
+    if show_all_rows:
+        itables.options.maxBytes = 0
+    itables.show(dataframe,
+                 buttons=[
+                    'copy',
+                    {
+                        'extend': 'csv',
+                        'filename': save_as_file.replace('.csv', '')
+                    },
+                    {
+                        'extend': 'excel',
+                        'filename': save_as_file.replace('.csv', ''),
+                        'exportOptions': {
+                            'modifier': {
+                                'page': 'all'
+                            }
+                        }
+                    }
+                ])
+
