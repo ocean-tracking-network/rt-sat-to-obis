@@ -42,7 +42,7 @@ from xml.etree import ElementTree as ET
 import warnings
 
 from py_nrt.argos_smru_project_config import get_path_from_strings
-from py_nrt.common import run_from_ipython
+from py_nrt.common import run_from_ipython, show_df
 from py_nrt.load_nrt_results import get_files_by_pattern
 
 itables.init_notebook_mode()
@@ -394,23 +394,7 @@ def perform_download(a_key: str, s_key: str, tag_uuid_combobox: widgets.Dropdown
             dayfirst=True
         )
         filename = f"{tag_uuid}_track_{datetime.now().strftime('%Y%m%d')}.csv"
-        itables.show(location_df,
-                     buttons=[
-                         'copy',
-                         {
-                             'extend': 'csv',
-                             'filename': filename.replace('.csv', '')
-                         },
-                         {
-                             'extend': 'excel',
-                             'filename': filename.replace('.csv', ''),
-                             'exportOptions': {
-                                 'modifier': {
-                                     'page': 'all'
-                                 }
-                             }
-                         }
-                     ])
+        show_df(location_df, filename, True)
     else:
         print(f'Waring: no locations file found in {unzipped_file}. Please contact PI or OTN data team.')
 
