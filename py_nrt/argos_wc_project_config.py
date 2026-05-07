@@ -221,8 +221,7 @@ def wc_get_collab_ids(a_key: str = None, s_key: str = None, verbose: bool = Fals
                                  style={'description_width': 'initial'},
                                  value=None)
 
-        itables.show(collab_df, buttons=['pageLength', "copyHtml5", "csvHtml5"])
-
+        show_df(collab_df, 'collab_df', True)
         print('Select a collaborator to proceed')
         display(radio_btn)
         return collab_df, radio_btn
@@ -439,7 +438,8 @@ def get_deployments_for_owner_id(a_key: str, s_key: str, collaborator: str = Non
         numeric_values = pd.to_numeric(deployment_df[col], errors='coerce')
         deployment_df[col] = pd.to_datetime(numeric_values, unit='s', utc=True)
     print(f'Showing {len(deployment_df)} tag(s) for collaborator: {collaborator}')
-    itables.show(deployment_df[columns], buttons=['pageLength', "copyHtml5", "csvHtml5"])
+    show_df(deployment_df[columns], 'deployment_df', True)
+
     return deployment_df
 
 
@@ -480,24 +480,7 @@ def export_for_kepler(collaborator: str, deployment_df: pd.DataFrame) -> None:
         'last_loc_lat': 'latitude',
         'last_loc_lon': 'longitude'
     })
-    itables.options.maxBytes = 0
-    itables.show(latest_loc_df,
-                 buttons=[
-                     'copy',
-                     {
-                         'extend': 'csv',
-                         'filename': filename.replace('.csv', '')
-                     },
-                     {
-                         'extend': 'excel',
-                         'filename': filename.replace('.csv', ''),
-                         'exportOptions': {
-                             'modifier': {
-                                 'page': 'all'
-                             }
-                         }
-                     }
-                 ])
+    show_df(latest_loc_df, filename, True)
 
 
 def extract_ssmoutput_tracks(program: str, collaborator: str, common_name: str, qc_output_path: str, subset_tags: list[str]=[], verbose=False) -> pd.DataFrame:
@@ -509,7 +492,8 @@ def extract_ssmoutput_tracks(program: str, collaborator: str, common_name: str, 
         return pd.DataFrame()
 
     ssmoutputs_df = pd.read_csv(ssmoutput_files[0])
-    itables.show(ssmoutputs_df)
+    show_df(ssmoutputs_df, 'ssmoutputs_df', True)
+
     ssmoutputs_df = ssmoutputs_df[['DeploymentID', 'date', 'lat', 'lon']].copy().rename(columns={
         'DeploymentID': 'tag_ref',
         'date': 'date_time'
@@ -522,21 +506,5 @@ def extract_ssmoutput_tracks(program: str, collaborator: str, common_name: str, 
     if subset_tags:
         ssmoutputs_df = ssmoutputs_df[ssmoutputs_df['tag_ref'].isin(subset_tags)]
     filename = f"{proj_folder}_ssmoutput_{datetime.now().strftime('%Y%m%d')}.csv"
-    itables.show(ssmoutputs_df,
-                 buttons=[
-                     'copy',
-                     {
-                         'extend': 'csv',
-                         'filename': filename.replace('.csv', '')
-                     },
-                     {
-                         'extend': 'excel',
-                         'filename': filename.replace('.csv', ''),
-                         'exportOptions': {
-                             'modifier': {
-                                 'page': 'all'
-                             }
-                         }
-                     }
-                 ])
+    show_df(ssmoutputs_df, filename, True)
     return ssmoutputs_df

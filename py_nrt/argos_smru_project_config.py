@@ -263,8 +263,6 @@ def export_for_kepler(cid: str, tracks_df: pd.DataFrame, subset_tags: list[str] 
     if subset_tags:
         tracks_subset = tracks_subset[tracks_subset['tag_ref'].isin(subset_tags)]
     show_df(tracks_subset, filename, True)
-    itables.options.maxBytes = 0
-
     return tracks_subset
 
 
