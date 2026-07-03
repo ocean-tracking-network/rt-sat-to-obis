@@ -62,6 +62,19 @@ def get_files_by_pattern(folder: str, file_pattern: str) -> List[Path]:
     return csv_files
 
 
+def get_qced_programs(qc_output_path: str) -> list[str]:
+    """
+    Call get_qced_program_campaigns and get keys from the returned dict.
+    Args:
+        qc_output_path: Path to the QC output directory
+            expecteded QC folder structure: {program}/{program}_{campaign}
+    Returns:
+        list[str]: list of programs
+   """
+    program_campaigns = get_qced_program_campaigns(qc_output_path)
+    return program_campaigns.keys()
+
+
 def get_qced_program_campaigns(qc_output_path: str) -> dict[str: list[str]]:
     """
     Get first-level folders (program) to campaign (second-level folders) in qc_output_path, excluding specified folders.
