@@ -9,12 +9,13 @@ from py_nrt.common import print_error, get_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy import inspect
 
-# OTN_NRT_SCHEMA = 'otn_realtime'
+# OTN_NRT_SCHEMA = 'satnrt'
 OTN_NRT_SCHEMA = 'test'
-OTN_NRT_SSM_MASTER_TABLE = 'otn_nrt_ssm_master'
+OTN_NRT_SSM_MASTER_TABLE = 'nrt_ssm_master'
 NRT_UPLOAD_LOG_TABLE = 'nrt_ssm_upload_logs'
-OTN_NRT_SSM_SUMMARY_TABLE = 'otn_nrt_ssm_summary'
-
+OTN_NRT_SSM_SUMMARY_TABLE = 'nrt_ssm_summary'
+MIN_MAX_DEPTH_FILE_PATTERN = r'(?i)*MinMaxDepth.*_nrt\.csv|.*summary.*\.csv'
+QC_OUTPUT_PATH = 'qc'
 
 import pandas as pd
 from datetime import datetime, timedelta
@@ -61,30 +62,38 @@ def get_files_by_pattern(folder: str, file_pattern: str) -> List[Path]:
     return csv_files
 
 
-def get_qced_programs(qc_output_path: str) -> list[str]:
+def get_qced_program_campaigns(qc_output_path: str) -> dict[str: list[str]]:
     """
-    Get first-level folders(program) in qc_output_path, excluding specified folders.
+    Get first-level folders (program) to campaign (second-level folders) in qc_output_path, excluding specified folders.
     Args:
         qc_output_path: Path to the QC output directory
-
+            expecteded QC folder structure: {program}/{program}_{campaign}
     Returns:
-        list[str]: List of first-level folder names (excluding those in exclude_folders)
-    """
+        dict[str: list[str]]: dict of program: [campaigns...]
+             e.g.,
+             {'imos': ['imos_ct180', 'imos_ct182'],
+             'irap': ['irap_damianlidgard_grey_seal']}
+   """
     if (not os.path.exists(qc_output_path)) or (not os.path.isdir(qc_output_path)):
         print(f"Warning: Path {qc_output_path} does not exist or not a directory")
-        return []
+        return {}
 
-    programs = []
-    for sub_folder in os.listdir(qc_output_path):
-        if sub_folder not in exclude_folders and not sub_folder.startswith('.'):
-            programs.append(sub_folder)
+    program_campaigns = {}
+    for first_level_sub_folder in os.listdir(qc_output_path):
+        campaigns = []
+        if first_level_sub_folder not in exclude_folders and not first_level_sub_folder.startswith('.'):
+            for second_level_sub_folder in os.listdir(os.path.join(qc_output_path, first_level_sub_folder)):
+                if second_level_sub_folder not in exclude_folders and not second_level_sub_folder.startswith('.'):
+                    campaigns.append(second_level_sub_folder)
 
-    return sorted(programs)
+            program_campaigns.update({first_level_sub_folder:sorted(campaigns)})
+
+    return program_campaigns
 
 
-def get_project_qc_results_for_program(qc_output_path: str, program: str=None) -> dict[str, datetime]:
+def get_campaign_qc_results_for_program(qc_output_path: str, program: str=None) -> dict[str, datetime]:
     """
-    Get QCed projects for given program.
+    Get QCed campaigns for given program.
     Args:
         qc_output_path: Path to the QC output directory
         program: NRT program
@@ -95,16 +104,16 @@ def get_project_qc_results_for_program(qc_output_path: str, program: str=None) -
     program_path = os.path.join(qc_output_path, program)
     ssmoutput_last_modified_map = {}
     for sub_folder in os.listdir(program_path):
-        project_path = os.path.join(qc_output_path, program, sub_folder)
+        campaign_path = os.path.join(qc_output_path, program, sub_folder)
         if sub_folder not in exclude_folders and not sub_folder.startswith('.'):
-            print(f'Found project folder for {program}: {project_path}')
-            ssmoutputs_files = list(Path(project_path).glob('*ssmoutputs*_nrt.csv'))
+            print(f'Found campaign folder for {program}: {campaign_path}')
+            ssmoutputs_files = list(Path(campaign_path).glob('*ssmoutputs*_nrt.csv'))
             if ssmoutputs_files:
-                project_ssmoutputs = str(ssmoutputs_files[0])
+                campaign_ssmoutputs = str(ssmoutputs_files[0])
                 last_modified = datetime.fromtimestamp(os.path.getmtime(ssmoutputs_files[0]))
                 print(f"Found SSM results: "
                       f"{ssmoutputs_files[0]} - last updated on {last_modified}")
-                ssmoutput_last_modified_map[project_ssmoutputs] = last_modified
+                ssmoutput_last_modified_map[campaign_ssmoutputs] = last_modified
             else:
                 print(f"-- No SSM result found.")
     return ssmoutput_last_modified_map
@@ -322,9 +331,9 @@ def transform_nrt_table(engine: Engine, schema: str, table_name: str):
     """
     init_otn_nrt_ssm_master_table(engine, schema)
     full_table_name = f'{schema}.{table_name}'
-    float_columns = ['lon', 'lat', 'x', 'y', 'x_se', 'y_se', 'u', 'v', 'u_se', 'v_se', 's', 's_se']
+    number_columns = ['lon', 'lat', 'x', 'y', 'x_se', 'y_se', 'u', 'v', 'u_se', 'v_se', 's', 's_se']
     datetime_columns = ['date']
-    text_columns = ['cid', 'common_name']
+    text_columns = ['ptt', 'cid', 'common_name']
     inspector = inspect(engine)
     columns = [col['name'] for col in inspector.get_columns(table_name, schema=schema)]
 
@@ -333,11 +342,11 @@ def transform_nrt_table(engine: Engine, schema: str, table_name: str):
         conn.execute(text(f'ALTER TABLE {full_table_name} SET LOGGED'))
 
         # Convert each column
-        for col in float_columns:
+        for col in number_columns:
             alter_sql = f'''
                 ALTER TABLE {full_table_name} 
-                ALTER COLUMN "{col}" TYPE FLOAT 
-                USING NULLIF("{col}", 'NA')::FLOAT
+                ALTER COLUMN "{col}" TYPE NUMBER 
+                USING NULLIF("{col}", 'NA')::NUMBER
             '''
             conn.execute(text(alter_sql))
 
@@ -552,3 +561,96 @@ def update_otn_nrt_catalog(engine: Engine, schema: str, ssm_result_table: str) -
         print(f"Updated catalog with {len(summary_df)} tag records for {ssm_result_table}")
 
     return summary_df
+
+
+def parse_min_max_depth(qc_output_path: str=QC_OUTPUT_PATH, program: str='', cid: str='', verbose: bool = True) -> pd.DataFrame:
+    """Get min_depth (always be 0) and max_depth from QCed results"""
+    program_cid_path = os.path.join(qc_output_path, program, f'{program}_{cid}')
+    for sub_folder in os.listdir(program_cid_path):
+        campaign_path = os.path.join(qc_output_path, program, sub_folder)
+        print(campaign_path)
+    depth_files = get_files_by_pattern(program_cid_path, MIN_MAX_DEPTH_FILE_PATTERN)
+    print(os.path.join(qc_output_path, program))
+
+    for file in os.listdir(os.path.join(qc_output_path, program)):
+        file_path = os.path.join(os.path.join(qc_output_path, program), file)
+        if os.path.isfile(file_path):  # Only print files, not directories
+            print(file)
+
+    if not depth_files:
+        print_error(
+            f'No min max depth file found in {QC_OUTPUT_PATH} by pattern {MIN_MAX_DEPTH_FILE_PATTERN}')
+        return pd.DataFrame()
+
+    # Sort by modification time (newest first) and use the latest
+    depth_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+    file_path = depth_files[0]
+
+    if verbose:
+        print(f"📂 Using file: {file_path.name}")
+
+    try:
+        depth_df = pd.read_csv(file_path)
+    except Exception as e:
+        print_error(f"Failed to read CSV file {file_path}: {e}")
+        return pd.DataFrame()
+
+    if verbose:
+        print(f"📊 Loaded {len(depth_df)} rows with columns: {depth_df.columns.tolist()}")
+
+    # Define column mapping
+    column_mapping = {
+        'tag_ig': ['ref', 'DeploymentID', 'deployment_id', 'tag_id', 'tag', 'Tag'],
+        'ptt': ['ptt', 'Ptt', 'ptt_id', 'PTT'],
+        'max_depth': ['MaxDepth', 'max_depth', 'depth_max', 'max_depth_m', 'DepthMax']
+    }
+
+    selected_columns = {}
+    for target_col, possible_cols in column_mapping.items():
+        found_col = None
+        for col in possible_cols:
+            if col in depth_df.columns:
+                found_col = col
+                break
+        if found_col is None:
+            print_error(
+                f"None of the expected columns for '{target_col}' found in {depth_df.columns.tolist()}"
+            )
+            return pd.DataFrame()
+        selected_columns[target_col] = found_col
+        if verbose:
+            print(f"   Mapped: '{found_col}' ➔ '{target_col}'")
+
+    # Select and rename columns
+    try:
+        depth_df = depth_df[
+            [selected_columns['tag_ig'], selected_columns['ptt'], selected_columns['max_depth']]
+        ].copy()
+        depth_df.columns = ['tag_ig', 'ptt', 'max_depth']
+    except KeyError as e:
+        print_error(f"Column selection error: {e}")
+        return pd.DataFrame()
+
+    # Group by tag_ig and ptt to get the max of max_depth
+    group_depth_df = (
+        depth_df.groupby(['tag_ig', 'ptt'], as_index=False)
+            .agg({
+            'max_depth': 'max'
+        })
+    )
+
+    # Add min_depth column with default value 0
+    group_depth_df['min_depth'] = 0
+
+    # Reorder columns
+    group_depth_df = group_depth_df[['tag_ig', 'ptt', 'min_depth', 'max_depth']]
+
+    if verbose:
+        print(f"\n📈 Results: {len(group_depth_df)} unique (tag_ig, ptt) pairs")
+        print(
+            f"   Max depth range: {group_depth_df['max_depth'].min():.2f} - {group_depth_df['max_depth'].max():.2f}")
+        print(f"\n📋 First 5 rows:")
+        print(group_depth_df.head())
+
+    return group_depth_df
+
