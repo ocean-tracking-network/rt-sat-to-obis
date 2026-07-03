@@ -1,6 +1,7 @@
 import glob
 import io
 import os
+import re
 import socket
 from pathlib import Path
 from typing import List, Union, Dict, Any
@@ -14,7 +15,8 @@ OTN_NRT_SCHEMA = 'test'
 OTN_NRT_SSM_MASTER_TABLE = 'nrt_ssm_master'
 NRT_UPLOAD_LOG_TABLE = 'nrt_ssm_upload_logs'
 OTN_NRT_SSM_SUMMARY_TABLE = 'nrt_ssm_summary'
-MIN_MAX_DEPTH_FILE_PATTERN = r'(?i)*MinMaxDepth.*_nrt\.csv|.*summary.*\.csv'
+TAG_META_FILE_PATTERN= r'.*metadata.*'
+MIN_MAX_DEPTH_FILE_PATTERN = r'.*MinMaxDepth.*|.*_summary_.*'
 QC_OUTPUT_PATH = 'qc'
 
 import pandas as pd
@@ -58,8 +60,10 @@ def get_files_by_pattern(folder: str, file_pattern: str) -> List[Path]:
     if not folder_path.exists():
         print_error(f'NRT folder is not found: {folder_path}')
         return []
-    csv_files = list(folder_path.rglob(file_pattern))
-    return csv_files
+    found_files = list(folder_path.rglob(file_pattern))
+    if not found_files:
+        found_files = [f for f in folder_path.glob('*') if re.search(file_pattern, f.name)]
+    return found_files
 
 
 def get_qced_programs(qc_output_path: str) -> list[str]:
@@ -330,7 +334,7 @@ def load_csv_to_db(engine: Engine, table_name: str, csv_path: str, source_file_l
     return summary_df
 
 
-def transform_nrt_table(engine: Engine, schema: str, table_name: str):
+def transform_nrt_table(engine: Engine, schema: str, table_name: str) -> None:
     """
     Transform columns of a table from TEXT to desired data types.
 
@@ -576,40 +580,33 @@ def update_otn_nrt_catalog(engine: Engine, schema: str, ssm_result_table: str) -
     return summary_df
 
 
+
+
 def parse_min_max_depth(qc_output_path: str=QC_OUTPUT_PATH, program: str='', cid: str='', verbose: bool = True) -> pd.DataFrame:
-    """Get min_depth (always be 0) and max_depth from QCed results"""
+    """
+    Get min_depth (always be 0) and max_depth from QCed results
+    Args:
+        qc_output_path: Base directory path containing QC output files.
+            Defaults to QC_OUTPUT_PATH.
+        program: Program name (e.g., 'imos').
+        cid: Collection/device ID (e.g., 'ct180').
+        verbose: If True, prints detailed progress information.
+            Defaults to True.
+
+    Returns:
+        pandas.DataFrame: DataFrame containing min_depth and max_depth values.
+            Returns empty DataFrame if no matching file is found.
+            example output:
+            tag_ig,ptt,min_depth,max_depth
+            ct180-156-BAT-15,196997,0,600.0
+    """
     program_cid_path = os.path.join(qc_output_path, program, f'{program}_{cid}')
-    for sub_folder in os.listdir(program_cid_path):
-        campaign_path = os.path.join(qc_output_path, program, sub_folder)
-        print(campaign_path)
     depth_files = get_files_by_pattern(program_cid_path, MIN_MAX_DEPTH_FILE_PATTERN)
-    print(os.path.join(qc_output_path, program))
-
-    for file in os.listdir(os.path.join(qc_output_path, program)):
-        file_path = os.path.join(os.path.join(qc_output_path, program), file)
-        if os.path.isfile(file_path):  # Only print files, not directories
-            print(file)
-
     if not depth_files:
-        print_error(
-            f'No min max depth file found in {QC_OUTPUT_PATH} by pattern {MIN_MAX_DEPTH_FILE_PATTERN}')
+        print_error(f'No min max depth file found in {program_cid_path} by pattern {MIN_MAX_DEPTH_FILE_PATTERN}')
         return pd.DataFrame()
 
-    # Sort by modification time (newest first) and use the latest
-    depth_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
-    file_path = depth_files[0]
-
-    if verbose:
-        print(f"📂 Using file: {file_path.name}")
-
-    try:
-        depth_df = pd.read_csv(file_path)
-    except Exception as e:
-        print_error(f"Failed to read CSV file {file_path}: {e}")
-        return pd.DataFrame()
-
-    if verbose:
-        print(f"📊 Loaded {len(depth_df)} rows with columns: {depth_df.columns.tolist()}")
+    depth_df = pd.read_csv(depth_files[0])
 
     # Define column mapping
     column_mapping = {
@@ -667,3 +664,124 @@ def parse_min_max_depth(qc_output_path: str=QC_OUTPUT_PATH, program: str='', cid
 
     return group_depth_df
 
+
+def parse_tag_metadata(qc_output_path: str = QC_OUTPUT_PATH, program: str = '', cid: str = '',
+                       verbose: bool = True) -> pd.DataFrame:
+    """
+    Parse tag metadata from QC summary files.
+
+    This function searches for tag metadata files matching the pattern
+    in the specified path, reads the first matching CSV file, and maps
+    columns to standardized names.
+
+    Args:
+        qc_output_path: Base directory path containing QC output files.
+            Defaults to QC_OUTPUT_PATH.
+        program: Program name (e.g., 'imos').
+        cid: Collection/device ID (e.g., 'ct180').
+        verbose: If True, prints detailed progress information.
+            Defaults to True.
+
+    Returns:
+        pandas.DataFrame: DataFrame with standardized column names.
+            Missing columns are added with null values.
+
+    Examples:
+        >>> df = parse_tag_metadata('qc', 'imos', 'ct180')
+        Looking in: qc/imos/imos_ct180
+        ✓ Found: IMOS_ATF-SATTAG_Location-QC_summary_ct180_nrt.csv
+        Mapped: 'device_id' ➔ 'tag_ig'
+        Mapped: 'ptt' ➔ 'ptt'
+        Mapped: 'max_depth' ➔ 'max_depth'
+    """
+    program_cid_path = os.path.join(qc_output_path, program, f'{program}_{cid}')
+
+    if verbose:
+        print(f"Looking in: {program_cid_path}")
+
+    meta_files = get_files_by_pattern(program_cid_path, TAG_META_FILE_PATTERN)
+
+    if not meta_files:
+        print_error(
+            f'No tag metadata file found in {program_cid_path} by pattern {TAG_META_FILE_PATTERN}')
+        return pd.DataFrame()
+
+    meta_df = pd.read_csv(meta_files[0])
+
+    if verbose:
+        print(f"\nLoaded {len(meta_df)} rows from {meta_files[0].name}")
+        print(f"Available columns: {meta_df.columns.tolist()}")
+
+    # Define column mapping
+    column_mapping = {
+        'program': ['sattag_program'],
+        'tag_ig': ['device_id', 'deployment_id'],
+        'ptt': ['ptt', 'Ptt', 'ptt_id', 'tag_ptt'],
+        'deployment_start': ['deploy_date', 'release_date'],
+        'deployment_lon': ['release_longitude', 'deploy_longitude', 'embark_longitude'],
+        'deployment_lat': ['release_latitude', 'deploy_latitude', 'embark_latitude'],
+        'wmo_platform_code': ['device_wmo_ref'],
+        'instrument_model': ['tag_type', 'tag_model'],
+        'common_name': ['common_name'],
+        'scientific_name': ['species'],
+        'time_coverage_start': ['qc_start_date'],
+        'time_coverage_end': ['qc_end_date'],
+        'qc_version': ['qc_version', 'qc_method_version'],
+        'qc_method': ['qc_method'],
+        'qc_version': ['qc_version'],
+        'qc_run_date': ['qc_run_date'],
+        'instrument_serial_number': ['tag_serial_number', 'body'],
+    }
+
+    selected_columns = {}
+    missing_columns = []
+
+    for target_col, possible_cols in column_mapping.items():
+        found_col = None
+        for col in possible_cols:
+            if col in meta_df.columns:
+                found_col = col
+                break
+
+        if found_col is None:
+            missing_columns.append(target_col)
+            if verbose:
+                print(f"   ⚠ Column not found for '{target_col}', will set to null")
+        else:
+            selected_columns[target_col] = found_col
+            if verbose:
+                print(f"   Mapped: '{found_col}' ➔ '{target_col}'")
+
+    # Check if we have at least the essential columns
+    essential_columns = ['tag_ig', 'ptt']  # Define which columns are essential
+    missing_essential = [col for col in essential_columns if col not in selected_columns]
+
+    if missing_essential:
+        print_error(f"Essential columns missing: {missing_essential}")
+        print_error("Cannot proceed without essential columns")
+        return pd.DataFrame()
+
+    # Select existing columns
+    existing_cols_to_select = list(selected_columns.values())
+
+    try:
+        # Select only columns that exist
+        meta_df_selected = meta_df[existing_cols_to_select].copy()
+
+        # Rename selected columns
+        rename_dict = {v: k for k, v in selected_columns.items()}
+        meta_df_selected = meta_df_selected.rename(columns=rename_dict)
+
+        # Add missing columns with null values
+        for missing_col in missing_columns:
+            meta_df_selected[missing_col] = None
+
+        if verbose and missing_columns:
+            print(
+                f"\n   Added {len(missing_columns)} column(s) with null values: {missing_columns}")
+
+    except KeyError as e:
+        print_error(f"Column selection error: {e}")
+        return pd.DataFrame()
+
+    return meta_df_selected
