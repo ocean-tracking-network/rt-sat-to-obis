@@ -580,9 +580,7 @@ def update_otn_nrt_catalog(engine: Engine, schema: str, ssm_result_table: str) -
     return summary_df
 
 
-
-
-def parse_min_max_depth(qc_output_path: str=QC_OUTPUT_PATH, program: str='', cid: str='', verbose: bool = True) -> pd.DataFrame:
+def parse_min_max_depth_df(qc_output_path: str=QC_OUTPUT_PATH, program: str='', cid: str='', verbose: bool = True) -> pd.DataFrame:
     """
     Get min_depth (always be 0) and max_depth from QCed results
     Args:
@@ -656,10 +654,10 @@ def parse_min_max_depth(qc_output_path: str=QC_OUTPUT_PATH, program: str='', cid
     group_depth_df = group_depth_df[['tag_ig', 'ptt', 'min_depth', 'max_depth']]
 
     if verbose:
-        print(f"\n📈 Results: {len(group_depth_df)} unique (tag_ig, ptt) pairs")
+        print(f"\nResults: {len(group_depth_df)} unique (tag_ig, ptt) pairs")
         print(
             f"   Max depth range: {group_depth_df['max_depth'].min():.2f} - {group_depth_df['max_depth'].max():.2f}")
-        print(f"\n📋 First 5 rows:")
+        print(f"\n First 5 rows:")
         print(group_depth_df.head())
 
     return group_depth_df
@@ -712,7 +710,6 @@ def parse_tag_metadata(qc_output_path: str = QC_OUTPUT_PATH, program: str = '', 
         print(f"\nLoaded {len(meta_df)} rows from {meta_files[0].name}")
         print(f"Available columns: {meta_df.columns.tolist()}")
 
-    # Define column mapping
     column_mapping = {
         'program': ['sattag_program'],
         'tag_ig': ['device_id', 'deployment_id'],
@@ -726,62 +723,48 @@ def parse_tag_metadata(qc_output_path: str = QC_OUTPUT_PATH, program: str = '', 
         'scientific_name': ['species'],
         'time_coverage_start': ['qc_start_date'],
         'time_coverage_end': ['qc_end_date'],
-        'qc_version': ['qc_version', 'qc_method_version'],
-        'qc_method': ['qc_method'],
         'qc_version': ['qc_version'],
         'qc_run_date': ['qc_run_date'],
         'instrument_serial_number': ['tag_serial_number', 'body'],
     }
 
-    selected_columns = {}
-    missing_columns = []
+    # Initialize result DataFrame with all target columns set to None
+    meta_df = pd.DataFrame({col: [None] * len(meta_df) for col in column_mapping.keys()})
 
+    # Map and fill existing columns
+    selected_columns = {}
     for target_col, possible_cols in column_mapping.items():
-        found_col = None
         for col in possible_cols:
             if col in meta_df.columns:
-                found_col = col
+                meta_df[target_col] = meta_df[col]
+                selected_columns[target_col] = col
+                if verbose:
+                    print(f"   Mapped: '{col}' ➔ '{target_col}'")
                 break
-
-        if found_col is None:
-            missing_columns.append(target_col)
-            if verbose:
-                print(f"   ⚠ Column not found for '{target_col}', will set to null")
         else:
-            selected_columns[target_col] = found_col
             if verbose:
-                print(f"   Mapped: '{found_col}' ➔ '{target_col}'")
+                print(f"   ⚠ Column not found for '{target_col}', set to null")
 
-    # Check if we have at least the essential columns
-    essential_columns = ['tag_ig', 'ptt']  # Define which columns are essential
+    # Check essential columns
+    essential_columns = ['tag_ig', 'ptt']
     missing_essential = [col for col in essential_columns if col not in selected_columns]
 
     if missing_essential:
         print_error(f"Essential columns missing: {missing_essential}")
-        print_error("Cannot proceed without essential columns")
         return pd.DataFrame()
 
-    # Select existing columns
-    existing_cols_to_select = list(selected_columns.values())
+    if verbose:
+        filled = len(selected_columns)
+        total = len(column_mapping)
+        print(f"\n   Mapped {filled}/{total} columns successfully")
 
-    try:
-        # Select only columns that exist
-        meta_df_selected = meta_df[existing_cols_to_select].copy()
+    min_max_depth_df = parse_min_max_depth_df(qc_output_path, program, cid, verbose)
+    meta_df = meta_df.merge(
+        min_max_depth_df,
+        on=['tag_ig', 'ptt'],
+        how='left'
+    )
 
-        # Rename selected columns
-        rename_dict = {v: k for k, v in selected_columns.items()}
-        meta_df_selected = meta_df_selected.rename(columns=rename_dict)
+    return meta_df
 
-        # Add missing columns with null values
-        for missing_col in missing_columns:
-            meta_df_selected[missing_col] = None
 
-        if verbose and missing_columns:
-            print(
-                f"\n   Added {len(missing_columns)} column(s) with null values: {missing_columns}")
-
-    except KeyError as e:
-        print_error(f"Column selection error: {e}")
-        return pd.DataFrame()
-
-    return meta_df_selected
