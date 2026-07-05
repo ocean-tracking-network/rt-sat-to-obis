@@ -705,7 +705,7 @@ def parse_tag_metadata(qc_output_path: str = QC_OUTPUT_PATH, program: str = '', 
     # Define column mapping
     column_mapping = {
         'program': ['sattag_program'],
-        'tag_ig': ['device_id', 'deployment_id'],
+        'tag_id': ['device_id', 'deployment_id'],
         'ptt': ['ptt', 'Ptt', 'ptt_id', 'tag_ptt'],
         'deployment_start': ['deploy_date', 'release_date'],
         'deployment_lon': ['release_longitude', 'deploy_longitude', 'embark_longitude'],
@@ -740,7 +740,7 @@ def parse_tag_metadata(qc_output_path: str = QC_OUTPUT_PATH, program: str = '', 
                 print(f"      Column not found for '{target_col}', set to null")
 
     # Check essential columns
-    essential_columns = ['tag_ig', 'ptt']
+    essential_columns = ['tag_id', 'ptt']
     missing_essential = [col for col in essential_columns if col not in selected_columns]
 
     if missing_essential:
@@ -754,7 +754,7 @@ def parse_tag_metadata(qc_output_path: str = QC_OUTPUT_PATH, program: str = '', 
     # Left join min_max_depth_df with min_max_depth_df
     curated_meta_df = curated_meta_df.merge(
         min_max_depth_df,
-        on=['tag_ig', 'ptt'],
+        on=['tag_id', 'ptt'],
         how='left',
         suffixes=('', '_depth')
     )
