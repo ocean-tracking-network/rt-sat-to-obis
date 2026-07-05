@@ -75,7 +75,7 @@ def main():
             try:
                 # Get QC results for program
                 logger.info(f"Getting QC results for program: {program}")
-                ssmoutput_last_modified_map = lnr.get_project_qc_results_for_program(
+                ssmoutput_last_modified_map = lnr.get_campaign_qc_results_for_program(
                     qc_output_path, program
                 )
 
