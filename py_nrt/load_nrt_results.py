@@ -3,6 +3,7 @@ import io
 import os
 import re
 import socket
+import itables
 from pathlib import Path
 from typing import List, Union, Dict, Any
 
@@ -594,7 +595,7 @@ def parse_min_max_depth_df(qc_output_path: str=QC_OUTPUT_PATH, program: str='', 
     Returns:
         pandas.DataFrame: DataFrame containing min_depth and max_depth values.
             Returns empty DataFrame if no matching file is found.
-            example output:
+        Example row:
             tag_id,ptt,min_depth,max_depth
             ct180-156-BAT-15,196997,0,600.0
     """
@@ -605,10 +606,9 @@ def parse_min_max_depth_df(qc_output_path: str=QC_OUTPUT_PATH, program: str='', 
         return pd.DataFrame()
 
     depth_df = pd.read_csv(depth_files[0])
-    print(f'depth_df:{depth_df}')
     # Define column mapping
     column_mapping = {
-        'tag_id': ['ref', 'DeploymentID', 'deployment_id', 'tag_id', 'tag', 'Tag'],
+        'tag_id': ['ref', 'DeploymentID', 'deployment_id'],
         'ptt': ['ptt', 'Ptt', 'ptt_id', 'PTT'],
         'max_depth': ['MaxDepth', 'max_depth', 'depth_max', 'max_depth_m', 'DepthMax']
     }
@@ -646,20 +646,10 @@ def parse_min_max_depth_df(qc_output_path: str=QC_OUTPUT_PATH, program: str='', 
             'max_depth': 'max'
         })
     )
-
     # Add min_depth column with default value 0
     group_depth_df['min_depth'] = 0
-
     # Reorder columns
     group_depth_df = group_depth_df[['tag_id', 'ptt', 'min_depth', 'max_depth']]
-
-    if verbose:
-        print(f"\nResults: {len(group_depth_df)} unique (tag_id, ptt) pairs")
-        print(
-            f"   Max depth range: {group_depth_df['max_depth'].min():.2f} - {group_depth_df['max_depth'].max():.2f}")
-        print(f"\n First 5 rows:")
-        print(group_depth_df.head())
-
     return group_depth_df
 
 
@@ -712,19 +702,6 @@ def parse_tag_metadata(qc_output_path: str = QC_OUTPUT_PATH, program: str = '', 
         print(f"\nLoaded {len(meta_df)} rows from {meta_files[0].name}")
         print(f"Original columns: {meta_df.columns.tolist()}")
 
-    # Get min/max depth file
-    depth_files = get_files_by_pattern(program_cid_path, MIN_MAX_DEPTH_FILE_PATTERN)
-
-    if not depth_files:
-        print_error(
-            f'No min max depth file found in {program_cid_path} by pattern {MIN_MAX_DEPTH_FILE_PATTERN}')
-        return pd.DataFrame()
-
-    min_max_depth_df = pd.read_csv(depth_files[0])
-
-    if verbose:
-        print(f"Loaded {len(min_max_depth_df)} rows from {depth_files[0].name}")
-
     # Define column mapping
     column_mapping = {
         'program': ['sattag_program'],
@@ -744,31 +721,23 @@ def parse_tag_metadata(qc_output_path: str = QC_OUTPUT_PATH, program: str = '', 
         'instrument_serial_number': ['tag_serial_number', 'body'],
     }
 
-    # Create a NEW DataFrame for the result (don't overwrite meta_df!)
-    result_df = pd.DataFrame({col: [None] * len(meta_df) for col in column_mapping.keys()})
-
-    if verbose:
-        print(
-            f"\nInitialized result DataFrame with {len(result_df)} rows and {len(result_df.columns)} columns")
-        display(result_df.head())  # Show the initialized DataFrame
+    # Curated metadata: add missing columns and set values as None.
+    curated_meta_df = pd.DataFrame({col: [None] * len(meta_df) for col in column_mapping.keys()})
 
     # Map and fill existing columns from meta_df
     selected_columns = {}
     for target_col, possible_cols in column_mapping.items():
         for col in possible_cols:
             if col in meta_df.columns:
-                result_df[target_col] = meta_df[col]  # Copy data from original meta_df
+                # Copy data from original meta_df
+                curated_meta_df[target_col] = meta_df[col]
                 selected_columns[target_col] = col
                 if verbose:
                     print(f"   Mapped: '{col}' ➔ '{target_col}'")
                 break
         else:
             if verbose:
-                print(f"   ⚠ Column not found for '{target_col}', set to null")
-
-    if verbose:
-        print(f"\nAfter mapping, result_df has {len(result_df)} rows")
-        display(result_df.head())  # Show the DataFrame after mapping
+                print(f"      Column not found for '{target_col}', set to null")
 
     # Check essential columns
     essential_columns = ['tag_ig', 'ptt']
@@ -778,73 +747,18 @@ def parse_tag_metadata(qc_output_path: str = QC_OUTPUT_PATH, program: str = '', 
         print_error(f"Essential columns missing: {missing_essential}")
         return pd.DataFrame()
 
-    if verbose:
-        filled = len(selected_columns)
-        total = len(column_mapping)
-        print(f"\n   Mapped {filled}/{total} columns from metadata")
+    # Get min/max depth dataframe
+    min_max_depth_df = parse_min_max_depth_df(qc_output_path, program, cid, verbose)
+    itables.show(min_max_depth_df)
 
-    # ---- LEFT JOIN WITH MIN_MAX_DEPTH_DF ----
-
-    # Ensure join columns exist in both dataframes
-    if 'tag_ig' not in result_df.columns:
-        print_error("'tag_ig' column missing from metadata after mapping")
-        return pd.DataFrame()
-
-    if 'ptt' not in result_df.columns:
-        print_error("'ptt' column missing from metadata after mapping")
-        return pd.DataFrame()
-
-    # Check if min_max_depth_df has the join columns
-    depth_tag_col = None
-    depth_ptt_col = None
-
-    for col in min_max_depth_df.columns:
-        if col.lower() in ['tag_ig', 'device_id', 'deployment_id', 'tag_id']:
-            depth_tag_col = col
-        if col.lower() in ['ptt', 'ptt_id', 'tag_ptt']:
-            depth_ptt_col = col
-
-    if depth_tag_col is None:
-        print_error(
-            f"No tag_ig equivalent column found in min_max_depth_df. Available: {min_max_depth_df.columns.tolist()}")
-        return pd.DataFrame()
-
-    if depth_ptt_col is None:
-        print_error(
-            f"No ptt equivalent column found in min_max_depth_df. Available: {min_max_depth_df.columns.tolist()}")
-        return pd.DataFrame()
-
-    # Rename columns in min_max_depth_df if they don't match
-    if depth_tag_col != 'tag_ig':
-        min_max_depth_df = min_max_depth_df.rename(columns={depth_tag_col: 'tag_ig'})
-        if verbose:
-            print(f"   Renamed '{depth_tag_col}' ➔ 'tag_ig' in depth data")
-
-    if depth_ptt_col != 'ptt':
-        min_max_depth_df = min_max_depth_df.rename(columns={depth_ptt_col: 'ptt'})
-        if verbose:
-            print(f"   Renamed '{depth_ptt_col}' ➔ 'ptt' in depth data")
-
-    # Perform left join
-    merged_df = result_df.merge(
+    # Left join min_max_depth_df with min_max_depth_df
+    curated_meta_df = curated_meta_df.merge(
         min_max_depth_df,
         on=['tag_ig', 'ptt'],
         how='left',
         suffixes=('', '_depth')
     )
 
-    if verbose:
-        print(f"\n   Left join completed: {len(merged_df)} rows")
-        print(f"   Columns: {merged_df.columns.tolist()}")
-
-        # Check how many rows got depth data
-        depth_cols = [col for col in min_max_depth_df.columns if col not in ['tag_ig', 'ptt']]
-        if depth_cols:
-            non_null_count = merged_df[depth_cols[0]].notna().sum()
-            print(f"   Rows with depth data: {non_null_count}/{len(merged_df)}")
-
-        display(merged_df.head())
-
-    return merged_df
+    return curated_meta_df
 
 
