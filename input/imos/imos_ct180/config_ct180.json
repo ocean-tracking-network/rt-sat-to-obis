@@ -10,10 +10,10 @@
       "return.R": false
     },
     "harvest": {
-      "download": true,
+      "download": false,
       "cid": "ct180",
-      "smru.usr": "imos",
-      "smru.pwd": "imos",
+      "smru.usr": "",
+      "smru.pwd": "",
       "timeout": 180,
       "dropIDs": "input/imos/imos_ct180/exclude_tags.csv",
       "p2mdbtools": ""

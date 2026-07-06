@@ -1,3 +1,4 @@
+from IPython.display import display, HTML
 import binascii
 import hashlib
 import json
@@ -313,6 +314,7 @@ def create_smru_qc_config(
         user: str,
         password: str,
         timeout: int=180,
+        download: bool=True,
         time_step: int = 3,
         common_name: str = None,
         species: str = None,
@@ -334,6 +336,7 @@ def create_smru_qc_config(
         user (str): Username for database authentication
         password (str): Password for database authentication
         timeout (int, optional): Time step interval in hours. Defaults to 180 (seconds).
+        download (bool, optional): download or not.
         time_step (int, optional): Time step interval in hours. Defaults to 3.
         common_name (Optional[str], optional): Common name of the species. Defaults to None.
         species (Optional[str], optional): Scientific species name. Defaults to None.
@@ -357,7 +360,7 @@ def create_smru_qc_config(
                 "return.R": verbose
             },
             "harvest": {
-                "download": True,
+                "download": download,
                 "cid": cid,
                 "smru.usr": user,
                 "smru.pwd": password,
@@ -394,7 +397,12 @@ def create_smru_qc_config(
     exclude_tags_file = get_path_from_strings([qc_input_path, program, f'{program}_{cid}', drop_ids_file])
     with open(exclude_tags_file, 'w') as f:
         f.write('\n'.join(drop_ids))
-    print(f'smru_qc config file is written to:\n{Path(qc_config_file).as_posix()}')
+
+    display(HTML(f'''<p>
+        <span style="font-size:25px;"><i class="fa fa-flip-horizontal">🐟</i></span>
+        <span style="font-size:20px;">~ Paste this into issue: </span>
+        <span style="font-size:20px; color:#392696">smru_qc config file is written to: {Path(qc_config_file).as_posix()}</span>
+    </p>'''))
     return [qc_config_file, exclude_tags_file]
 
 
