@@ -144,7 +144,7 @@ def load_single_ssmoutput_to_nrt_db(engine: Engine, proj_table_name: str, ssmout
 
     """
     summary_df = pd.DataFrame()
-    prev_load_df = get_loaded_proj_table_info(engine, proj_table_name)
+    prev_load_df = get_loaded_program_campaign_table_info(engine, proj_table_name)
     if (prev_load_df is None) or (len(prev_load_df) == 0):
         print(f'This is the first time loading {proj_table_name}. Will create {OTN_NRT_SCHEMA}.{proj_table_name}...')
     else:
@@ -164,9 +164,9 @@ def load_to_nrt_db(engine: Engine, ssmoutput_last_modified_map: dict[str, str], 
         program = output_csv.split(os.path.sep)[1]
         campaign = output_csv.split(os.path.sep)[2].replace(program+'_', '')
         table_name = '_'.join([program, campaign])
-        print(f'program:{program}')
-        print(f'campaign:{campaign}')
-        prev_load_df = get_loaded_proj_table_info(engine, table_name)
+        print(f'Uploading SSM results for program:{program} campaign:{campaign}...')
+        # Check previously loaded table
+        prev_load_df = get_loaded_program_campaign_table_info(engine, table_name)
         if prev_load_df is not None and len(prev_load_df) > 0:
             prev_timestamp = pd.to_datetime(prev_load_df.iloc[0]['source_file_last_modified']).tz_localize(None)
             current_timestamp = pd.to_datetime(last_modified).tz_localize(None)
@@ -174,15 +174,15 @@ def load_to_nrt_db(engine: Engine, ssmoutput_last_modified_map: dict[str, str], 
                 print(f"SSM results have been loaded for table {campaign} - last modified on {prev_timestamp.strftime('%Y_%m_%d_%H_%M_%S')}. Skipping...")
                 continue
 
-        summary_df = load_csv_to_db(engine, campaign, output_csv, last_modified, OTN_NRT_SCHEMA)
+        summary_df = load_csv_to_db(engine, table_name, output_csv, last_modified, OTN_NRT_SCHEMA)
         print(f'Uploaded SSM results to HOST: {engine.url.host} DB: {engine.url.database} {OTN_NRT_SCHEMA}.{table_name} table.')
         meta_df = parse_tag_metadata(QC_OUTPUT_PATH, program, campaign, verbose=False)
-        metadata_rows = load_meta_df_to_db(engine, campaign, meta_df, table_name=NRT_META_TABLE, schema=OTN_NRT_SCHEMA)
+        metadata_rows = load_meta_df_to_db(engine, meta_df, table_name=NRT_META_TABLE, schema=OTN_NRT_SCHEMA)
         print(f'Uploaded {metadata_rows} SSM tag metadata to {NRT_META_TABLE} table')
     return summary_df, metadata_rows
 
 
-def get_loaded_proj_table_info(engine: Engine, table_name: str, schema: str=OTN_NRT_SCHEMA) -> dict[str, str]:
+def get_loaded_program_campaign_table_info(engine: Engine, table_name: str, schema: str=OTN_NRT_SCHEMA) -> dict[str, str]:
     inspector = inspect(engine)
     if not inspector.has_table(NRT_UPLOAD_LOG_TABLE, schema=OTN_NRT_SCHEMA) or (not inspector.has_table(table_name, schema=schema)):
         return {}
@@ -287,58 +287,52 @@ def load_meta_df_to_db(engine: Engine, meta_df: pd.DataFrame, table_name: str, s
     temp_table = f"temp_{table_name}"
 
     with engine.begin() as conn:
-        # 1. Create temporary table
+        # Create temporary table
         conn.execute(text(f"""
             CREATE TEMP TABLE {temp_table} (
                 LIKE {full_table_name} INCLUDING DEFAULTS
             ) ON COMMIT DROP
         """))
 
-        # Insert data into temporary table
-        meta_df.to_sql(
-            temp_table,
-            engine,
-            if_exists='replace',
-            schema=schema,
-            index=False,
-            method='multi'
-        )
+        # Insert data into temporary table using the same connection
+        for _, row in meta_df.iterrows():
+            # Handle NaN values
+            row_dict = row.to_dict()
+            for key, value in row_dict.items():
+                if pd.isna(value):
+                    row_dict[key] = None
+
+            # Build insert statement
+            columns = ', '.join([f'"{col}"' for col in meta_df.columns])
+            placeholders = ', '.join([f':{col}' for col in meta_df.columns])
+
+            insert_sql = text(f"""
+                INSERT INTO {temp_table} ({columns})
+                VALUES ({placeholders})
+            """)
+
+            conn.execute(insert_sql, row_dict)
 
         # Perform UPSERT from temp table
-        conn.execute(text(f"""
-            INSERT INTO {full_table_name} (
-                program, tag_id, ptt, deployment_start,
-                deployment_lon, deployment_lat, wmo_platform_code,
-                instrument_model, common_name, scientific_name,
-                time_coverage_start, time_coverage_end,
-                qc_version, qc_run_date, instrument_serial_number,
-                min_depth, max_depth
-            )
-            SELECT 
-                program, tag_id, ptt, deployment_start,
-                deployment_lon, deployment_lat, wmo_platform_code,
-                instrument_model, common_name, scientific_name,
-                time_coverage_start, time_coverage_end,
-                qc_version, qc_run_date, instrument_serial_number,
-                min_depth, max_depth
+        columns = [f'"{col}"' for col in meta_df.columns]
+        columns_str = ', '.join(columns)
+
+        # Exclude conflict columns from update set
+        conflict_columns = ['program', 'tag_id', 'ptt']
+        update_columns = [col for col in meta_df.columns if col not in conflict_columns]
+        update_set = ', '.join([f'{col} = EXCLUDED.{col}' for col in update_columns])
+
+        upsert_sql = text(f"""
+            INSERT INTO {full_table_name} ({columns_str})
+            SELECT {columns_str}
             FROM {temp_table}
             ON CONFLICT (program, tag_id, ptt) 
             DO UPDATE SET
-                deployment_start = EXCLUDED.deployment_start,
-                deployment_lon = EXCLUDED.deployment_lon,
-                deployment_lat = EXCLUDED.deployment_lat,
-                wmo_platform_code = EXCLUDED.wmo_platform_code,
-                instrument_model = EXCLUDED.instrument_model,
-                common_name = EXCLUDED.common_name,
-                scientific_name = EXCLUDED.scientific_name,
-                time_coverage_start = EXCLUDED.time_coverage_start,
-                time_coverage_end = EXCLUDED.time_coverage_end,
-                qc_version = EXCLUDED.qc_version,
-                qc_run_date = EXCLUDED.qc_run_date,
-                instrument_serial_number = EXCLUDED.instrument_serial_number,
-                min_depth = EXCLUDED.min_depth,
-                max_depth = EXCLUDED.max_depth
-        """))
+                {update_set}
+        """)
+
+        result = conn.execute(upsert_sql)
+        return result.rowcount
 
 
 def load_csv_to_db(engine: Engine, table_name: str, csv_path: str, source_file_last_modified: datetime,  schema: str = OTN_NRT_SCHEMA) -> pd.DataFrame:
@@ -544,7 +538,7 @@ def create_nrt_meta_table(engine: Engine, schema: str):
     Create the OTN NRT catalog table to track all data tables with tag and species info.
     """
     full_table_name = f'{schema}.{NRT_META_TABLE}'
-    create_sql = f'''
+    create_table_sql = f'''
     CREATE TABLE {full_table_name} (
         program TEXT,
         tag_id TEXT,
@@ -569,7 +563,6 @@ def create_nrt_meta_table(engine: Engine, schema: str):
     '''
     with engine.connect() as conn:
         conn.execute(create_table_sql)
-        conn.commit()
 
 
 def update_otn_nrt_catalog(engine: Engine, schema: str, ssm_result_table: str) -> pd.DataFrame:
@@ -861,7 +854,8 @@ def parse_tag_metadata(qc_output_path: str = QC_OUTPUT_PATH, program: str = '', 
 
     # Get min/max depth dataframe
     min_max_depth_df = parse_min_max_depth_df(qc_output_path, program, cid, verbose)
-    itables.show(min_max_depth_df)
+    if verbose:
+        itables.show(min_max_depth_df)
 
     # Left join min_max_depth_df with min_max_depth_df
     curated_meta_df = curated_meta_df.merge(
