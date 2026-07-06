@@ -175,10 +175,11 @@ def load_to_nrt_db(engine: Engine, ssmoutput_last_modified_map: dict[str, str], 
                 continue
 
         summary_df = load_csv_to_db(engine, campaign, output_csv, last_modified, OTN_NRT_SCHEMA)
+        print(f'Uploaded SSM results to HOST: {engine.url.host} DB: {engine.url.database} {OTN_NRT_SCHEMA}.{table_name} table.')
         meta_df = parse_tag_metadata(QC_OUTPUT_PATH, program, campaign, verbose=False)
-        metadata_rows = load_meta_df_to_db(engine, campaign, meta_df, table_name=NRT_META_TABLE, source_file_last_modified=last_modified, schema=OTN_NRT_SCHEMA)
-    print(f'Uploaded SSM results to  HOST: {engine.url.host} DB: {engine.url.database} Schema: {OTN_NRT_SCHEMA}.{campaign}')
-    return summary_df, loaded_meta_df
+        metadata_rows = load_meta_df_to_db(engine, campaign, meta_df, table_name=NRT_META_TABLE, schema=OTN_NRT_SCHEMA)
+        print(f'Uploaded {metadata_rows} SSM tag metadata to {NRT_META_TABLE} table')
+    return summary_df, metadata_rows
 
 
 def get_loaded_proj_table_info(engine: Engine, table_name: str, schema: str=OTN_NRT_SCHEMA) -> dict[str, str]:
