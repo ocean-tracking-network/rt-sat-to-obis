@@ -564,12 +564,12 @@ def create_nrt_meta_table(engine: Engine, schema: str):
         min_depth NUMERIC,
         max_depth NUMERIC,
 	    date_updated timestamptz DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        PRIMARY KEY (program, tag_id, ptt)
     );
-    ALTER TABLE {full_table_name} ADD PRIMARY KEY (program, tag_id, ptt);
     '''
-
-    with engine.begin() as conn:
-        conn.execute(text(create_sql))
+    with engine.connect() as conn:
+        conn.execute(create_table_sql)
+        conn.commit()
 
 
 def update_otn_nrt_catalog(engine: Engine, schema: str, ssm_result_table: str) -> pd.DataFrame:
