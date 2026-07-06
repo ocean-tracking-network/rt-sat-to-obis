@@ -173,13 +173,12 @@ def load_to_nrt_db(engine: Engine, ssmoutput_last_modified_map: dict[str, str], 
             if abs((current_timestamp - prev_timestamp).total_seconds()) < 2:
                 print(f"SSM results have been loaded for table {campaign} - last modified on {prev_timestamp.strftime('%Y_%m_%d_%H_%M_%S')}. Skipping...")
                 continue
-
-        summary_df = load_csv_to_db(engine, table_name, output_csv, last_modified, OTN_NRT_SCHEMA)
+        summary_df_list.append(load_csv_to_db(engine, table_name, output_csv, last_modified, OTN_NRT_SCHEMA))
         print(f'Uploaded SSM results to HOST: {engine.url.host} DB: {engine.url.database} {OTN_NRT_SCHEMA}.{table_name} table.')
         meta_df = parse_tag_metadata(QC_OUTPUT_PATH, program, campaign, verbose=False)
         metadata_rows = load_meta_df_to_db(engine, meta_df, table_name=NRT_META_TABLE, schema=OTN_NRT_SCHEMA)
         print(f'Uploaded {metadata_rows} SSM tag metadata to {NRT_META_TABLE} table')
-    return summary_df, metadata_rows
+    return pd.concat(summary_df_list, ignore_index=True), metadata_rows
 
 
 def get_loaded_program_campaign_table_info(engine: Engine, table_name: str, schema: str=OTN_NRT_SCHEMA) -> dict[str, str]:
