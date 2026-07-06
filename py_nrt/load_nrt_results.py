@@ -16,6 +16,7 @@ OTN_NRT_SCHEMA = 'test'
 OTN_NRT_SSM_MASTER_TABLE = 'nrt_ssm_master'
 NRT_UPLOAD_LOG_TABLE = 'nrt_ssm_upload_logs'
 OTN_NRT_SSM_SUMMARY_TABLE = 'nrt_ssm_summary'
+NRT_META_TABLE = 'nrt_metadata'
 TAG_META_FILE_PATTERN= r'.*metadata.*'
 MIN_MAX_DEPTH_FILE_PATTERN = r'.*MinMaxDepth.*|.*_summary_.*'
 QC_OUTPUT_PATH = 'qc'
@@ -157,21 +158,27 @@ def load_single_ssmoutput_to_nrt_db(engine: Engine, proj_table_name: str, ssmout
     return summary_df
 
 
-def load_to_nrt_db(engine: Engine, ssmoutput_last_modified_map: dict[str, str]):
+def load_to_nrt_db(engine: Engine, ssmoutput_last_modified_map: dict[str, str], verbose: bool = True):
     summary_df_list = []
     for output_csv, last_modified in ssmoutput_last_modified_map.items():
-        proj = output_csv.split(os.path.sep)[-2]
-        prev_load_df = get_loaded_proj_table_info(engine, proj)
+        program = output_csv.split(os.path.sep)[1]
+        campaign = output_csv.split(os.path.sep)[2].replace(program+'_', '')
+        table_name = '_'.join([program, campaign])
+        print(f'program:{program}')
+        print(f'campaign:{campaign}')
+        prev_load_df = get_loaded_proj_table_info(engine, table_name)
         if prev_load_df is not None and len(prev_load_df) > 0:
             prev_timestamp = pd.to_datetime(prev_load_df.iloc[0]['source_file_last_modified']).tz_localize(None)
             current_timestamp = pd.to_datetime(last_modified).tz_localize(None)
             if abs((current_timestamp - prev_timestamp).total_seconds()) < 2:
-                print(f"SSM results have been loaded for table {proj} - last modified on {prev_timestamp.strftime('%Y_%m_%d_%H_%M_%S')}. Skipping...")
+                print(f"SSM results have been loaded for table {campaign} - last modified on {prev_timestamp.strftime('%Y_%m_%d_%H_%M_%S')}. Skipping...")
                 continue
 
-        summary_df = load_csv_to_db(engine, proj, output_csv, last_modified, OTN_NRT_SCHEMA)
-    print(f'Uploaded SSM results to  HOST: {engine.url.host} DB: {engine.url.database} Schema: {OTN_NRT_SCHEMA}.{proj}')
-    return summary_df
+        summary_df = load_csv_to_db(engine, campaign, output_csv, last_modified, OTN_NRT_SCHEMA)
+        meta_df = parse_tag_metadata(QC_OUTPUT_PATH, program, campaign, verbose=False)
+        metadata_rows = load_meta_df_to_db(engine, campaign, meta_df, table_name=NRT_META_TABLE, source_file_last_modified=last_modified, schema=OTN_NRT_SCHEMA)
+    print(f'Uploaded SSM results to  HOST: {engine.url.host} DB: {engine.url.database} Schema: {OTN_NRT_SCHEMA}.{campaign}')
+    return summary_df, loaded_meta_df
 
 
 def get_loaded_proj_table_info(engine: Engine, table_name: str, schema: str=OTN_NRT_SCHEMA) -> dict[str, str]:
@@ -204,18 +211,18 @@ def init_otn_nrt_ssm_master_table(engine, schema):
             CREATE TABLE IF NOT EXISTS {schema}.{OTN_NRT_SSM_MASTER_TABLE} (
                 tag_id text NULL,
                 "date" timestamp NULL,
-                lon float8 NULL,
-                lat float8 NULL,
-                x float8 NULL,
-                y float8 NULL,
-                x_se float8 NULL,
-                y_se float8 NULL,
-                u float8 NULL,
-                v float8 NULL,
-                u_se float8 NULL,
-                v_se float8 NULL,
-                s float8 NULL,
-                s_se float8 NULL,
+                lon NUMERIC NULL,
+                lat NUMERIC NULL,
+                x NUMERIC NULL,
+                y NUMERIC NULL,loaded_meta_df
+                x_se NUMERIC NULL,
+                y_se NUMERIC NULL,
+                u NUMERIC NULL,
+                v NUMERIC NULL,
+                u_se NUMERIC NULL,
+                v_se NUMERIC NULL,
+                s NUMERIC NULL,
+                s_se NUMERIC NULL,
                 cid text null,
                 common_name text null
             )'''
@@ -263,6 +270,74 @@ def init_nrt_upload_log_table(engine, schema, start_datetime, table_name):
         )
 
     return log_id
+
+
+def load_meta_df_to_db(engine: Engine, meta_df: pd.DataFrame, table_name: str, schema: str) -> int:
+    """
+    Args:
+        engine: SQLAlchemy engine instance connected to the PostgreSQL database.
+        meta_df: metadata dataframe.
+        table_name: Name of the target table to create/replace.
+        schema: Database schema. Defaults to OTN_NRT_SCHEMA
+    Returns:
+        bool: True if the CSV was successfully loaded.
+    """
+    full_table_name = f"{schema}.{table_name}"
+    temp_table = f"temp_{table_name}"
+
+    with engine.begin() as conn:
+        # 1. Create temporary table
+        conn.execute(text(f"""
+            CREATE TEMP TABLE {temp_table} (
+                LIKE {full_table_name} INCLUDING DEFAULTS
+            ) ON COMMIT DROP
+        """))
+
+        # Insert data into temporary table
+        meta_df.to_sql(
+            temp_table,
+            engine,
+            if_exists='replace',
+            schema=schema,
+            index=False,
+            method='multi'
+        )
+
+        # Perform UPSERT from temp table
+        conn.execute(text(f"""
+            INSERT INTO {full_table_name} (
+                program, tag_id, ptt, deployment_start,
+                deployment_lon, deployment_lat, wmo_platform_code,
+                instrument_model, common_name, scientific_name,
+                time_coverage_start, time_coverage_end,
+                qc_version, qc_run_date, instrument_serial_number,
+                min_depth, max_depth
+            )
+            SELECT 
+                program, tag_id, ptt, deployment_start,
+                deployment_lon, deployment_lat, wmo_platform_code,
+                instrument_model, common_name, scientific_name,
+                time_coverage_start, time_coverage_end,
+                qc_version, qc_run_date, instrument_serial_number,
+                min_depth, max_depth
+            FROM {temp_table}
+            ON CONFLICT (program, tag_id, ptt) 
+            DO UPDATE SET
+                deployment_start = EXCLUDED.deployment_start,
+                deployment_lon = EXCLUDED.deployment_lon,
+                deployment_lat = EXCLUDED.deployment_lat,
+                wmo_platform_code = EXCLUDED.wmo_platform_code,
+                instrument_model = EXCLUDED.instrument_model,
+                common_name = EXCLUDED.common_name,
+                scientific_name = EXCLUDED.scientific_name,
+                time_coverage_start = EXCLUDED.time_coverage_start,
+                time_coverage_end = EXCLUDED.time_coverage_end,
+                qc_version = EXCLUDED.qc_version,
+                qc_run_date = EXCLUDED.qc_run_date,
+                instrument_serial_number = EXCLUDED.instrument_serial_number,
+                min_depth = EXCLUDED.min_depth,
+                max_depth = EXCLUDED.max_depth
+        """))
 
 
 def load_csv_to_db(engine: Engine, table_name: str, csv_path: str, source_file_last_modified: datetime,  schema: str = OTN_NRT_SCHEMA) -> pd.DataFrame:
@@ -363,8 +438,8 @@ def transform_nrt_table(engine: Engine, schema: str, table_name: str) -> None:
         for col in number_columns:
             alter_sql = f'''
                 ALTER TABLE {full_table_name} 
-                ALTER COLUMN "{col}" TYPE NUMBER 
-                USING NULLIF("{col}", 'NA')::NUMBER
+                ALTER COLUMN "{col}" TYPE NUMERIC 
+                USING NULLIF("{col}", 'NA')::NUMERIC
             '''
             conn.execute(text(alter_sql))
 
@@ -451,12 +526,45 @@ def create_otn_nrt_ssm_summary(engine: Engine, schema: str):
         min_date TIMESTAMPTZ,
         max_date TIMESTAMPTZ,
         last_updated TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        latest_lat float8 NULL,
-        latest_lon float8 NULL,
+        latest_lat NUMERIC NULL,
+        latest_lon NUMERIC NULL,
         common_name TEXT NULL,
         UNIQUE (nrt_ssm_table_name, tag_id)
     );
     ALTER TABLE {full_table_name} ADD PRIMARY KEY (nrt_ssm_table_name, tag_id);
+    '''
+
+    with engine.begin() as conn:
+        conn.execute(text(create_sql))
+
+
+def create_nrt_meta_table(engine: Engine, schema: str):
+    """
+    Create the OTN NRT catalog table to track all data tables with tag and species info.
+    """
+    full_table_name = f'{schema}.{NRT_META_TABLE}'
+    create_sql = f'''
+    CREATE TABLE {full_table_name} (
+        program TEXT,
+        tag_id TEXT,
+        ptt BIGINT,
+        deployment_start TIMESTAMPTZ,
+        deployment_lon NUMERIC,
+        deployment_lat NUMERIC,
+        wmo_platform_code TEXT,
+        instrument_model TEXT,
+        common_name TEXT,
+        scientific_name TEXT,
+        time_coverage_start TIMESTAMPTZ,
+        time_coverage_end TIMESTAMPTZ,
+        qc_version TEXT,
+        qc_run_date TIMESTAMPTZ,
+        instrument_serial_number TEXT,
+        min_depth NUMERIC,
+        max_depth NUMERIC,
+	    date_updated timestamptz DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    );
+    ALTER TABLE {full_table_name} ADD PRIMARY KEY (program, tag_id, ptt);
     '''
 
     with engine.begin() as conn:
@@ -471,6 +579,9 @@ def update_otn_nrt_catalog(engine: Engine, schema: str, ssm_result_table: str) -
     inspector = inspect(engine)
     if not inspector.has_table(OTN_NRT_SSM_SUMMARY_TABLE, schema=schema):
         create_otn_nrt_ssm_summary(engine, schema)
+
+    if not inspector.has_table(NRT_META_TABLE, schema=schema):
+        create_nrt_meta_table(engine, schema)
 
     # Check if CID column exists
     source_columns = [col['name'] for col in inspector.get_columns(ssm_result_table, schema=schema)]
