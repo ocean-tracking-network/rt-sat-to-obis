@@ -179,7 +179,7 @@ def download_and_extract(mdb_url: str, cid: str, dest_path: Path, timeout: int=1
         raise
 
 
-def extract_deployments(program: str, cid: str, input_path: str, verbose: bool=False) -> dict[str, pd.DataFrame]:
+def extract_deployments(program: str, cid: str, input_path: str, mdb_path: str='', verbose: bool=False) -> dict[str, pd.DataFrame]:
     """
     Extract deployments table from <cid>.mdb (Access DB)
 
@@ -195,11 +195,11 @@ def extract_deployments(program: str, cid: str, input_path: str, verbose: bool=F
     """
     mdb_file = cid + '.mdb'
     table = 'deployments'
-    cid_mdb, deployment_df = extract_table_from_mdb(get_path_from_strings([input_path, program, f'{program}_{cid}', 'mdb']), mdb_file, table, verbose)
+    cid_mdb, deployment_df = extract_table_from_mdb(get_path_from_strings([input_path, program, f'{program}_{cid}', 'mdb']), mdb_file, table, mdb_path, verbose)
     show_df(deployment_df, f'{cid}_deployment_df', True)
     return cid_mdb, deployment_df
 
-def extract_tacks(program: str, cid: str, input_path: str, exclude_tag_ref: list[str], verbose: bool=False) -> tuple[str, pd.DataFrame]:
+def extract_tacks(program: str, cid: str, input_path: str, exclude_tag_ref: list[str], mdb_path:str='', verbose: bool=False) -> tuple[str, pd.DataFrame]:
     """
     Extract tracks data (diag table) from <cid>.mdb (Access DB) and filter out excluded tags
 
@@ -215,7 +215,7 @@ def extract_tacks(program: str, cid: str, input_path: str, exclude_tag_ref: list
     """
     mdb_file = cid + '.mdb'
     table = 'diag'
-    mdb_file, tracks_df = extract_table_from_mdb(get_path_from_strings([input_path, program, f'{program}_{cid}', 'mdb']), mdb_file, table, verbose)
+    mdb_file, tracks_df = extract_table_from_mdb(get_path_from_strings([input_path, program, f'{program}_{cid}', 'mdb']), mdb_file, table, mdb_path, verbose)
     tracks_df = tracks_df[~tracks_df['REF'].isin(exclude_tag_ref)]
     tracks_min_max_date_df = tracks_df.groupby('REF', group_keys=False).apply(partial(keep_min_max, column='D_DATE'))
     print(f'Showing min and max dates rows in the "diag" table for each REF ({tracks_min_max_date_df.shape[0]} out of {tracks_df.shape[0]}) rows,')
@@ -267,7 +267,7 @@ def export_for_kepler(cid: str, tracks_df: pd.DataFrame, subset_tags: list[str] 
     return tracks_subset
 
 
-def extract_table_from_mdb(input_path: str, mdb_file: str, table: str, verbose=False) -> Tuple[str, pd.DataFrame]:
+def extract_table_from_mdb(input_path: str, mdb_file: str, table: str, mdb_path:str='', verbose=False) -> Tuple[str, pd.DataFrame]:
     """
     Extract a table from an .mdb file using mdbtools on Windows.
     """
@@ -286,7 +286,8 @@ def extract_table_from_mdb(input_path: str, mdb_file: str, table: str, verbose=F
     # Export table to CSV
     with open(temp_csv_path, 'w', newline='', encoding='utf-8') as csv_file:
         # Construct the command
-        cmd = ['mdb-export', mdb_full_path, table]
+        mdb_export_cmd = os.path.join([mdb_path, 'mdb-export']) if mdb_path else 'mdb-export'
+        cmd = [mdb_export_cmd, mdb_full_path, table]
 
         # Print the full command
         print(f"Running command: {' '.join(cmd)}")
