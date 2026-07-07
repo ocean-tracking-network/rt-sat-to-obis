@@ -160,6 +160,7 @@ def load_single_ssmoutput_to_nrt_db(engine: Engine, proj_table_name: str, ssmout
 
 def load_to_nrt_db(engine: Engine, ssmoutput_last_modified_map: dict[str, str], verbose: bool = True):
     summary_df_list = []
+    summary_df = pd.DataFrame
     for output_csv, last_modified in ssmoutput_last_modified_map.items():
         program = output_csv.split(os.path.sep)[1]
         campaign = output_csv.split(os.path.sep)[2].replace(program+'_', '')
@@ -178,7 +179,9 @@ def load_to_nrt_db(engine: Engine, ssmoutput_last_modified_map: dict[str, str], 
         meta_df = parse_tag_metadata(QC_OUTPUT_PATH, program, campaign, verbose=False)
         metadata_rows = load_meta_df_to_db(engine, meta_df, table_name=NRT_META_TABLE, schema=OTN_NRT_SCHEMA)
         print(f'Uploaded {metadata_rows} SSM tag metadata to {NRT_META_TABLE} table')
-    return pd.concat(summary_df_list, ignore_index=True), metadata_rows
+        if summary_df_list:
+            summary_df = pd.concat(summary_df_list, ignore_index=True)
+    return summary_df, metadata_rows
 
 
 def get_loaded_program_campaign_table_info(engine: Engine, table_name: str, schema: str=OTN_NRT_SCHEMA) -> dict[str, str]:
@@ -325,7 +328,7 @@ def load_meta_df_to_db(engine: Engine, meta_df: pd.DataFrame, table_name: str, s
             INSERT INTO {full_table_name} ({columns_str})
             SELECT {columns_str}
             FROM {temp_table}
-            ON CONFLICT (program, tag_id, ptt) 
+            ON CONFLICT (campaign_id, tag_id, ptt) 
             DO UPDATE SET
                 {update_set}
         """)
@@ -539,7 +542,7 @@ def create_nrt_meta_table(engine: Engine, schema: str):
     full_table_name = f'{schema}.{NRT_META_TABLE}'
     create_table_sql = f'''
     CREATE TABLE {full_table_name} (
-        program TEXT,
+        campaign_id TEXT,
         tag_id TEXT,
         ptt BIGINT,
         deployment_start TIMESTAMPTZ,
@@ -557,7 +560,7 @@ def create_nrt_meta_table(engine: Engine, schema: str):
         min_depth NUMERIC,
         max_depth NUMERIC,
 	    date_updated timestamptz DEFAULT CURRENT_TIMESTAMP NOT NULL,
-        PRIMARY KEY (program, tag_id, ptt)
+        PRIMARY KEY (campaign_id, tag_id, ptt)
     );
     '''
     with engine.connect() as conn:
@@ -808,7 +811,7 @@ def parse_tag_metadata(qc_output_path: str = QC_OUTPUT_PATH, program: str = '', 
 
     # Define column mapping
     column_mapping = {
-        'program': ['sattag_program'],
+        'campaign_id': ['sattag_program'],
         'tag_id': ['device_id', 'deployment_id'],
         'ptt': ['ptt', 'Ptt', 'ptt_id', 'tag_ptt'],
         'deployment_start': ['deploy_date', 'release_date'],
@@ -867,39 +870,40 @@ def parse_tag_metadata(qc_output_path: str = QC_OUTPUT_PATH, program: str = '', 
     return curated_meta_df
 
 
-def show_db_deployments(engine: Engine, program: list[str] = [], campaign: list[str] = []) -> pd.DataFrame:
+def show_db_deployments(engine: Engine, program: list[str] = [],
+                        campaign: list[str] = []) -> pd.DataFrame:
     """
     Query NRT DB to get nrt_metadata
-
-    Args:
-        engine: SQLAlchemy engine for database connection
-        program: Optional list of program names to filter by
-        campaign: Optional list of campaign names to filter by
-
-    Returns:
-        pd.DataFrame: NRT metadata status
     """
     # Build the query with optional filters
-    full_query = "SELECT * FROM nrt_metadata"
+    base_query = f"SELECT * FROM {OTN_NRT_SCHEMA}.nrt_metadata"
 
     where_clauses = []
     params = {}
 
     if program:
-        where_clauses.append("program IN :program")
-        params['program'] = tuple(program) if program else ()
+        placeholders = ','.join([f':p{i}' for i in range(len(program))])
+        where_clauses.append(f"program IN ({placeholders})")
+        for i, p in enumerate(program):
+            params[f'p{i}'] = p
 
     if campaign:
-        where_clauses.append("campaign IN :campaign")
-        params['campaign'] = tuple(campaign) if campaign else ()
+        placeholders = ','.join([f':c{i}' for i in range(len(campaign))])
+        where_clauses.append(f"campaign IN ({placeholders})")
+        for i, c in enumerate(campaign):
+            params[f'c{i}'] = c
 
     if where_clauses:
-        full_query += " WHERE " + " AND ".join(where_clauses)
+        full_query = base_query + " WHERE " + " AND ".join(where_clauses)
+    else:
+        full_query = base_query
 
-    # Execute the query
     with engine.begin() as conn:
-        # Convert full_query to string and use SQLAlchemy connection properly
-        db_nrt_metadata_df = pd.read_sql_query(full_query, conn, params=params)
+        db_nrt_metadata_df = conn.execute(text(full_query))
+        rows = result.fetchall()
+
+        if not rows:
+            print(f"No tags found in {nrt_metadata}")
 
     show_df(db_nrt_metadata_df, f'db_nrt_metadata_df', True)
     return db_nrt_metadata_df
