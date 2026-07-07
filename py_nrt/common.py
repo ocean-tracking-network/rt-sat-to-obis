@@ -437,6 +437,7 @@ def show_df(dataframe:pd.DataFrame, save_as_file: str, show_all_rows=False) -> N
 
 def get_program_campaign_from_ssm_file(ssm_file: str)-> tuple[str, str]:
     ssm_file = ssm_file.replace(str(os.getcwd()), '')
-    program = ssm_file.replace(str(os.getcwd()), '').split(os.path.sep)[1]
-    campaign = ssm_file.replace(str(os.getcwd()), '').split(os.path.sep)[2].replace(program + '_', '')
+    print(f'ssm_file: {ssm_file}')
+    program = ssm_file.split(os.path.sep)[1]
+    campaign = ssm_file.split(os.path.sep)[2].replace(program + '_', '')
     return program, campaign
