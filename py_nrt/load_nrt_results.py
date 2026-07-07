@@ -908,5 +908,113 @@ def show_db_deployments(engine: Engine, program: list[str] = [],
     return db_nrt_metadata_df
 
 
-def show_db_nrt_status(engine: Engine, program: list[str] = [], campaign: list[str] = []) -> pd.DataFrame:
-    pass
+def show_db_nrt_status(engine: Engine, programs: list[str] = [], campaigns: list[str] = []) -> pd.DataFrame:
+    show_status_lights(get_campaign_status(engine, programs, campaigns))
+
+
+def get_campaign_status(engine, programs: list = [], campaigns: list = []) -> pd.DataFrame:
+    """
+    Get the latest last_updated timestamp for each campaign/collectioncode
+    """
+    full_query = f"""
+     WITH latest_updates AS (
+        SELECT
+            program, 
+            cid as campaign_id,
+            collectioncode,
+            MAX(last_updated) as latest_update,
+            COUNT(DISTINCT tag_id) as tag_count,
+            COUNT(*) as total_records,
+            MIN(min_date) as earliest_date,
+            MAX(max_date) as latest_date
+        FROM {OTN_NRT_SCHEMA}.nrt_ssm_summary
+        GROUP BY program, cid, collectioncode
+    )
+    SELECT 
+        program, 
+        campaign_id,
+        collectioncode,
+        latest_update,
+        tag_count,
+        total_records,
+        earliest_date,
+        latest_date
+    FROM latest_updates
+    """
+    with engine.connect() as conn:
+        raw_conn = conn.connection
+        df = pd.read_sql_query(full_query, raw_conn)
+
+    now = pd.Timestamp.now(tz='UTC')
+    df['latest_update'] = pd.to_datetime(df['latest_update'])
+    df['hours_since_update'] = (now - df['latest_update']).dt.total_seconds() / 3600
+
+    def get_status(hours):
+        if hours <= 24:
+            return '🟢'
+        elif hours <= 48:
+            return '🟡'
+        else:
+            return '🔴'
+
+    df['status'] = df['hours_since_update'].apply(get_status)
+
+    status_order = {'🟢': 0, '🟡': 1, '🔴': 2}
+    df['status_order'] = df['status'].map(status_order)
+    df = df.sort_values(['status_order', 'campaign_id']).drop('status_order', axis=1)
+
+    return df
+
+
+def show_status_lights(status_df:pd.DataFrame):
+    """Display campaign status with colored lights"""
+    html = """
+    <div style="display: flex; flex-wrap: wrap; gap: 15px; padding: 10px; font-family: Arial, sans-serif;">
+    """
+
+    for _, row in status_df.iterrows():
+        status = row['status']
+        campaign = row['campaign_id']
+        hours = round(row['hours_since_update'], 1)
+        tag_count = row['tag_count']
+        latest_update = row['latest_update'].strftime('%Y-%m-%d %H:%M')
+
+        if status == '🟢':
+            bg_color = '#4CAF50'
+            text_color = 'white'
+            status_text = '✅ Active'
+        elif status == '🟡':
+            bg_color = '#FFC107'
+            text_color = 'black'
+            status_text = '⚠️ Warning'
+        else:
+            bg_color = '#f44336'
+            text_color = 'white'
+            status_text = '❌ Stale'
+
+        html += f"""
+        <div style="
+            flex: 1 1 200px;
+            min-width: 180px;
+            padding: 15px;
+            background-color: {bg_color};
+            color: {text_color};
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            text-align: center;
+        ">
+            <div style="font-size: 48px; margin-bottom: 5px;">{status}</div>
+            <div style="font-size: 18px; font-weight: bold;">{campaign}</div>
+            <div style="font-size: 14px; margin-top: 5px;">{status_text}</div>
+            <div style="font-size: 12px; margin-top: 5px; opacity: 0.9;">
+                Last update: {latest_update}
+            </div>
+            <div style="font-size: 12px; opacity: 0.9;">
+                {hours} hours ago • {tag_count} tags
+            </div>
+        </div>
+        """
+
+    html += "</div>"
+    display(HTML(html))
+
