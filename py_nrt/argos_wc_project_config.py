@@ -60,6 +60,7 @@ def create_wc_qc_config(
         a_key: str,
         s_key: str,
         timeout: int=180,
+        download: bool=True,
         time_step: int = 3,
         common_name: str = None,
         species: str = None,
@@ -81,6 +82,7 @@ def create_wc_qc_config(
         s_key: AWS secret key
         timeout: Request timeout in seconds (default: 180)
         time_step: Time step value (default: 3)
+        download (bool, optional): download or not.
         common_name: Common name of species (optional)
         species: Scientific species name (optional)
         release_site: Release site location (optional)
@@ -103,7 +105,7 @@ def create_wc_qc_config(
                 "return.R": verbose
             },
             "harvest": {
-                "download": True,
+                "download": download,
                 "owner.id": collaborator.split(' - ')[-1],
                 "wc.akey": a_key,
                 "wc.skey": s_key,
@@ -133,14 +135,18 @@ def create_wc_qc_config(
             }
         }
     ]
-    output_path = get_path_from_strings([qc_input_path, program, f'{project_id}', f'config_{project_id}_wc.json'])
-    with open(output_path, 'w') as f:
+    qc_config_file = get_path_from_strings([qc_input_path, program, f'{project_id}', f'config_{project_id}_wc.json'])
+    with open(qc_config_file, 'w') as f:
         json.dump(wc_qc_config, f, indent=2, ensure_ascii=False)
     tag_list_file = get_path_from_strings([qc_input_path, program, f'{project_id}', f'{project_id}_tags.csv'])
     with open(tag_list_file, 'w') as f:
         f.write('\n'.join(['uuid'] + tag_uuid_list))
-    print(f'wc_qc config file is written to {output_path.as_posix()}')
-    # print(f'tag list config file is written to {tag_list_file.as_posix()}')
+    display(HTML(f'''<p>
+        <span style="font-size:25px;"><i class="fa fa-flip-horizontal">🐟</i></span>
+        <span style="font-size:20px;">~ Paste this into issue: </span>
+        <span style="font-size:20px; color:#392696">smru_qc config file is written to: {Path(qc_config_file).as_posix()}</span>
+    </p>'''))
+    return [qc_config_file, tag_uuid_list]
 
 
 def build_project_id_wc(program: str, collaborator: str, common_name: str) -> str:
