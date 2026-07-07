@@ -899,12 +899,11 @@ def show_db_deployments(engine: Engine, program: list[str] = [],
         full_query = base_query
 
     with engine.begin() as conn:
-        db_nrt_metadata_df = conn.execute(text(full_query))
-        rows = db_nrt_metadata_df.fetchall()
-
+        result = conn.execute(text(full_query))
+        rows = result.fetchall()
         if not rows:
             print(f"No tags found in {nrt_metadata}")
-
+    db_nrt_metadata_df = pd.DataFrame(rows, columns=result.keys())
     show_df(db_nrt_metadata_df, f'db_nrt_metadata_df', True)
     return db_nrt_metadata_df
 
