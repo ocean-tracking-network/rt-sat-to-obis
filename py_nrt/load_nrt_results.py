@@ -900,7 +900,7 @@ def show_db_deployments(engine: Engine, program: list[str] = [],
 
     with engine.begin() as conn:
         db_nrt_metadata_df = conn.execute(text(full_query))
-        rows = result.fetchall()
+        rows = db_nrt_metadata_df.fetchall()
 
         if not rows:
             print(f"No tags found in {nrt_metadata}")
