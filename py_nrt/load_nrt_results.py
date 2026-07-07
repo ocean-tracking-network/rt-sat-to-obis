@@ -7,7 +7,7 @@ import itables
 from pathlib import Path
 from typing import List, Union, Dict, Any
 
-from py_nrt.common import print_error, get_engine
+from py_nrt.common import print_error, get_engine, show_df
 from sqlalchemy.engine import Engine
 from sqlalchemy import inspect
 
@@ -854,7 +854,7 @@ def parse_tag_metadata(qc_output_path: str = QC_OUTPUT_PATH, program: str = '', 
     # Get min/max depth dataframe
     min_max_depth_df = parse_min_max_depth_df(qc_output_path, program, cid, verbose)
     if verbose:
-        itables.show(min_max_depth_df)
+        show_df(min_max_depth_df, f'min_max_depth_df', True)
 
     # Left join min_max_depth_df with min_max_depth_df
     curated_meta_df = curated_meta_df.merge(
@@ -867,3 +867,43 @@ def parse_tag_metadata(qc_output_path: str = QC_OUTPUT_PATH, program: str = '', 
     return curated_meta_df
 
 
+def show_db_deployments(engine: Engine, program: list[str] = [], campaign: list[str] = []) -> pd.DataFrame:
+    """
+    Query NRT DB to get nrt_metadata
+
+    Args:
+        engine: SQLAlchemy engine for database connection
+        program: Optional list of program names to filter by
+        campaign: Optional list of campaign names to filter by
+
+    Returns:
+        pd.DataFrame: NRT metadata status
+    """
+    # Build the query with optional filters
+    full_query = "SELECT * FROM nrt_metadata"
+
+    where_clauses = []
+    params = {}
+
+    if program:
+        where_clauses.append("program IN :program")
+        params['program'] = tuple(program) if program else ()
+
+    if campaign:
+        where_clauses.append("campaign IN :campaign")
+        params['campaign'] = tuple(campaign) if campaign else ()
+
+    if where_clauses:
+        full_query += " WHERE " + " AND ".join(where_clauses)
+
+    # Execute the query
+    with engine.begin() as conn:
+        # Convert full_query to string and use SQLAlchemy connection properly
+        db_nrt_metadata_df = pd.read_sql_query(full_query, conn, params=params)
+
+    show_df(db_nrt_metadata_df, f'db_nrt_metadata_df', True)
+    return db_nrt_metadata_df
+
+
+def show_db_nrt_status(engine: Engine, program: list[str] = [], campaign: list[str] = []) -> pd.DataFrame:
+    pass
