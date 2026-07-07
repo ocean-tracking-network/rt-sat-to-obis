@@ -29,7 +29,7 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-exclude_folders=['maps', 'diag', 'aodn']
+exclude_folders=['maps', 'diag', 'aodn', 'mdb']
 
 
 def check_otn_nrt_backend(engine: Engine, verbose: bool=True) -> bool:
@@ -135,7 +135,8 @@ def get_campaign_qc_results_for_program(qc_output_path: str, program: str=None) 
                       f"{ssmoutputs_files[0]} - last updated on {last_modified}")
                 ssmoutput_last_modified_map[campaign_ssmoutputs] = last_modified
             else:
-                print(f"-- No SSM result found.")
+                print(f"-- No SSM result found in {sub_folder}. Skipping...")
+                continue
     return ssmoutput_last_modified_map
 
 
