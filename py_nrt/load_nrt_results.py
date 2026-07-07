@@ -6,6 +6,7 @@ import socket
 import itables
 from pathlib import Path
 from typing import List, Union, Dict, Any
+from IPython.display import display, HTML
 
 from py_nrt.common import print_error, get_engine, show_df
 from sqlalchemy.engine import Engine
@@ -942,8 +943,9 @@ def get_campaign_status(engine, programs: list = [], campaigns: list = []) -> pd
     FROM latest_updates
     """
     with engine.connect() as conn:
-        raw_conn = conn.connection
-        df = pd.read_sql_query(full_query, raw_conn)
+        result = conn.execute(text(full_query))
+        data = result.fetchall()
+        df = pd.DataFrame(data, columns=result.keys())
 
     now = pd.Timestamp.now(tz='UTC')
     df['latest_update'] = pd.to_datetime(df['latest_update'])
