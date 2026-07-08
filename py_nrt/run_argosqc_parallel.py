@@ -150,7 +150,7 @@ def run_r_script(config_file: str, log_dir: str, use_sudo: bool) -> Dict[str, An
     cmd = []
     if use_sudo:
         cmd.append("sudo")
-    cmd.extend(["Rscript", str(r_script_path), str(config_path)])
+    cmd.extend(["/opt/R/4.5.2/R", str(r_script_path), str(config_path)])
 
     logger.info(f"Starting: {config_path} with {r_script_name}")
 
