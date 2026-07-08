@@ -182,7 +182,7 @@ def load_to_nrt_db(engine: Engine, ssmoutput_last_modified_map: dict[str, str], 
         print(f'Uploaded {metadata_rows} SSM tag metadata to {NRT_META_TABLE} table')
         if summary_df_list:
             summary_df = pd.concat(summary_df_list, ignore_index=True)
-    return summary_df, metadata_rows
+    return summary_df, meta_df
 
 
 def get_loaded_program_campaign_table_info(engine: Engine, table_name: str, schema: str=OTN_NRT_SCHEMA) -> dict[str, str]:

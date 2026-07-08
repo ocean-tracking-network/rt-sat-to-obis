@@ -91,7 +91,7 @@ def find_config_files(search_root: str, pattern: str) -> List[str]:
     return config_files
 
 
-def run_r_script(config_file: str, log_dir: str, use_sudo: bool) -> Dict[str, Any]:
+def run_r_script(config_file: str, log_dir: str, use_sudo: bool, r_executable: str = '/opt/R/4.5.2/bin/R') -> Dict[str, Any]:
     """
     Run the R script with a given config file and capture output to a log file.
     """
@@ -123,10 +123,10 @@ def run_r_script(config_file: str, log_dir: str, use_sudo: bool) -> Dict[str, An
 
         # Construct full path to R script in /opt/otn_nrt/rt-sat-to-obis/py_nrt/
         script_dir = Path(__file__).parent.parent
-        r_script_path = script_dir / DEFAULT_R_SCRIPT_DIR / r_script_name
+        argosqc_r_script_path = script_dir / DEFAULT_R_SCRIPT_DIR / r_script_name
 
-        if not r_script_path.exists():
-            raise Exception(f"R script not found: {r_script_path}")
+        if not argosqc_r_script_path.exists():
+            raise Exception(f"R script not found: {argosqc_r_script_path}")
 
     except Exception as e:
         logger.error(f"Error processing config {config_path}: {e}")
@@ -150,7 +150,7 @@ def run_r_script(config_file: str, log_dir: str, use_sudo: bool) -> Dict[str, An
     cmd = []
     if use_sudo:
         cmd.append("sudo")
-    cmd.extend(["/opt/R/4.5.2/R", str(r_script_path), str(config_path)])
+    cmd.extend([r_executable, str(argosqc_r_script_path), str(config_path)])
 
     logger.info(f"Starting: {config_path} with {r_script_name}")
 
@@ -159,7 +159,7 @@ def run_r_script(config_file: str, log_dir: str, use_sudo: bool) -> Dict[str, An
         with open(log_file, 'w') as log_f:
             log_f.write(f"Command: {' '.join(cmd)}\n")
             log_f.write(f"Config file: {config_path}\n")
-            log_f.write(f"R script: {r_script_path}\n")
+            log_f.write(f"R script: {argosqc_r_script_path}\n")
             log_f.write("=" * 60 + "\n\n")
             log_f.flush()
 
