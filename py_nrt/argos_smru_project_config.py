@@ -5,6 +5,7 @@ import json
 import os
 import sys
 import zipfile
+import subprocess
 
 import typing
 from collections import defaultdict
@@ -443,3 +444,44 @@ def extract_ssmoutput_tracks(program: str, cid: str, qc_output_path: str, subset
     filename = f"{cid}_ssmoutput_{datetime.now().strftime('%Y%m%d')}.csv"
     show_df(ssmoutputs_df, filename, True)
     return ssmoutputs_df
+
+
+def run_smru_qc(r_executable: str, config_file: str, argosqc_r_sript = 'r_nrt/run_ArgosQC_smru_qc.R'):
+    cmd = [r_executable, argosqc_r_sript, config_file]
+    print(f"Running ArgosQC: {' '.join(cmd)}")
+
+    process = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        bufsize=1
+    )
+
+    # Read stdout and stderr in real-time
+    while True:
+        stdout_line = process.stdout.readline()
+        if stdout_line:
+            print(f"{stdout_line}", end='')
+            sys.stdout.flush()
+
+        stderr_line = process.stderr.readline()
+        if stderr_line:
+            print(f"{stderr_line}", end='')
+            sys.stderr.flush()
+
+        if process.poll() is not None:
+            # Read any remaining output
+            remaining_stdout = process.stdout.read()
+            if remaining_stdout:
+                print(f"{remaining_stdout}", end='')
+
+            remaining_stderr = process.stderr.read()
+            if remaining_stderr:
+                print(f"{remaining_stderr}", end='')
+            break
+
+    if process.returncode == 0:
+        print(f"ArgosQC completed successfully!")
+    else:
+        print(f"ArgosQC failed with return code: {process.returncode}")
