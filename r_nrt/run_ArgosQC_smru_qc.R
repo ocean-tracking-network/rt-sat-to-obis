@@ -5,6 +5,8 @@ cat("\n\n\n\n")
 Sys.time()
 cat("\n")
 
+packageVersion("ArgosQC")
+
 ## Read in the config file from the command line.
 cli <- commandArgs(trailingOnly=TRUE)
 print(cli)
