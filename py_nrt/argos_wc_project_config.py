@@ -42,7 +42,7 @@ from xml.etree import ElementTree as ET
 import warnings
 
 from py_nrt.argos_smru_project_config import get_path_from_strings
-from py_nrt.common import run_from_ipython, show_df
+from py_nrt.common import run_from_ipython, show_df, build_combobox
 from py_nrt.load_nrt_results import get_files_by_pattern
 
 itables.init_notebook_mode()
@@ -454,14 +454,6 @@ def download_tag(a_key: str, s_key: str, deployment_df: pd.DataFrame, program:st
     download_button = Button(description="Download", button_style='primary')
     display(tag_uuid_combobox, download_button)
     download_button.on_click(partial(perform_download, a_key, s_key, tag_uuid_combobox, deployment_df, program, qc_input_path, verbose))
-
-
-def build_combobox(option_lst: list[str]) -> widgets.Combobox :
-    return widgets.Combobox(
-        options=option_lst,
-        placeholder='Tag UUID',
-        disabled=False,
-    )
 
 
 def export_for_kepler(collaborator: str, deployment_df: pd.DataFrame) -> None:

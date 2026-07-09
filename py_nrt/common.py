@@ -11,7 +11,7 @@ import itables
 import pandas as pd
 from IPython.core.display_functions import display
 from ipywidgets import Color
-from ipywidgets.widgets import widget, VBox, Text, HTML, RadioButtons
+from ipywidgets.widgets import widget, VBox, Text, HTML, RadioButtons, Combobox
 from pykeepass import PyKeePass
 from pykeepass.exceptions import CredentialsError
 from sqlalchemy import create_engine, VARCHAR
@@ -441,3 +441,32 @@ def get_program_campaign_from_ssm_file(ssm_file: str)-> tuple[str, str]:
     program = ssm_file.split(os.path.sep)[1]
     campaign = ssm_file.split(os.path.sep)[2].replace(program + '_', '')
     return program, campaign
+
+
+def build_combobox(option_lst: list[str], place_holder: str='') -> Combobox :
+    return Combobox(
+        options=option_lst,
+        placeholder=place_holder,
+        disabled=False,
+    )
+
+
+def show_program_dropdown() -> Combobox:
+    display(HTML('<h3 style="margin: 0; color: blue;">Please select a program:</h3>'))
+    program_combobox = build_combobox(option_lst=['otn', 'imos', 'atn'], place_holder='Select a Program')
+    display(program_combobox)
+    return program_combobox
+
+
+def show_collectioncode_textbox() -> Text:
+    collectioncode_textbox = Text(
+        value='',
+        placeholder='OTN project collectioncode',
+        description='collectioncode:',
+        disabled=False,
+        layout=widgets.Layout(width='400px')
+    )
+    display(HTML('<h3 style="margin: 0; color: blue;">(Optional) Please OTN Project collectioncode. For projects already loaded into the OTN node. Otherwise leave it blank.</h3>'))
+    display(collectioncode_textbox)
+    return collectioncode_textbox
+

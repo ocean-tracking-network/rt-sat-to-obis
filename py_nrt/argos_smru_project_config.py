@@ -49,7 +49,7 @@ import pandas as pd
 from xml.etree import ElementTree as ET
 import warnings
 
-from py_nrt.common import run_from_ipython, show_df
+from py_nrt.common import run_from_ipython, show_df, show_program_dropdown, show_collectioncode_textbox
 from py_nrt.load_nrt_results import get_files_by_pattern
 from ipywidgets.widgets import widget, VBox, Text, HTML, RadioButtons
 
@@ -75,9 +75,27 @@ def show_data_upload_mode_radio() -> RadioButtons:
     choices = list(date_upload_mode_dict.values())
 
     radio = RadioButtons(options=choices, value=None)
-    display(HTML('<h3 style="margin: 0; color: #2c3e50;">Is the project Ongoing or Completed.</h3>'))
+    display(HTML('<h3 style="margin: 0; color: blue;">Please choose project status:</h3>'))
     display(radio)
     return radio
+
+
+def show_cid_textbox() -> Text:
+    cid_textbox = Text(
+        value='',
+        placeholder='SMRU Campaign ID',
+        description='Campaign ID:',
+        disabled=False,
+        layout=widgets.Layout(width='400px')
+    )
+    display(HTML('<h3 style="margin: 0; color: blue;">Please SMRU campaign ID:</h3>'))
+    display(cid_textbox)
+    return cid_textbox
+
+
+def show_controls_for_upload_mode(radio: RadioButtons):
+    if not radio.value:
+        display(HTML('<h4 style="margin: 0; color: red;">Please select an option to continue...</h4>'))
 
 
 def get_path_from_strings(path_string_parts: []) ->Path:
