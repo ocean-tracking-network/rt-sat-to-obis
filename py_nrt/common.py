@@ -11,7 +11,7 @@ import itables
 import pandas as pd
 from IPython.core.display_functions import display
 from ipywidgets import Color
-from ipywidgets.widgets import widget
+from ipywidgets.widgets import widget, VBox, Text, HTML, RadioButtons
 from pykeepass import PyKeePass
 from pykeepass.exceptions import CredentialsError
 from sqlalchemy import create_engine, VARCHAR
@@ -441,3 +441,16 @@ def get_program_campaign_from_ssm_file(ssm_file: str)-> tuple[str, str]:
     program = ssm_file.split(os.path.sep)[1]
     campaign = ssm_file.split(os.path.sep)[2].replace(program + '_', '')
     return program, campaign
+
+
+def show_data_upload_mode_radio() -> RadioButtons:
+    from IPython.display import display
+    date_upload_mode_dict = {
+        'nrt': 'On-Going: near real-time mode',
+        'delay': 'Completed: delay mode'
+    }
+    choices = list(date_upload_mode_dict.values())
+
+    radio = RadioButtons(options=choices)
+    display(HTML('Choose a data upload mode:'))
+    return radio
