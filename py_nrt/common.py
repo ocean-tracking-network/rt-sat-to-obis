@@ -11,7 +11,7 @@ import itables
 import pandas as pd
 from IPython.core.display_functions import display
 from ipywidgets import Color
-from ipywidgets.widgets import widget, VBox, Text, HTML, RadioButtons, Combobox
+from ipywidgets.widgets import widget, VBox, Text, HTML, RadioButtons, Combobox, Layout
 from pykeepass import PyKeePass
 from pykeepass.exceptions import CredentialsError
 from sqlalchemy import create_engine, VARCHAR
@@ -460,13 +460,20 @@ def show_program_dropdown() -> Combobox:
 
 def show_collectioncode_textbox() -> Text:
     collectioncode_textbox = Text(
-        value='',
+        value='unknown',
         placeholder='OTN project collectioncode',
-        description='collectioncode:',
         disabled=False,
-        layout=widgets.Layout(width='400px')
+        layout=Layout(width='400px')
     )
-    display(HTML('<h3 style="margin: 0; color: blue;">(Optional) Please OTN Project collectioncode. For projects already loaded into the OTN node. Otherwise leave it blank.</h3>'))
+    display(HTML('<h3 style="margin: 0; color: blue;">(Optional) OTN project collectioncode.</h3>'))
+    display(HTML('For projects already loaded into the OTN node. Otherwise leave it as "unknown".'))
     display(collectioncode_textbox)
     return collectioncode_textbox
+
+
+def evaluate_input(input_name, input_widget) -> bool:
+    if not input_widget.value:
+        display(HTML(f'<h3 style="margin: 0; color: red;">Please provide required value for: {input_name}.</h3>'))
+        return False
+    return True
 

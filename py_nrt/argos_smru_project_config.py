@@ -26,7 +26,7 @@ import subprocess
 import pandas as pd
 import os
 import tempfile
-from typing import Tuple
+from typing import Dict, Optional, List, Union, Any, Tuple
 
 import numpy as np
 import pandas as pd
@@ -49,7 +49,7 @@ import pandas as pd
 from xml.etree import ElementTree as ET
 import warnings
 
-from py_nrt.common import run_from_ipython, show_df, show_program_dropdown, show_collectioncode_textbox
+from py_nrt.common import run_from_ipython, show_df, show_program_dropdown, show_collectioncode_textbox, evaluate_input
 from py_nrt.load_nrt_results import get_files_by_pattern
 from ipywidgets.widgets import widget, VBox, Text, HTML, RadioButtons
 
@@ -86,16 +86,49 @@ def show_cid_textbox() -> Text:
         placeholder='SMRU Campaign ID',
         description='Campaign ID:',
         disabled=False,
-        layout=widgets.Layout(width='400px')
+        layout=Layout(width='400px')
     )
     display(HTML('<h3 style="margin: 0; color: blue;">Please SMRU campaign ID:</h3>'))
     display(cid_textbox)
     return cid_textbox
 
 
+def show_user_passwd_textboxes() -> Tuple(Text, Text):
+    user_textbox = Text(
+        value='',
+        placeholder='SMRU login user',
+        disabled=False,
+        layout=Layout(width='400px')
+    )
+    passwd_textbox = Text(
+        value='',
+        placeholder='SMRU login password',
+        disabled=False,
+        layout=Layout(width='400px')
+    )
+    display(user_textbox)
+    display(passwd_textbox)
+    return user_textbox, passwd_textbox
+
+
 def show_controls_for_upload_mode(radio: RadioButtons):
     if not radio.value:
         display(HTML('<h4 style="margin: 0; color: red;">Please select an option to continue...</h4>'))
+
+
+def get_user_input(user_input_dict: Dict) -> Optional[Tuple]:
+    """
+    Parse user input
+    """
+    # Validate all widgets
+    for key, widget in user_input_dict.items():
+        if not evaluate_input(key, widget):  # or evaluate_input(widget)
+            return None, None, None, None
+    upload_mode = 'delay' if 'delay' in user_input_dict['upload_mode'].value else 'nrt'
+    if upload_mode == 'nrt':
+        display(HTML('<h3 style="margin: 0; color: blue;"> SMRU campaign ID:</h3>'))
+        show_user_passwd_textboxes()
+    return (user_input_dict['program'].value, upload_mode, user_input_dict['cid'].value, user_input_dict['collectioncode'].value)
 
 
 def get_path_from_strings(path_string_parts: []) ->Path:
