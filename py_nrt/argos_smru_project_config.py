@@ -93,7 +93,7 @@ def show_cid_textbox() -> Text:
     return cid_textbox
 
 
-def show_user_passwd_textboxes() -> Tuple(Text, Text):
+def show_user_passwd_textboxes() -> Tuple[Text, Text]:
     user_textbox = Text(
         value='',
         placeholder='SMRU login user',
@@ -125,10 +125,23 @@ def get_user_input(user_input_dict: Dict) -> Optional[Tuple]:
         if not evaluate_input(key, widget):  # or evaluate_input(widget)
             return None, None, None, None
     upload_mode = 'delay' if 'delay' in user_input_dict['upload_mode'].value else 'nrt'
-    if upload_mode == 'nrt':
-        display(HTML('<h3 style="margin: 0; color: blue;"> SMRU campaign ID:</h3>'))
-        show_user_passwd_textboxes()
     return (user_input_dict['program'].value, upload_mode, user_input_dict['cid'].value, user_input_dict['collectioncode'].value)
+
+
+def show_smru_login(program, upload_mode, cid, collectioncode) -> Optional[Tuple]:
+    if upload_mode == 'nrt':
+        display(HTML('<h3 style="margin: 0; color: blue;">Near real-time mode require SMRU login credentials:</h3>'))
+        return show_user_passwd_textboxes()
+    elif upload_mode == 'delay':
+        display(HTML(f'<h3 style="margin: 0; color: blue;">Delay mode requires upload <cid>.mdb file to below folder:</h3>'))
+        base_url = "https://jphub.oceantrack.org/user/satnrt/notebooks/rt-sat-to-obis"
+
+        display(HTML(f'<a href="{base_url}/{folder_path}" target="_blank">{folder_path}</a>'))
+        return None, None
+
+
+def create_folder_instruct_upload_mdb(program, upload_mode, cid, collectioncode) -> Optional[Tuple]:
+    pass
 
 
 def get_path_from_strings(path_string_parts: []) ->Path:
