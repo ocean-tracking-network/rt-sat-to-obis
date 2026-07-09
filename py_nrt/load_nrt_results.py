@@ -19,7 +19,7 @@ NRT_UPLOAD_LOG_TABLE = 'nrt_ssm_upload_logs'
 OTN_NRT_SSM_SUMMARY_TABLE = 'nrt_ssm_summary'
 NRT_META_TABLE = 'nrt_metadata'
 TAG_META_FILE_PATTERN= r'.*metadata.*'
-MIN_MAX_DEPTH_FILE_PATTERN = r'.*MinMaxDepth.*|.*_summary_.*'
+MIN_MAX_DEPTH_FILE_PATTERN = r'.*MinMaxDepth.*|.*summary_.*'
 QC_OUTPUT_PATH = 'qc'
 
 import pandas as pd
