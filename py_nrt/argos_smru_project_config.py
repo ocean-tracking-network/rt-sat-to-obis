@@ -51,6 +51,7 @@ import warnings
 
 from py_nrt.common import run_from_ipython, show_df
 from py_nrt.load_nrt_results import get_files_by_pattern
+from ipywidgets.widgets import widget, VBox, Text, HTML, RadioButtons
 
 itables.init_notebook_mode()
 # SMRU API endpoint
@@ -63,6 +64,20 @@ from typing import List, Optional
 from tqdm import tqdm
 import shutil
 import time
+
+
+def show_data_upload_mode_radio() -> RadioButtons:
+    from IPython.display import display
+    date_upload_mode_dict = {
+        'nrt': 'Ongoing: near real-time mode',
+        'delay': 'Completed: delay mode'
+    }
+    choices = list(date_upload_mode_dict.values())
+
+    radio = RadioButtons(options=choices, value=None)
+    display(HTML('<h3 style="margin: 0; color: #2c3e50;">Is the project Ongoing or Completed.</h3>'))
+    display(radio)
+    return radio
 
 
 def get_path_from_strings(path_string_parts: []) ->Path:
