@@ -491,10 +491,9 @@ def get_notebook_base_url():
     return base_url
 
 
-def check_file_exists(relative_path: str, file_name: str, html_messages: HTML, notebook_base_url: str, create_if_non_exists: bool = True):
+def check_file_exists(relative_path: str, file_name: str, html_messages: HTML, folder_url: str, create_if_non_exists: bool = True):
     current_dir = os.path.dirname(__file__)
     folder_path = os.path.join(os.path.dirname(current_dir), relative_path)
-    folder_url = os.path.join(notebook_base_url, qc_input_path, program, f'{file_name}')
     if not os.path.exists(os.path.join(folder_path, file_name)):
         if not os.path.exists(folder_path) and create_if_non_exists:
             # Create the folder if not exist

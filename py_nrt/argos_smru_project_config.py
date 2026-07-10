@@ -626,6 +626,6 @@ def export_deployment_for_argosqc(program, cid, deployment_df, qc_input_path, no
         HTML(f'<h3 style="margin: 0; color: blue;">Delay mode generated deployments from uploaded .mdb to: {folder_path} file.</h3>'),
         HTML(f'<a href="{upload_url}" target="_blank">Click here to review {folder_path} in a new tab.</a>')
     ]
-    check_file_exists(relative_path, file_name, html_messages, notebook_base_url, True)
+    check_file_exists(relative_path, file_name, html_messages, upload_url, True)
     deployments_for_argosqc_df.to_csv(os.path.join(folder_path,file_name))
     return deployments_for_argosqc_df
