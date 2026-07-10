@@ -49,7 +49,7 @@ import pandas as pd
 from xml.etree import ElementTree as ET
 import warnings
 
-from py_nrt.common import run_from_ipython, show_df, show_program_dropdown, show_collectioncode_textbox, evaluate_input
+from py_nrt.common import run_from_ipython, show_df, show_program_dropdown, show_collectioncode_textbox, evaluate_input, get_notebook_base_url
 from py_nrt.load_nrt_results import get_files_by_pattern
 from ipywidgets.widgets import widget, VBox, Text, HTML, RadioButtons
 
@@ -88,7 +88,7 @@ def show_cid_textbox() -> Text:
         disabled=False,
         layout=Layout(width='400px')
     )
-    display(HTML('<h3 style="margin: 0; color: blue;">Please SMRU campaign ID:</h3>'))
+    display(HTML('<h3 style="margin: 0; color: blue;">SMRU campaign ID:</h3>'))
     display(cid_textbox)
     return cid_textbox
 
@@ -128,15 +128,22 @@ def get_user_input(user_input_dict: Dict) -> Optional[Tuple]:
     return (user_input_dict['program'].value, upload_mode, user_input_dict['cid'].value, user_input_dict['collectioncode'].value)
 
 
-def show_smru_login(program, upload_mode, cid, collectioncode) -> Optional[Tuple]:
+def show_smru_login(qc_input_path, program, upload_mode, cid, collectioncode) -> Optional[Tuple]:
     if upload_mode == 'nrt':
         display(HTML('<h3 style="margin: 0; color: blue;">Near real-time mode require SMRU login credentials:</h3>'))
         return show_user_passwd_textboxes()
     elif upload_mode == 'delay':
         display(HTML(f'<h3 style="margin: 0; color: blue;">Delay mode requires upload <cid>.mdb file to below folder:</h3>'))
-        base_url = "https://jphub.oceantrack.org/user/satnrt/notebooks/rt-sat-to-obis"
+        # base_url = "https://jphub.oceantrack.org/user/satnrt/notebooks/rt-sat-to-obis"
+        base_url = "http://localhost:8888/tree"
+        current_dir = os.path.dirname(__file__)
+        folder_path = os.path.join(os.path.dirname(current_dir), qc_input_path, program, f'{program}_{cid}', 'mdb')
 
-        display(HTML(f'<a href="{base_url}/{folder_path}" target="_blank">{folder_path}</a>'))
+        if not os.path.exists(folder_path):
+            os.makedirs(folder_path)
+            print(f'Created project configuration folder: {folder_path}')
+        upload_url = os.path.join(base_url, qc_input_path, program, f'{program}_{cid}', 'mdb')
+        display(HTML(f'<a href="{upload_url}" target="_blank">{folder_path}</a>'))
         return None, None
 
 
@@ -347,7 +354,7 @@ def export_for_kepler(cid: str, tracks_df: pd.DataFrame, subset_tags: list[str] 
     return tracks_subset
 
 
-def extract_table_from_mdb(input_path: str, mdb_file: str, table: str, mdb_path:str='', verbose=False) -> Tuple[str, pd.DataFrame]:
+def extract_table_from_mdb(input_path: str, mdb_file: str, table: str, mdb_path: str='', verbose=False) -> Tuple[str, pd.DataFrame]:
     """
     Extract a table from an .mdb file using mdbtools on Windows.
     """

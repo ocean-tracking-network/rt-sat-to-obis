@@ -477,3 +477,15 @@ def evaluate_input(input_name, input_widget) -> bool:
         return False
     return True
 
+
+def get_notebook_base_url():
+    """
+    Get the base URL for JupyterHub.
+    """
+    # Use environment variables or defaults
+    hub_url = os.environ.get('JUPYTERHUB_BASE_URL', 'https://jphub.oceantrack.org')
+    user = os.environ.get('JUPYTERHUB_USER', 'satnrt')
+
+    # Construct the base URL
+    base_url = f"{hub_url}/user/{user}/notebooks"
+    return base_url
