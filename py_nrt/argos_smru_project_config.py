@@ -133,19 +133,19 @@ def show_smru_login(qc_input_path, program, upload_mode, cid, collectioncode) ->
         display(HTML('<h3 style="margin: 0; color: blue;">Near real-time mode require SMRU login credentials:</h3>'))
         return show_user_passwd_textboxes()
     elif upload_mode == 'delay':
-        base_url = "https://jphub.oceantrack.org/user/satnrt/notebooks/rt-sat-to-obis"
+        base_url = "https://jphub.oceantrack.org/user/satnrt/tree/rt-sat-to-obis"
         # base_url = "http://localhost:8888/tree"
         current_dir = os.path.dirname(__file__)
         relative_path = os.path.join(qc_input_path, program, f'{program}_{cid}', 'mdb')
         folder_path = os.path.join(os.path.dirname(current_dir), relative_path)
         if not os.path.exists(os.path.join(folder_path, f'{cid}.mdb')):
-            display(
-                HTML(f'<h3 style="margin: 0; color: blue;">Delay mode requires user to upload {cid}.mdb file to below folder:</h3>'))
             if not os.path.exists(folder_path):
                 # Create the mdb folder if not exist
                 os.makedirs(folder_path)
             upload_url = os.path.join(base_url, qc_input_path, program, f'{program}_{cid}', 'mdb')
-            display(HTML(f'<a href="{upload_url}" target="_blank">{relative_path}</a>'))
+            display(
+                HTML(f'<h3 style="margin: 0; color: blue;">Delay mode requires user to upload {cid}.mdb file to below folder: {relative_path}</h3>'))
+            display(HTML(f'<a href="{upload_url}" target="_blank">Click here to open link in new tab and upload.</a>'))
         else:
             print(f'Delay mode found {cid}.mdb file to below folder: {relative_path}')
 
