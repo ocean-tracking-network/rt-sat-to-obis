@@ -128,13 +128,24 @@ def get_user_input(user_input_dict: Dict) -> Optional[Tuple]:
     return (user_input_dict['program'].value, upload_mode, user_input_dict['cid'].value, user_input_dict['collectioncode'].value)
 
 
-def show_smru_login(qc_input_path, program, upload_mode, cid, collectioncode) -> Optional[Tuple]:
+def show_smru_login_or_local_mdb(qc_input_path: str, program: str, upload_mode: str, cid: str, collectioncode, base_url) -> Optional[Tuple]:
+    """
+    Show SMRU login text boxes or local .mdb file.
+
+    Args:
+        qc_input_path (str): Path to the QC input file/directory
+        program (str): The program name for the QC configuration
+        upload_mode (str): The upload mode being used
+        cid (str): Collection/collaboration identifier
+        collectioncode: OTN collection code identifier (type unspecified)
+        base_url (str): Base URL for the SMRU service
+
+    Returns: Tuple of Text for SMRU user and password
+    """
     if upload_mode == 'nrt':
         display(HTML('<h3 style="margin: 0; color: blue;">Near real-time mode require SMRU login credentials:</h3>'))
         return show_user_passwd_textboxes()
     elif upload_mode == 'delay':
-        base_url = "https://jphub.oceantrack.org/user/satnrt/tree/rt-sat-to-obis"
-        # base_url = "http://localhost:8888/tree"
         current_dir = os.path.dirname(__file__)
         relative_path = os.path.join(qc_input_path, program, f'{program}_{cid}', 'mdb')
         folder_path = os.path.join(os.path.dirname(current_dir), relative_path)
@@ -578,5 +589,32 @@ def run_smru_qc(r_executable: str, config_file: str, argosqc_r_sript = 'r_nrt/ru
     else:
         print(f"ArgosQC failed with return code: {process.returncode}")
 
-def export_deployment_for_argosqc(program, cid, deployment_df, qc_input_path):
-    pass
+
+def export_deployment_for_argosqc(program, cid, deployment_df, qc_input_path) -> pd.DataFrame:
+    na_columns = ['common_name', 'age_class', 'sex', 'length', 'estimated_mass', 'actual_mass',  'state_country']
+    column_mapping = {
+        'sattag_program': 'GREF',
+        'device_id': 'REF',
+        'ptt': 'PTT',
+        'body': 'BODY',
+        'device_wmo_ref': 'WMO',
+        'tag_type': 'PARMS',
+        'species': 'SPECIES',
+        'release_site': 'LOCATION',
+        'release_date': 'ON_DATE',
+        'recovery_date': 'OFF_DATE',
+        'release_latitude': 'HOME_LAT',
+        'release_longitude': 'HOME_LON',
+    }
+    deployments_for_argosqc_df = pd.DataFrame(columns=na_columns)
+
+    # Add columns from deployment_df using column_mapping values and rename to keys
+    for key, value in column_mapping.items():
+        if key in deployment_df.columns:
+            deployments_for_argosqc_df[value] = deployment_df[key]
+
+    # Set all NA columns to NaN
+    for col in na_columns:
+        deployments_for_argosqc_df[col] = pd.NA
+    show_df(deployments_for_argosqc_df)
+    return deployments_for_argosqc_df
