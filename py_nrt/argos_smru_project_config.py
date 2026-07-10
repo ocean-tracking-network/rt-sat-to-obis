@@ -621,7 +621,7 @@ def export_deployment_for_argosqc(program, cid, deployment_df, qc_input_path, no
     relative_path = os.path.join(qc_input_path, program, f'{program}_{cid}')
     file_name = f'{cid}_deployment_meta.csv'
     folder_path = os.path.join(os.path.dirname(current_dir), relative_path)
-    upload_url = os.path.join(base_url, qc_input_path, program, f'{program}_{cid}')
+    upload_url = os.path.join(notebook_base_url, qc_input_path, program, f'{program}_{cid}')
     html_messages = [
         HTML(f'<h3 style="margin: 0; color: blue;">Delay mode generated deployments from uploaded .mdb to: {folder_path} file.</h3>'),
         HTML(f'<a href="{upload_url}" target="_blank">Click here to review {folder_path} in a new tab.</a>')
