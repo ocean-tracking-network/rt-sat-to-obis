@@ -606,15 +606,15 @@ def export_deployment_for_argosqc(program, cid, deployment_df, qc_input_path) ->
         'release_latitude': 'HOME_LAT',
         'release_longitude': 'HOME_LON',
     }
-    deployments_for_argosqc_df = deployment_df[[column_mapping.values()]]
+    deployments_for_argosqc_df = deployment_df[list(column_mapping.values())].copy()
 
-    # Add columns from deployment_df using column_mapping values and rename to keys
-    for key, value in column_mapping.items():
-        if key in deployment_df.columns:
-            deployments_for_argosqc_df[value] = deployment_df[key]
+    # Rename columns from mapping values to keys
+    deployments_for_argosqc_df = deployments_for_argosqc_df.rename(
+        columns={v: k for k, v in column_mapping.items()})
 
-    # Set all NA columns to NaN
+    # Add NA columns with NaN values
     for col in na_columns:
         deployments_for_argosqc_df[col] = pd.NA
+
     show_df(deployments_for_argosqc_df, 'deployments_for_argosqc_df.csv')
     return deployments_for_argosqc_df
