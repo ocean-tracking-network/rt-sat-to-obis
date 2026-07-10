@@ -162,7 +162,9 @@ def load_single_ssmoutput_to_nrt_db(engine: Engine, proj_table_name: str, ssmout
 
 def load_to_nrt_db(engine: Engine, ssmoutput_last_modified_map: dict[str, str], verbose: bool = True):
     summary_df_list = []
+    all_meta_df_list = []
     summary_df = pd.DataFrame
+    all_meta_df = pd.DataFrame
     for output_csv, last_modified in ssmoutput_last_modified_map.items():
         program, campaign = get_program_campaign_from_ssm_file(output_csv)
         table_name = '_'.join([program, campaign])
@@ -182,7 +184,9 @@ def load_to_nrt_db(engine: Engine, ssmoutput_last_modified_map: dict[str, str], 
         print(f'Uploaded {metadata_rows} SSM tag metadata to {NRT_META_TABLE} table')
         if summary_df_list:
             summary_df = pd.concat(summary_df_list, ignore_index=True)
-    return summary_df, meta_df
+        if all_meta_df_list:
+            all_meta_df = pd.concat(all_meta_df_list, ignore_index=True)
+    return summary_df, all_meta_df_list
 
 
 def get_loaded_program_campaign_table_info(engine: Engine, table_name: str, schema: str=OTN_NRT_SCHEMA) -> dict[str, str]:
