@@ -606,7 +606,7 @@ def export_deployment_for_argosqc(program, cid, deployment_df, qc_input_path) ->
         'release_latitude': 'HOME_LAT',
         'release_longitude': 'HOME_LON',
     }
-    deployments_for_argosqc_df = pd.DataFrame(columns=na_columns)
+    deployments_for_argosqc_df = deployment_df[[column_mapping.values()]]
 
     # Add columns from deployment_df using column_mapping values and rename to keys
     for key, value in column_mapping.items():
