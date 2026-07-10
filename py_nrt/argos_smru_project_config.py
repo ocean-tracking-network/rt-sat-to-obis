@@ -616,5 +616,5 @@ def export_deployment_for_argosqc(program, cid, deployment_df, qc_input_path) ->
     # Set all NA columns to NaN
     for col in na_columns:
         deployments_for_argosqc_df[col] = pd.NA
-    show_df(deployments_for_argosqc_df)
+    show_df(deployments_for_argosqc_df, 'deployments_for_argosqc_df.csv')
     return deployments_for_argosqc_df
