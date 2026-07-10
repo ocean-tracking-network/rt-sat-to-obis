@@ -489,3 +489,23 @@ def get_notebook_base_url():
     # Construct the base URL
     base_url = f"{hub_url}/user/{user}/notebooks"
     return base_url
+
+
+def check_file_exists(relative_path: str, html_messages: HTML, create_if_non_exists: bool = True):
+    current_dir = os.path.dirname(__file__)
+    folder_path = os.path.join(os.path.dirname(current_dir), relative_path)
+    upload_url = os.path.join(base_url, qc_input_path, program, f'{program}_{cid}', 'mdb')
+    if not os.path.exists(os.path.join(folder_path, f'{cid}.mdb')):
+        if not os.path.exists(folder_path):
+            # Create the mdb folder if not exist
+            os.makedirs(folder_path)
+        display(
+            HTML(
+                f'<h3 style="margin: 0; color: blue;">Delay mode requires user to upload {cid}.mdb file to below folder: {relative_path}</h3>'))
+        display(HTML(
+            f'<a href="{upload_url}" target="_blank">Click here to upload {cid}.mdb in new tab.</a>'))
+    else:
+        display(HTML(
+            f'<h3 style="margin: 0; color: blue;">Found {cid}.mdb file in below folder: {relative_path}</h3>'))
+        display(HTML(
+            f'<a href="{upload_url}" target="_blank">Click here to view existing {cid}.mdb in new tab.</a>'))
