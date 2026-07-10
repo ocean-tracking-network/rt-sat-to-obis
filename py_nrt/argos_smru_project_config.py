@@ -147,7 +147,7 @@ def show_smru_login(qc_input_path, program, upload_mode, cid, collectioncode) ->
                 HTML(f'<h3 style="margin: 0; color: blue;">Delay mode requires user to upload {cid}.mdb file to below folder: {relative_path}</h3>'))
             display(HTML(f'<a href="{upload_url}" target="_blank">Click here to upload {cid}.mdb in new tab.</a>'))
         else:
-            print(f'Delay mode found {cid}.mdb file in below folder: {relative_path}')
+            display(HTML(f'<h3 style="margin: 0; color: blue;">Found {cid}.mdb file in below folder: {relative_path}</h3>'))
             display(HTML(f'<a href="{upload_url}" target="_blank">Click here to view existing {cid}.mdb in new tab.</a>'))
 
         return None, None
@@ -577,3 +577,6 @@ def run_smru_qc(r_executable: str, config_file: str, argosqc_r_sript = 'r_nrt/ru
         print(f"ArgosQC completed successfully!")
     else:
         print(f"ArgosQC failed with return code: {process.returncode}")
+
+def export_deployment_for_argosqc(program, cid, deployment_df, qc_input_path):
+    pass
