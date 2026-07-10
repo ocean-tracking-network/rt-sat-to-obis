@@ -590,7 +590,7 @@ def run_smru_qc(r_executable: str, config_file: str, argosqc_r_sript = 'r_nrt/ru
         print(f"ArgosQC failed with return code: {process.returncode}")
 
 
-def export_deployment_for_argosqc(program, cid, deployment_df, qc_input_path) -> pd.DataFrame:
+def export_deployment_for_argosqc(program, cid, deployment_df, qc_input_path, notebook_base_url) -> pd.DataFrame:
     na_columns = ['common_name', 'age_class', 'sex', 'length', 'estimated_mass', 'actual_mass',  'state_country']
     column_mapping = {
         'sattag_program': 'GREF',
