@@ -138,16 +138,17 @@ def show_smru_login(qc_input_path, program, upload_mode, cid, collectioncode) ->
         current_dir = os.path.dirname(__file__)
         relative_path = os.path.join(qc_input_path, program, f'{program}_{cid}', 'mdb')
         folder_path = os.path.join(os.path.dirname(current_dir), relative_path)
+        upload_url = os.path.join(base_url, qc_input_path, program, f'{program}_{cid}', 'mdb')
         if not os.path.exists(os.path.join(folder_path, f'{cid}.mdb')):
             if not os.path.exists(folder_path):
                 # Create the mdb folder if not exist
                 os.makedirs(folder_path)
-            upload_url = os.path.join(base_url, qc_input_path, program, f'{program}_{cid}', 'mdb')
             display(
                 HTML(f'<h3 style="margin: 0; color: blue;">Delay mode requires user to upload {cid}.mdb file to below folder: {relative_path}</h3>'))
-            display(HTML(f'<a href="{upload_url}" target="_blank">Click here to open link in new tab and upload.</a>'))
+            display(HTML(f'<a href="{upload_url}" target="_blank">Click here to upload {cid}.mdb in new tab.</a>'))
         else:
-            print(f'Delay mode found {cid}.mdb file to below folder: {relative_path}')
+            print(f'Delay mode found {cid}.mdb file in below folder: {relative_path}')
+            display(HTML(f'<a href="{upload_url}" target="_blank">Click here to view existing {cid}.mdb in new tab.</a>'))
 
         return None, None
 
