@@ -541,14 +541,15 @@ def check_file_exists(
         if remove_if_exists:
             try:
                 os.remove(file_path)
-                print(f"Removed existing file: {file_path}")
+                display(HTML(f'<h3 style="margin: 0; color: blue;">Overwrote {file_name} file in folder: {relative_path}</h3>'))
             except PermissionError:
                 print(f"Permission denied: Cannot remove {file_path}")
                 raise
             except OSError as e:
                 print(f"Error removing file: {e}")
                 raise
-        display(HTML(f'<h3 style="margin: 0; color: blue;">Found {file_name} file in folder: {relative_path}</h3>'))
+        else:
+            display(HTML(f'<h3 style="margin: 0; color: blue;">Found {file_name} file in folder: {relative_path}</h3>'))
         display(HTML(f'<a href="{folder_url}" target="_blank">Click here to view or modify {file_name} in new tab.</a>'))
 
         return True
