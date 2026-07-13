@@ -582,8 +582,13 @@ def extract_ssmoutput_tracks(program: str, cid: str, qc_output_path: str, subset
     return ssmoutputs_df
 
 
-def run_smru_qc(r_executable: str, config_file: str, argosqc_r_sript = 'r_nrt/run_ArgosQC_smru_qc.R'):
-    cmd = [r_executable, argosqc_r_sript, config_file]
+def run_smru_qc(r_executable: str, config_file: str, argosqc_r_script = 'r_nrt/run_ArgosQC_smru_qc.R'):
+    cmd = [
+        r_executable,
+        '--vanilla',
+        '-f', argosqc_r_script,
+        '--args', config_file
+    ]
     print(f"Running ArgosQC: {' '.join(cmd)}")
 
     process = subprocess.Popen(
