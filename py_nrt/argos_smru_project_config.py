@@ -606,7 +606,10 @@ def run_smru_qc(r_executable: str, config_file: str, argosqc_r_sript = 'r_nrt/ru
         print(f"ArgosQC failed with return code: {process.returncode}")
 
 
-def export_deployment_for_argosqc(program, cid, deployment_df, qc_input_path, notebook_base_url) -> pd.DataFrame:
+def export_deployment_for_argosqc(program: str, cid: str, deployment_df: pd.DataFrame, qc_input_path: str, notebook_base_url: str) -> pd.DataFrame:
+    """
+    Transform vendor metadata int ArgosQC required format.
+    """
     na_columns = ['common_name', 'age_class', 'sex', 'length', 'estimated_mass', 'actual_mass',  'state_country']
     column_mapping = {
         'sattag_program': 'GREF',
@@ -632,14 +635,13 @@ def export_deployment_for_argosqc(program, cid, deployment_df, qc_input_path, no
     for col in na_columns:
         deployments_for_argosqc_df[col] = pd.NA
 
-    show_df(deployments_for_argosqc_df, 'deployments_for_argosqc_df.csv')
     current_dir = os.path.dirname(__file__)
     relative_path = os.path.join(qc_input_path, program, f'{program}_{cid}')
-    file_name = f'{cid}_deployment_meta.csv'
+    file_name = f'{cid}_deployment_meta_delay.csv'
     folder_path = os.path.join(os.path.dirname(current_dir), relative_path)
     upload_url = os.path.join(notebook_base_url, qc_input_path, program, f'{program}_{cid}')
     html_messages = [
-        HTML(f'<h3 style="margin: 0; color: blue;">Delay mode generated deployments from uploaded .mdb to: {folder_path} file.</h3>'),
+        HTML(f'<h3 style="margin: 0; color: blue;">Generated deployment metadata for ArgosQC from local .mdb iin {folder_path}.</h3>'),
         HTML(f'<a href="{upload_url}" target="_blank">Click here to review {folder_path} in a new tab.</a>')
     ]
     check_file_exists(relative_path, file_name, html_messages, upload_url, True)
