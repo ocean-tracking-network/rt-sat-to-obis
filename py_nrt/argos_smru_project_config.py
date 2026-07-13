@@ -454,11 +454,18 @@ def create_smru_qc_config(
     """
     drop_ids_file = f'exclude_tags.csv'
     project_id = build_project_id_smru(program, cid)
-    if not user and not password:
-        print('No SUMR password provided. Assume delay mode...')
+    if upload_mode == 'nrt':
+        if (not user) or (not password):
+            display(HTML(f'<h3 style="margin: 0; color: red;">Near real-time configuration requires SUMR user and password.</h3>'))
+    elif upload_mode == 'delay':
         if deployments_for_argosqc_df.empty:
             display(HTML(f'<h3 style="margin: 0; color: red;">Please run Step 2 to extract `deployments`.</h3>'))
-        update_parsed_deployments()
+        delay_mode_deployment_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), qc_input_path, program, f'{program}_{cid}', f'{project_id}.csv')
+        deployments_for_argosqc_df['state_city'] = state_country
+        deployments_for_argosqc_df['common_name'] = common_name
+        deployments_for_argosqc_df['species'] = species
+        deployments_for_argosqc_df['release_site'] = release_site
+        deployments_for_argosqc_df.to_csv(delay_mode_deployment_file, index=False)
     smru_qc_config = [
         {
             "setup": {
