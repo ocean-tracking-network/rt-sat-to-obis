@@ -410,6 +410,7 @@ def extract_table_from_mdb(input_path: str, mdb_file: str, table: str, mdb_path:
 
 def create_smru_qc_config(
         upload_mode:str,
+        deployments_for_argosqc_df: pd.DataFrame,
         program: str,
         cid: str,
         drop_ids: list[str],
@@ -460,18 +461,20 @@ def create_smru_qc_config(
     elif upload_mode == 'delay':
         if deployments_for_argosqc_df.empty:
             display(HTML(f'<h3 style="margin: 0; color: red;">Please run Step 2 to extract `deployments`.</h3>'))
-        delay_mode_deployment_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), qc_input_path, program, f'{program}_{cid}', f'{project_id}.csv')
+        meta_relative_path = os.path.join(qc_input_path, program, f'{program}_{cid}', f'{project_id}_meta_{upload_mode}.csv')
+        delay_mode_deployment_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), meta_relative_path)
         deployments_for_argosqc_df['state_city'] = state_country
         deployments_for_argosqc_df['common_name'] = common_name
         deployments_for_argosqc_df['species'] = species
         deployments_for_argosqc_df['release_site'] = release_site
         deployments_for_argosqc_df.to_csv(delay_mode_deployment_file, index=False)
+        meta_file = None if deployments_for_argosqc_df.empty else meta_relative_path
     smru_qc_config = [
         {
             "setup": {
                 "program": program,
                 "data.dir": f'{qc_input_path}/{program}/{project_id}/mdb',
-                "meta.file": None,
+                "meta.file": meta_file,
                 "maps.dir": f"{qc_output_path}/{program}/{project_id}/maps",
                 "diag.dir": f"{qc_output_path}/{program}/{project_id}/diag",
                 "output.dir": f"{qc_output_path}/{program}/{project_id}",
