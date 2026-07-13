@@ -664,12 +664,12 @@ def export_deployment_for_argosqc(program: str, cid: str, deployment_df: pd.Data
 
     date_columns = ['release_date', 'recovery_date']
     for col in date_columns:
-        if col in converted_df.columns:
+        if col in deployments_for_argosqc_df.columns:
             # Convert from '06/20/22 00:00:00' to '2022-06-20T00:00:00Z'
-            converted_df[col] = pd.to_datetime(converted_df[col], format='%m/%d/%y %H:%M:%S')
-            converted_df[col] = converted_df[col].dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+            deployments_for_argosqc_df[col] = pd.to_datetime(deployments_for_argosqc_df[col], format='%m/%d/%y %H:%M:%S')
+            deployments_for_argosqc_df[col] = deployments_for_argosqc_df[col].dt.strftime('%Y-%m-%dT%H:%M:%SZ')
             # Replace 'NaT' with empty string (will be converted to NA later)
-            converted_df[col] = converted_df[col].replace('NaT', '')
+            deployments_for_argosqc_df[col] = deployments_for_argosqc_df[col].replace('NaT', '')
 
     current_dir = os.path.dirname(__file__)
     relative_path = os.path.join(qc_input_path, program, f'{program}_{cid}')
