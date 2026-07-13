@@ -409,6 +409,7 @@ def extract_table_from_mdb(input_path: str, mdb_file: str, table: str, mdb_path:
 
 
 def create_smru_qc_config(
+        upload_mode:str,
         program: str,
         cid: str,
         drop_ids: list[str],
@@ -453,6 +454,11 @@ def create_smru_qc_config(
     """
     drop_ids_file = f'exclude_tags.csv'
     project_id = build_project_id_smru(program, cid)
+    if not user and not password:
+        print('No SUMR password provided. Assume delay mode...')
+        if deployments_for_argosqc_df.empty:
+            display(HTML(f'<h3 style="margin: 0; color: red;">Please run Step 2 to extract `deployments`.</h3>'))
+        update_parsed_deployments()
     smru_qc_config = [
         {
             "setup": {
