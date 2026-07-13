@@ -477,7 +477,7 @@ def create_smru_qc_config(
         if (not user) or (not password):
             display(HTML(f'<h3 style="margin: 0; color: red;">Near real-time configuration requires SUMR user and password.</h3>'))
     elif upload_mode == 'delay':
-        deployment_meta_file_for_argosqc, deployments_for_argosqc_df = aspc.export_deployment_for_argosqc(program, cid,
+        deployment_meta_file_for_argosqc, deployments_for_argosqc_df = export_deployment_for_argosqc(program, cid,
                                                                               deployment_df,
                                                                               qc_input_path,
                                                                               notebook_base_url)
