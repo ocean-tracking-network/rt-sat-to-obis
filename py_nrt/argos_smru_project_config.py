@@ -410,9 +410,10 @@ def extract_table_from_mdb(input_path: str, mdb_file: str, table: str, mdb_path:
 
 def create_smru_qc_config(
         upload_mode:str,
-        deployments_for_argosqc_df: pd.DataFrame,
+        deployment_meta_file_for_argosqc: str,
         program: str,
         cid: str,
+        deployment_df: pd.DataFrame,
         drop_ids: list[str],
         otn_collection_code: str,
         qc_input_path: Path,
@@ -427,6 +428,7 @@ def create_smru_qc_config(
         species: str = None,
         release_site: str = None,
         state_country: str = None,
+        notebook_base_url: str = '',
         verbose=False
 ) -> list:
     """
@@ -434,7 +436,9 @@ def create_smru_qc_config(
 
     Args:
         program (str): The program name for the QC configuration
+        deployment_meta_file_for_argosqc (str): deployment meta file for ArgosQC
         cid (str): Collection/collaboration identifier
+        deployment_df (pd.DataFrame): vendor deployment dataframe.
         drop_ids (list[str]): List of drop/tag IDs to process
         otn_collection_code (str): OTN collection code identifier
         qc_input_path (Path): Directory path containing input data files
@@ -449,26 +453,27 @@ def create_smru_qc_config(
         species (Optional[str], optional): Scientific species name. Defaults to None.
         release_site (Optional[str], optional): Release location. Defaults to None.
         state_country (Optional[str], optional): State or country of release. Defaults to None.
+        notebook_base_url (Optional[str], optional): Notebook base URL.
 
     Returns:
         List containing the configuration template
     """
     drop_ids_file = f'exclude_tags.csv'
+    meta_file = None
     project_id = build_project_id_smru(program, cid)
     if upload_mode == 'nrt':
         if (not user) or (not password):
             display(HTML(f'<h3 style="margin: 0; color: red;">Near real-time configuration requires SUMR user and password.</h3>'))
     elif upload_mode == 'delay':
-        if deployments_for_argosqc_df.empty:
-            display(HTML(f'<h3 style="margin: 0; color: red;">Please run Step 2 to extract `deployments`.</h3>'))
-        meta_relative_path = os.path.join(qc_input_path, program, f'{program}_{cid}', f'{project_id}_meta_{upload_mode}.csv')
-        delay_mode_deployment_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), meta_relative_path)
+        deployment_meta_file_for_argosqc, deployments_for_argosqc_df = aspc.export_deployment_for_argosqc(program, cid,
+                                                                              deployment_df,
+                                                                              qc_input_path,
+                                                                              notebook_base_url)
         deployments_for_argosqc_df['state_city'] = state_country
         deployments_for_argosqc_df['common_name'] = common_name
         deployments_for_argosqc_df['species'] = species
         deployments_for_argosqc_df['release_site'] = release_site
-        deployments_for_argosqc_df.to_csv(delay_mode_deployment_file, index=False)
-        meta_file = None if deployments_for_argosqc_df.empty else meta_relative_path
+        meta_file = deployment_meta_file_for_argosqc
     smru_qc_config = [
         {
             "setup": {
@@ -606,9 +611,19 @@ def run_smru_qc(r_executable: str, config_file: str, argosqc_r_sript = 'r_nrt/ru
         print(f"ArgosQC failed with return code: {process.returncode}")
 
 
-def export_deployment_for_argosqc(program: str, cid: str, deployment_df: pd.DataFrame, qc_input_path: str, notebook_base_url: str) -> pd.DataFrame:
+def export_deployment_for_argosqc(program: str, cid: str, deployment_df: pd.DataFrame, qc_input_path: str, notebook_base_url: str) -> Tuple[str, pd.DataFrame]:
     """
-    Transform vendor metadata int ArgosQC required format.
+    Transform vendor metadata into ArgosQC required format.
+
+    Args:
+        program: The program name
+        cid: CID of the project
+        deployment_df: DataFrame containing deployment metadata from vendor
+        qc_input_path: File path where QC input data should be written
+        notebook_base_url: Base URL for notebook server links
+
+    Returns:
+        Exported deployment metadata file name
     """
     na_columns = ['common_name', 'age_class', 'sex', 'length', 'estimated_mass', 'actual_mass',  'state_country']
     column_mapping = {
@@ -645,5 +660,6 @@ def export_deployment_for_argosqc(program: str, cid: str, deployment_df: pd.Data
         HTML(f'<a href="{upload_url}" target="_blank">Click here to review {folder_path} in a new tab.</a>')
     ]
     check_file_exists(relative_path, file_name, html_messages, upload_url, True)
-    deployments_for_argosqc_df.to_csv(os.path.join(folder_path,file_name))
-    return deployments_for_argosqc_df
+    absolute_meta_file = os.path.join(folder_path, file_name)
+    deployments_for_argosqc_df.to_csv(absolute_meta_file)
+    return absolute_meta_file, deployments_for_argosqc_df
