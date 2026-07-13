@@ -660,7 +660,16 @@ def export_deployment_for_argosqc(program: str, cid: str, deployment_df: pd.Data
 
     # Add NA columns with NaN values
     for col in na_columns:
-        deployments_for_argosqc_df[col] = pd.NA
+        deployments_for_argosqc_df[col] = 'NA'
+
+    date_columns = ['release_date', 'recovery_date']
+    for col in date_columns:
+        if col in converted_df.columns:
+            # Convert from '06/20/22 00:00:00' to '2022-06-20T00:00:00Z'
+            converted_df[col] = pd.to_datetime(converted_df[col], format='%m/%d/%y %H:%M:%S')
+            converted_df[col] = converted_df[col].dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+            # Replace 'NaT' with empty string (will be converted to NA later)
+            converted_df[col] = converted_df[col].replace('NaT', '')
 
     current_dir = os.path.dirname(__file__)
     relative_path = os.path.join(qc_input_path, program, f'{program}_{cid}')
@@ -668,10 +677,10 @@ def export_deployment_for_argosqc(program: str, cid: str, deployment_df: pd.Data
     folder_path = os.path.join(os.path.dirname(current_dir), relative_path)
     upload_url = os.path.join(notebook_base_url, qc_input_path, program, f'{program}_{cid}')
     html_messages = [
-        HTML(f'<h3 style="margin: 0; color: blue;">Generated deployment metadata for ArgosQC from local .mdb iin {folder_path}.</h3>'),
+        HTML(f'<h3 style="margin: 0; color: blue;">Generated deployment metadata for ArgosQC from local .mdb in {folder_path}.</h3>'),
         HTML(f'<a href="{upload_url}" target="_blank">Click here to review {folder_path} in a new tab.</a>')
     ]
     check_file_exists(relative_path, file_name, html_messages, upload_url, True)
     absolute_meta_file = os.path.join(folder_path, file_name)
-    deployments_for_argosqc_df.to_csv(absolute_meta_file)
+    deployments_for_argosqc_df.to_csv(absolute_meta_file, index=False)
     return absolute_meta_file, deployments_for_argosqc_df
