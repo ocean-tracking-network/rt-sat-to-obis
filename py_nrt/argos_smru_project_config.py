@@ -410,7 +410,6 @@ def extract_table_from_mdb(input_path: str, mdb_file: str, table: str, mdb_path:
 
 def create_smru_qc_config(
         upload_mode:str,
-        deployment_meta_file_for_argosqc: str,
         program: str,
         cid: str,
         deployment_df: pd.DataFrame,
@@ -460,6 +459,19 @@ def create_smru_qc_config(
     """
     drop_ids_file = f'exclude_tags.csv'
     meta_file = None
+    proj = None
+    # Default projection
+    if 'LOC_TYPE' in deployment_df.columns:
+        if deployment_df['LOC_TYPE'].iloc[0].str.upper() == 'G':
+            proj = '+proj=merc +ellps=WGS84 +units=km +no_defs'
+        elif deployment_df['LOC_TYPE'].iloc[0].str.upper() == 'K':
+            proj = '+proj=stere +lat_0=-90 +lat_ts=-71 +lon_0=100 +k=1 +ellps=WGS84 +units=km +no_defs'
+
+    if not proj:
+        proj = '+proj=stere +lat_0=-90 +lat_ts=-71 +lon_0=100 +k=1 +ellps=WGS84 +units=km +no_defs'
+        display(HTML(f'<h3 style="margin: 0; color: red;">Can not determine projection type from SMRU deployment table:\n Setting to default {proj}</h3>'))
+        show_df(deployment_df, 'vendor_deployment_df.csv')
+
     project_id = build_project_id_smru(program, cid)
     if upload_mode == 'nrt':
         if (not user) or (not password):
@@ -498,7 +510,7 @@ def create_smru_qc_config(
                 "model": "crw",
                 "vmax": 3,
                 "time.step": time_step,
-                "proj": "+proj=stere +lat_0=-90 +lat_ts=-71 +lon_0=100 +k=1 +ellps=WGS84 +units=km +no_defs",
+                "proj": proj,
                 "reroute": True,
                 "dist": 500,
                 "barrier": None,
