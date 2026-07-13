@@ -680,7 +680,7 @@ def export_deployment_for_argosqc(program: str, cid: str, deployment_df: pd.Data
         HTML(f'<h3 style="margin: 0; color: blue;">Generated deployment metadata for ArgosQC from local .mdb in {folder_path}.</h3>'),
         HTML(f'<a href="{upload_url}" target="_blank">Click here to review {folder_path} in a new tab.</a>')
     ]
-    check_file_exists(relative_path, file_name, html_messages, upload_url, True)
+    check_file_exists(relative_path, file_name, html_messages, upload_url, True, True)
     absolute_meta_file = os.path.join(folder_path, file_name)
     deployments_for_argosqc_df.to_csv(absolute_meta_file, index=False)
     return absolute_meta_file, deployments_for_argosqc_df
