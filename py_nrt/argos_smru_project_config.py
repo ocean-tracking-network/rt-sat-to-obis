@@ -459,13 +459,13 @@ def create_smru_qc_config(
     """
     drop_ids_file = f'exclude_tags.csv'
     meta_file = None
-    proj = None
-    # Default projection
-    if 'LOC_TYPE' in deployment_df.columns:
-        if deployment_df['LOC_TYPE'].iloc[0].str.upper() == 'G':
-            proj = '+proj=merc +ellps=WGS84 +units=km +no_defs'
-        elif deployment_df['LOC_TYPE'].iloc[0].str.upper() == 'K':
-            proj = '+proj=stere +lat_0=-90 +lat_ts=-71 +lon_0=100 +k=1 +ellps=WGS84 +units=km +no_defs'
+    first_loc_type = deployment_df['LOC_TYPE'].iloc[0]
+    if first_loc_type.upper() == 'G':
+        proj = '+proj=merc +ellps=WGS84 +units=km +no_defs'
+    elif first_loc_type.upper() == 'K':
+        proj = '+proj=stere +lat_0=-90 +lat_ts=-71 +lon_0=100 +k=1 +ellps=WGS84 +units=km +no_defs'
+    else:
+        proj = None  # or a default projection
 
     if not proj:
         proj = '+proj=stere +lat_0=-90 +lat_ts=-71 +lon_0=100 +k=1 +ellps=WGS84 +units=km +no_defs'
