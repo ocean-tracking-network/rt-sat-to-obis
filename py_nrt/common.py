@@ -491,17 +491,80 @@ def get_notebook_base_url():
     return base_url
 
 
-def check_file_exists(relative_path: str, file_name: str, html_messages: HTML, folder_url: str, create_if_non_exists: bool = True):
+def check_file_exists(
+        relative_path: str,
+        file_name: str,
+        html_messages: list,
+        folder_url: str,
+        create_if_non_exists: bool = True,
+        remove_if_exists: bool = False
+) -> bool:
+    """
+    Check if a file exists in a relative folder path, with options to create or remove it.
+
+    Args:
+        relative_path: Relative path to the folder containing the file
+        file_name: Name of the file to check
+        html_messages: List of HTML messages to display if file does not exist
+        folder_url: URL to the folder for displaying a link
+        create_if_non_exists: If True and file doesn't exist, create the folder
+        remove_if_exists: If True and file exists, remove the file
+
+    Returns:
+        bool: True if file exists, False otherwise
+
+    Raises:
+        OSError: If file removal fails
+        TypeError: If html_messages is not a list or contains invalid HTML objects
+    """
+    # Validate input
+    if not isinstance(html_messages, list):
+        raise TypeError("html_messages must be a list")
+
+    # Get the directory where this script is located
     current_dir = os.path.dirname(__file__)
+
+    # Build the full folder path
     folder_path = os.path.join(os.path.dirname(current_dir), relative_path)
-    if not os.path.exists(os.path.join(folder_path, file_name)):
-        if not os.path.exists(folder_path) and create_if_non_exists:
-            # Create the folder if not exist
-            os.makedirs(folder_path)
+    file_path = os.path.join(folder_path, file_name)
+
+    # Check if file exists
+    file_exists = os.path.exists(file_path)
+
+    if not file_exists:
+        # Create folder if it doesn't exist and creation is enabled
+        if not os.path.exists(folder_path):
+            if create_if_non_exists:
+                os.makedirs(folder_path, exist_ok=True)
+                print(f"Created folder: {folder_path}")
+            else:
+                print(f"Folder does not exist: {folder_path}")
+
+        # Display warning messages if file doesn't exist
         for html in html_messages:
             display(html)
+
+        return False
+
     else:
+        # File exists - handle removal if requested
+        if remove_if_exists:
+            try:
+                os.remove(file_path)
+                print(f"Removed existing file: {file_path}")
+            except PermissionError:
+                print(f"Permission denied: Cannot remove {file_path}")
+                raise
+            except OSError as e:
+                print(f"Error removing file: {e}")
+                raise
+
+        # Display success message with link to folder
         display(HTML(
-            f'<h3 style="margin: 0; color: blue;">Found {file_name} file in below folder: {relative_path}</h3>'))
+            f'<h3 style="margin: 0; color: blue;">✓ Found {file_name} file in folder: {relative_path}</h3>'
+        ))
         display(HTML(
-            f'<a href="{folder_url}" target="_blank">Click here to view existing {file_name} in new tab.</a>'))
+            f'<a href="{folder_url}" target="_blank">📁 Click here to view existing {file_name} in new tab.</a>'
+        ))
+
+        return True
