@@ -583,12 +583,20 @@ def extract_ssmoutput_tracks(program: str, cid: str, qc_output_path: str, subset
 
 
 def run_smru_qc(r_executable: str, config_file: str, argosqc_r_script = 'r_nrt/run_ArgosQC_smru_qc.R'):
-    cmd = [
-        r_executable,
-        '--vanilla',
-        '-f', argosqc_r_script,
-        '--args', config_file
-    ]
+    is_rscript = 'rscript' in r_executable.lower() or r_executable.lower() == 'rscript'
+
+    if is_rscript:
+        # Rscript: script and args directly
+        cmd = [r_executable, argosqc_r_script, config_file]
+    else:
+        # R: use --vanilla -f script.R --args
+        cmd = [
+            r_executable,
+            '--vanilla',
+            '-f', argosqc_r_script,
+            '--args', config_file
+        ]
+
     print(f"Running ArgosQC: {' '.join(cmd)}")
 
     process = subprocess.Popen(
