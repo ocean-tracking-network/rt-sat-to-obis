@@ -494,7 +494,7 @@ def get_notebook_base_url():
 def check_file_exists(
         relative_path: str,
         file_name: str,
-        html_messages: list,
+        html_messages: Dict[str, list],
         folder_url: str,
         create_if_non_exists: bool = True,
         remove_if_exists: bool = False
@@ -505,7 +505,7 @@ def check_file_exists(
     Args:
         relative_path: Relative path to the folder containing the file
         file_name: Name of the file to check
-        html_messages: List of HTML messages to display if file does not exist
+        html_messages: Dict of HTML messages to display if file if found and does not exist
         folder_url: URL to the folder for displaying a link
         create_if_non_exists: If True and file doesn't exist, create the folder
         remove_if_exists: If True and file exists, remove the file
@@ -533,7 +533,7 @@ def check_file_exists(
                 print(f"Folder does not exist: {folder_path}")
 
         # Display warning messages if file doesn't exist
-        for html in html_messages:
+        for html in html_messages.get('missing'):
             display(html)
         return False
     else:
@@ -549,7 +549,7 @@ def check_file_exists(
                 print(f"Error removing file: {e}")
                 raise
         else:
-            display(HTML(f'<h3 style="margin: 0; color: blue;">Found {file_name} file in folder: {relative_path}</h3>'))
-        display(HTML(f'<a href="{folder_url}" target="_blank">Click here to view or modify {file_name} in new tab.</a>'))
+            for html in html_messages.get('found'):
+                display(html)
 
         return True

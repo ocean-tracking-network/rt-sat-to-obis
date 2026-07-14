@@ -150,16 +150,29 @@ def show_smru_login_or_local_mdb(qc_input_path: str, program: str, upload_mode: 
         relative_path = os.path.join(qc_input_path, program, f'{program}_{cid}', 'mdb')
         folder_path = os.path.join(os.path.dirname(current_dir), relative_path)
         upload_url = os.path.join(base_url, qc_input_path, program, f'{program}_{cid}', 'mdb')
-        if not os.path.exists(os.path.join(folder_path, f'{cid}.mdb')):
-            if not os.path.exists(folder_path):
-                # Create the mdb folder if not exist
-                os.makedirs(folder_path)
-            display(
-                HTML(f'<h3 style="margin: 0; color: blue;">Delay mode requires user to upload {cid}.mdb file to below folder: {relative_path}</h3>'))
-            display(HTML(f'<a href="{upload_url}" target="_blank">Click here to upload {cid}.mdb in new tab.</a>'))
-        else:
-            display(HTML(f'<h3 style="margin: 0; color: blue;">Found {cid}.mdb file in below folder: {relative_path}</h3>'))
-            display(HTML(f'<a href="{upload_url}" target="_blank">Click here to view existing {cid}.mdb in new tab.</a>'))
+
+        html_messages = {
+            'found': [
+                HTML(f'<h3 style="margin: 0; color: blue;">Found {cid}.mdb file in below folder: {relative_path}</h3>'),
+                HTML(f'<a href="{upload_url}" target="_blank">Click here to view existing {cid}.mdb in new tab.</a>')
+            ],
+            'missing': [
+                HTML(f'<h3 style="margin: 0; color: blue;">Delay mode requires user to upload {cid}.mdb file to below folder: {relative_path}</h3>'),
+                HTML(f'<a href="{upload_url}" target="_blank">Click here to upload {cid}.mdb in new tab.</a>')
+            ]
+        }
+        check_file_exists(relative_path, f'{cid}.mdb', html_messages, upload_url, False, False)
+
+        # if not os.path.exists(os.path.join(folder_path, f'{cid}.mdb')):
+        #     if not os.path.exists(folder_path):
+        #         # Create the mdb folder if not exist
+        #         os.makedirs(folder_path)
+        #     display(
+        #         HTML(f'<h3 style="margin: 0; color: blue;">Delay mode requires user to upload {cid}.mdb file to below folder: {relative_path}</h3>'))
+        #     display(HTML(f'<a href="{upload_url}" target="_blank">Click here to upload {cid}.mdb in new tab.</a>'))
+        # else:
+        #     display(HTML(f'<h3 style="margin: 0; color: blue;">Found {cid}.mdb file in below folder: {relative_path}</h3>'))
+        #     display(HTML(f'<a href="{upload_url}" target="_blank">Click here to view existing {cid}.mdb in new tab.</a>'))
 
         return None, None
 
@@ -689,23 +702,52 @@ def export_deployment_for_argosqc(program: str, cid: str, deployment_df: pd.Data
     file_name = f'{cid}_deployment_meta_delay.csv'
     folder_path = os.path.join(os.path.dirname(current_dir), relative_path)
     upload_url = os.path.join(notebook_base_url, qc_input_path, program, f'{program}_{cid}')
-    html_messages = [
-        HTML(f'<h3 style="margin: 0; color: blue;">Generated deployment metadata for ArgosQC from local .mdb in {folder_path}.</h3>'),
-        HTML(f'<a href="{upload_url}" target="_blank">Click here to review {folder_path} in a new tab.</a>')
-    ]
+    html_messages = {
+        'found':  [
+            HTML(f'<h3 style="margin: 0; color: blue;">Generated deployment metadata for ArgosQC from local .mdb in {folder_path}.</h3>'),
+            HTML(f'<a href="{upload_url}" target="_blank">Click here to review {folder_path} in a new tab.</a>')
+        ],
+        'missing': [
+            HTML(f'<h3 style="margin: 0; color: blue;">Generated deployment metadata for ArgosQC from local .mdb in {folder_path}.</h3>'),
+            HTML(f'<a href="{upload_url}" target="_blank">Click here to review {folder_path} in a new tab.</a>')
+        ]
+    }
     check_file_exists(relative_path, file_name, html_messages, upload_url, True, True)
     absolute_meta_file = os.path.join(folder_path, file_name)
     deployments_for_argosqc_df.to_csv(absolute_meta_file, index=False)
     return absolute_meta_file, deployments_for_argosqc_df
 
 
-def show_argosqc_results(qc_output_path, notebook_base_url, program, cid):
+def show_argosqc_results(qc_output_path:str, notebook_base_url:str, program:str, cid:str)->None:
+    """
+    Display ArgosQC results in a Jupyter notebook with a clickable link to the output folder.
+
+    This function constructs a URL to the ArgosQC output directory for a specific
+    program and project, and displays it as an HTML link in the notebook.
+
+    Args:
+        qc_output_path: Base path to the QC output directory (relative to notebook server)
+        notebook_base_url: Base URL of the Jupyter notebook server (e.g., 'http://localhost:8888')
+        program: Program name (e.g., 'vc08')
+        cid: Project CID (e.g., '12345')
+        show_if_exists: If True, only display the link if the output directory exists.
+                       If False, display the link regardless.
+        html: If True, display HTML formatted output. If False, print plain text.
+        return_url: If True, return the URL string instead of displaying it.
+
+    Returns: None
+    """
     current_dir = os.path.dirname(__file__)
-    upload_url = os.path.join(notebook_base_url, qc_output_path, program)
-    relative_path = os.path.join(qc_output_path, program)
+    upload_url = os.path.join(notebook_base_url, qc_output_path, program, f'{program}_{cid}')
+    relative_path = os.path.join(qc_output_path, program, f'{program}_{cid}')
     folder_path = os.path.join(os.path.dirname(current_dir), relative_path)
-    html_messages = [
-        HTML(f'<h3 style="margin: 0; color: blue;">ArgosQC results {folder_path}.</h3>'),
-        HTML(f'<a href="{upload_url}" target="_blank">Click here to review ArgosQC results in a new tab.</a>')
-    ]
+    html_messages = {
+        'found':  [
+            HTML(f'<h3 style="margin: 0; color: blue;">ArgosQC results are found in {folder_path}.</h3>'),
+            HTML(f'<a href="{upload_url}" target="_blank">Click here to review ArgosQC results in a new tab.</a>')
+        ],
+        'missing': [
+            HTML(f'<h3 style="margin: 0; color: red;">No ArgosQC results found. Please review step 6 Run ArgosQC output or contact OTN data team.</h3>')
+        ]
+    }
     check_file_exists(relative_path, f'{program}_{cid}', html_messages, upload_url, True, False)
