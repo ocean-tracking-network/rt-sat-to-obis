@@ -697,3 +697,15 @@ def export_deployment_for_argosqc(program: str, cid: str, deployment_df: pd.Data
     absolute_meta_file = os.path.join(folder_path, file_name)
     deployments_for_argosqc_df.to_csv(absolute_meta_file, index=False)
     return absolute_meta_file, deployments_for_argosqc_df
+
+
+def show_argosqc_results(qc_output_path, notebook_base_url, program, cid):
+    current_dir = os.path.dirname(__file__)
+    upload_url = os.path.join(notebook_base_url, qc_output_path, program)
+    relative_path = os.path.join(qc_output_path, program)
+    folder_path = os.path.join(os.path.dirname(current_dir), relative_path)
+    html_messages = [
+        HTML(f'<h3 style="margin: 0; color: blue;">ArgosQC results {folder_path}.</h3>'),
+        HTML(f'<a href="{upload_url}" target="_blank">Click here to review ArgosQC results in a new tab.</a>')
+    ]
+    check_file_exists(relative_path, f'{program}_{cid}', html_messages, upload_url, True, False)
