@@ -153,7 +153,7 @@ def show_smru_login_or_local_mdb(qc_input_path: str, program: str, upload_mode: 
 
         html_messages = {
             'found': [
-                HTML(f'<h3 style="margin: 0; color: blue;">Found {cid}.mdb file in below folder: {relative_path}</h3>'),
+                HTML(f'<h3 style="margin: 0; color: blue;">Found {cid}.mdb file in folder: {relative_path}</h3>'),
                 HTML(f'<a href="{upload_url}" target="_blank">Click here to view existing {cid}.mdb in new tab.</a>')
             ],
             'missing': [
@@ -161,18 +161,7 @@ def show_smru_login_or_local_mdb(qc_input_path: str, program: str, upload_mode: 
                 HTML(f'<a href="{upload_url}" target="_blank">Click here to upload {cid}.mdb in new tab.</a>')
             ]
         }
-        check_file_exists(relative_path, f'{cid}.mdb', html_messages, upload_url, False, False)
-
-        # if not os.path.exists(os.path.join(folder_path, f'{cid}.mdb')):
-        #     if not os.path.exists(folder_path):
-        #         # Create the mdb folder if not exist
-        #         os.makedirs(folder_path)
-        #     display(
-        #         HTML(f'<h3 style="margin: 0; color: blue;">Delay mode requires user to upload {cid}.mdb file to below folder: {relative_path}</h3>'))
-        #     display(HTML(f'<a href="{upload_url}" target="_blank">Click here to upload {cid}.mdb in new tab.</a>'))
-        # else:
-        #     display(HTML(f'<h3 style="margin: 0; color: blue;">Found {cid}.mdb file in below folder: {relative_path}</h3>'))
-        #     display(HTML(f'<a href="{upload_url}" target="_blank">Click here to view existing {cid}.mdb in new tab.</a>'))
+        check_file_exists(relative_path, f'{cid}.mdb', html_messages, upload_url, True, False)
 
         return None, None
 
