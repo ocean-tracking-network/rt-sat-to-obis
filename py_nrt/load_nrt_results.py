@@ -12,12 +12,14 @@ from py_nrt.common import print_error, get_engine, show_df, get_program_campaign
 from sqlalchemy.engine import Engine
 from sqlalchemy import inspect
 
-# OTN_NRT_SCHEMA = 'satnrt'
-OTN_NRT_SCHEMA = 'test'
-OTN_NRT_SSM_MASTER_TABLE = 'nrt_ssm_master'
-NRT_UPLOAD_LOG_TABLE = 'nrt_ssm_upload_logs'
-OTN_NRT_SSM_SUMMARY_TABLE = 'nrt_ssm_summary'
-NRT_META_TABLE = 'nrt_metadata'
+# SAT_NRT_SCHEMA = 'satnrt'
+# SAT_DELAY_SCHEMA = 'satdelay'
+SAT_NRT_SCHEMA = 'test'
+SAT_DELAY_SCHEMA = 'test'
+OTN_NRT_SSM_MASTER_TABLE = 'sat_ssm_master'
+NRT_UPLOAD_LOG_TABLE = 'sat_ssm_upload_logs'
+OTN_NRT_SSM_SUMMARY_TABLE = 'sat_ssm_summary'
+NRT_META_TABLE = 'sat_deployments'
 TAG_META_FILE_PATTERN= r'.*metadata.*'
 MIN_MAX_DEPTH_FILE_PATTERN = r'.*MinMaxDepth.*|.*summary_.*'
 QC_OUTPUT_PATH = 'qc'
@@ -32,7 +34,7 @@ logger = logging.getLogger(__name__)
 exclude_folders=['maps', 'diag', 'aodn', 'mdb']
 
 
-def check_otn_nrt_backend(engine: Engine, verbose: bool=True) -> bool:
+def check_sat_db_backend(engine: Engine, schema: str= 'OTN_NRT_SCHEMA', verbose: bool=True) -> bool:
     """
     Get loaners in dataframe
     :param engine:
@@ -41,12 +43,12 @@ def check_otn_nrt_backend(engine: Engine, verbose: bool=True) -> bool:
     """
     inspector = inspect(engine)
 
-    if OTN_NRT_SCHEMA in inspector.get_schema_names():
-        print(f'Will upload QCed results into HOST: {engine.url.host} DB: {engine.url.database} schema: {OTN_NRT_SCHEMA}')
+    if schema in inspector.get_schema_names():
+        print(f'Will upload QCed results into HOST: {engine.url.host} DB: {engine.url.database} schema: {schema}')
         return True
 
     if verbose:
-        print(f'Schema {OTN_NRT_SCHEMA} does not exist')
+        print(f'Schema {schema} does not exist')
     return False
 
 
@@ -148,7 +150,7 @@ def load_single_ssmoutput_to_nrt_db(engine: Engine, proj_table_name: str, ssmout
     summary_df = pd.DataFrame()
     prev_load_df = get_loaded_program_campaign_table_info(engine, proj_table_name)
     if (prev_load_df is None) or (len(prev_load_df) == 0):
-        print(f'This is the first time loading {proj_table_name}. Will create {OTN_NRT_SCHEMA}.{proj_table_name}...')
+        print(f'This is the first time loading {proj_table_name}. Will create {SAT_NRT_SCHEMA}.{proj_table_name}...')
     else:
         prev_timestamp = pd.to_datetime(prev_load_df.iloc[0]['source_file_last_modified']).tz_localize(None)
         current_timestamp = pd.to_datetime(last_modified).tz_localize(None)
@@ -156,7 +158,7 @@ def load_single_ssmoutput_to_nrt_db(engine: Engine, proj_table_name: str, ssmout
             print(f"SSM results have been loaded for table {proj_table_name} - last modified on {prev_timestamp.strftime('%Y_%m_%d_%H_%M_%S')}. Skipping...")
             return summary_df
 
-    summary_df = load_csv_to_db(engine, proj_table_name, ssmoutput_csv, last_modified, OTN_NRT_SCHEMA)
+    summary_df = load_csv_to_db(engine, proj_table_name, ssmoutput_csv, last_modified, SAT_NRT_SCHEMA)
     return summary_df
 
 
@@ -177,10 +179,10 @@ def load_to_nrt_db(engine: Engine, ssmoutput_last_modified_map: dict[str, str], 
             if abs((current_timestamp - prev_timestamp).total_seconds()) < 2:
                 print(f"SSM results have been loaded for table {campaign} - last modified on {prev_timestamp.strftime('%Y_%m_%d_%H_%M_%S')}. Skipping...")
                 continue
-        summary_df_list.append(load_csv_to_db(engine, table_name, output_csv, last_modified, OTN_NRT_SCHEMA))
-        print(f'Uploaded SSM results to HOST: {engine.url.host} DB: {engine.url.database} {OTN_NRT_SCHEMA}.{table_name} table.')
+        summary_df_list.append(load_csv_to_db(engine, table_name, output_csv, last_modified, SAT_NRT_SCHEMA))
+        print(f'Uploaded SSM results to HOST: {engine.url.host} DB: {engine.url.database} {SAT_NRT_SCHEMA}.{table_name} table.')
         meta_df = parse_tag_metadata(QC_OUTPUT_PATH, program, campaign, verbose=False)
-        metadata_rows = load_meta_df_to_db(engine, meta_df, table_name=NRT_META_TABLE, schema=OTN_NRT_SCHEMA)
+        metadata_rows = load_meta_df_to_db(engine, meta_df, table_name=NRT_META_TABLE, schema=SAT_NRT_SCHEMA)
         print(f'Uploaded {metadata_rows} SSM tag metadata to {NRT_META_TABLE} table')
         if summary_df_list:
             summary_df = pd.concat(summary_df_list, ignore_index=True)
@@ -189,9 +191,9 @@ def load_to_nrt_db(engine: Engine, ssmoutput_last_modified_map: dict[str, str], 
     return summary_df, all_meta_df_list
 
 
-def get_loaded_program_campaign_table_info(engine: Engine, table_name: str, schema: str=OTN_NRT_SCHEMA) -> dict[str, str]:
+def get_loaded_program_campaign_table_info(engine: Engine, table_name: str, schema: str=SAT_NRT_SCHEMA) -> dict[str, str]:
     inspector = inspect(engine)
-    if not inspector.has_table(NRT_UPLOAD_LOG_TABLE, schema=OTN_NRT_SCHEMA) or (not inspector.has_table(table_name, schema=schema)):
+    if not inspector.has_table(NRT_UPLOAD_LOG_TABLE, schema=SAT_NRT_SCHEMA) or (not inspector.has_table(table_name, schema=schema)):
         return {}
 
     log_sql = f"""
@@ -342,7 +344,7 @@ def load_meta_df_to_db(engine: Engine, meta_df: pd.DataFrame, table_name: str, s
         return result.rowcount
 
 
-def load_csv_to_db(engine: Engine, table_name: str, csv_path: str, source_file_last_modified: datetime,  schema: str = OTN_NRT_SCHEMA) -> pd.DataFrame:
+def load_csv_to_db(engine: Engine, table_name: str, csv_path: str, source_file_last_modified: datetime, schema: str = SAT_NRT_SCHEMA) -> pd.DataFrame:
     """
     Args:
         engine: SQLAlchemy engine instance connected to the PostgreSQL database.
@@ -881,7 +883,7 @@ def show_db_deployments(engine: Engine, program: list[str] = [],
     Query NRT DB to get nrt_metadata
     """
     # Build the query with optional filters
-    base_query = f"SELECT * FROM {OTN_NRT_SCHEMA}.nrt_metadata"
+    base_query = f"SELECT * FROM {SAT_NRT_SCHEMA}.nrt_metadata"
 
     where_clauses = []
     params = {}
@@ -932,7 +934,7 @@ def get_campaign_status(engine, programs: list = [], campaigns: list = []) -> pd
             COUNT(*) as total_records,
             MIN(min_date) as earliest_date,
             MAX(max_date) as latest_date
-        FROM {OTN_NRT_SCHEMA}.nrt_ssm_summary
+        FROM {SAT_NRT_SCHEMA}.nrt_ssm_summary
         GROUP BY program, cid, collectioncode
     )
     SELECT 
