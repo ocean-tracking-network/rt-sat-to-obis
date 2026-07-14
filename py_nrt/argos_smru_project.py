@@ -537,6 +537,18 @@ def create_smru_qc_config(
     exclude_tags_file = get_path_from_strings([qc_input_path, program, f'{program}_{cid}', drop_ids_file])
     with open(exclude_tags_file, 'w') as f:
         f.write('\n'.join(drop_ids))
+    upload_url = os.path.join(notebook_base_url, qc_input_path, program, f'{program}_{cid}')
+    relative_path = f'{qc_input_path}/{program}/{project_id}'
+    html_messages = {
+        'found':  [
+            HTML(f'<h3 style="margin: 0; color: blue;">Generated ArgosQC config files: config_{cid}.json and {drop_ids_file}</h3>'),
+            HTML(f'<a href="{upload_url}" target="_blank">Click here to review or modify config files in a new tab.</a>')
+        ],
+        'missing': [
+            HTML(f'<h3 style="margin: 0; color: red;">No Argos config files found in {qc_input_path}. Please contact OTN data team for assistant.</h3>')
+        ]
+    }
+    check_file_exists(relative_path, f'config_{cid}.json', html_messages, upload_url, False, False)
 
     display(HTML(f'''<p>
         <span style="font-size:25px;"><i class="fa fa-flip-horizontal">🐟</i></span>
@@ -696,8 +708,8 @@ def export_deployment_for_argosqc(program: str, cid: str, deployment_df: pd.Data
             HTML(f'<a href="{upload_url}" target="_blank">Click here to review {folder_path} in a new tab.</a>')
         ],
         'missing': [
-            HTML(f'<h3 style="margin: 0; color: blue;">Generated deployment metadata for ArgosQC from local .mdb in {folder_path}.</h3>'),
-            HTML(f'<a href="{upload_url}" target="_blank">Click here to review {folder_path} in a new tab.</a>')
+            HTML(f'<h3 style="margin: 0; color: blue;">Generated deployment metadata {file_name} for ArgosQC from local .mdb.</h3>'),
+            HTML(f'<a href="{upload_url}" target="_blank">Click here to review or modify {folder_path} in a new tab.</a>')
         ]
     }
     check_file_exists(relative_path, file_name, html_messages, upload_url, True, True)
