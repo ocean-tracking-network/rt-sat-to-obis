@@ -224,7 +224,7 @@ def init_otn_nrt_ssm_master_table(engine, schema):
                 lon NUMERIC NULL,
                 lat NUMERIC NULL,
                 x NUMERIC NULL,
-                y NUMERIC NULL,loaded_meta_df
+                y NUMERIC NULL,
                 x_se NUMERIC NULL,
                 y_se NUMERIC NULL,
                 u NUMERIC NULL,
