@@ -548,8 +548,8 @@ def check_file_exists(
             except OSError as e:
                 print(f"Error removing file: {e}")
                 raise
-        else:
-            for html in html_messages.get('found'):
-                display(html)
+        # Display file is found message
+        for html in html_messages.get('found'):
+            display(html)
 
         return True

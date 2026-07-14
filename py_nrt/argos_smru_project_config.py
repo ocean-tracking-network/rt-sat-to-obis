@@ -693,7 +693,6 @@ def export_deployment_for_argosqc(program: str, cid: str, deployment_df: pd.Data
     upload_url = os.path.join(notebook_base_url, qc_input_path, program, f'{program}_{cid}')
     html_messages = {
         'found':  [
-            HTML(f'<h3 style="margin: 0; color: blue;">Generated deployment metadata for ArgosQC from local .mdb in {folder_path}.</h3>'),
             HTML(f'<a href="{upload_url}" target="_blank">Click here to review {folder_path} in a new tab.</a>')
         ],
         'missing': [
@@ -727,8 +726,8 @@ def show_argosqc_results(qc_output_path:str, notebook_base_url:str, program:str,
     Returns: None
     """
     current_dir = os.path.dirname(__file__)
-    upload_url = os.path.join(notebook_base_url, qc_output_path, program, f'{program}_{cid}')
-    relative_path = os.path.join(qc_output_path, program, f'{program}_{cid}')
+    upload_url = os.path.join(notebook_base_url, qc_output_path, program)
+    relative_path = os.path.join(qc_output_path, program)
     folder_path = os.path.join(os.path.dirname(current_dir), relative_path)
     html_messages = {
         'found':  [
