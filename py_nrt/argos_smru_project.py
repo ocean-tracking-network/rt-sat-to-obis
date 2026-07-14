@@ -586,8 +586,8 @@ def extract_ssmoutput_tracks(program: str, cid: str, qc_output_path: str, subset
     })
     ssmoutputs_df['date_time'] = pd.to_datetime(
         ssmoutputs_df['date_time'],
-        format='mixed',
-        dayfirst=True
+        dayfirst=True,  # Keep this if needed
+        errors='coerce'  # Handle invalid dates gracefully
     )
     if subset_tags:
         ssmoutputs_df = ssmoutputs_df[ssmoutputs_df['tag_ref'].isin(subset_tags)]
