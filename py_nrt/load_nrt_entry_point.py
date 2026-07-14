@@ -52,7 +52,7 @@ def main():
         # Check backend
         qc_output_path = '../qc'
         logger.info("Checking OTN NRT backend...")
-        if lnr.check_otn_nrt_backend(engine):
+        if lnr.check_sat_db_backend(engine):
             logger.info("OTN NRT backend is available")
         else:
             logger.warning("OTN NRT backend is not available")

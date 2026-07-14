@@ -34,12 +34,12 @@ logger = logging.getLogger(__name__)
 exclude_folders=['maps', 'diag', 'aodn', 'mdb']
 
 
-def check_sat_db_backend(engine: Engine, schema: str= 'OTN_NRT_SCHEMA', verbose: bool=True) -> bool:
+def check_sat_db_backend(engine: Engine, schema: str = 'OTN_NRT_SCHEMA', verbose: bool = True) -> bool:
     """
     Get loaners in dataframe
-    :param engine:
-    :param verbose:
-    :return:
+        engine: SQLAlchemy Engine object
+        schema: Database schema name to check
+    :return: bool True if schema is found in DB. False otherwise.
     """
     inspector = inspect(engine)
 
