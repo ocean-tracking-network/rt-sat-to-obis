@@ -5,7 +5,7 @@ Run R script with multiple config files in parallel threads.
 
 import argparse
 import fnmatch
-import logging00
+import logging
 import os
 import subprocess
 import sys
