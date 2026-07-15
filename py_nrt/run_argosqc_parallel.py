@@ -5,7 +5,7 @@ Run R script with multiple config files in parallel threads.
 
 import argparse
 import fnmatch
-import logging
+import logging00
 import os
 import subprocess
 import sys
@@ -58,6 +58,11 @@ def parse_args():
     parser.add_argument(
         '--sudo', action='store_true',
         help='Use sudo when running the R script (default: run as current user)'
+    )
+    parser.add_argument(
+        '--r-executable',
+        default='/opt/R/4.5.2/bin/Rscript',
+        help='Path to the Rscript executable (default: /opt/R/4.5.2/bin/Rscript)'
     )
     return parser.parse_args()
 
@@ -317,7 +322,8 @@ def main():
                 run_r_script,
                 config,
                 args.log_dir,
-                args.sudo
+                args.sudo,
+                args.r_executable
             )
             future_to_config[future] = config
 
