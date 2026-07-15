@@ -1,10 +1,6 @@
 #!/usr/bin/env python3
 """
 Run R script with multiple config files in parallel threads.
-Pull git changes on jphub:
-cd /opt/satnrt/rt-sat-to-obis
-sudo -u satnrt git reset --hard
-sudo -u satnrt git pull
 """
 
 import argparse
@@ -16,7 +12,6 @@ import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
-from pathlib import Path
 from typing import Dict, Any, List
 from pathlib import Path
 import json
