@@ -61,8 +61,8 @@ def parse_args():
         help=f'Glob pattern for config files (default: "{DEFAULT_SEARCH_PATTERN}")'
     )
     parser.add_argument(
-        '--no-sudo', action='store_true',
-        help='Do not use sudo when running the R script (run as current user)'
+        '--sudo', action='store_true',
+        help='Use sudo when running the R script (default: run as current user)'
     )
     return parser.parse_args()
 
@@ -322,7 +322,7 @@ def main():
                 run_r_script,
                 config,
                 args.log_dir,
-                not args.no_sudo
+                args.sudo
             )
             future_to_config[future] = config
 
