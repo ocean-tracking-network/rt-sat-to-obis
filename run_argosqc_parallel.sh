@@ -1,10 +1,12 @@
 #!/bin/bash
+R_EXEC="/opt/R/4.5.2/bin/Rscript"
+PYTHON_EXEC="/opt/miniconda3/envs/rt-sat-to-obis/bin/python"
 NRT_CODE_BASE="/opt/satnrt/rt-sat-to-obis"
 LOG_FILE="$NRT_CODE_BASE/logs/run_argosqc_parallel_$(date +\%Y\%m\%d_\%H\%M\%S).log"
 RUN_DETAILS_CSV="$NRT_CODE_BASE/argosqc_run_details.csv"
 EMAILTO="yinghuan.niu@oceantrack.org"
 
-cd "$NRT_CODE_BASE" && /opt/miniconda3/envs/rt-sat-to-obis/bin/python  "$NRT_CODE_BASE/py_nrt/run_argosqc_parallel.py" > $LOG_FILE  2>&1
+cd "$NRT_CODE_BASE" && "$PYTHON_EXEC" "$NRT_CODE_BASE/py_nrt/run_argosqc_parallel.py" --r-executable "$R_EXEC" > "$LOG_FILE" 2>&1
 EXIT_CODE=$?
 
 if [ $EXIT_CODE -ne 0 ]; then
