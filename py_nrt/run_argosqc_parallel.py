@@ -1,11 +1,6 @@
 #!/usr/bin/env python3
 """
 Run R script with multiple config files in parallel threads.
-Pull git changes on jphub:
- su - satnrt
-Password: otndc
-cd /opt/otn_nrt/rt-sat-to-obis
-git pull
 """
 
 import argparse
@@ -17,7 +12,6 @@ import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
-from pathlib import Path
 from typing import Dict, Any, List
 from pathlib import Path
 import json
@@ -62,8 +56,13 @@ def parse_args():
         help=f'Glob pattern for config files (default: "{DEFAULT_SEARCH_PATTERN}")'
     )
     parser.add_argument(
-        '--no-sudo', action='store_true',
-        help='Do not use sudo when running the R script (run as current user)'
+        '--sudo', action='store_true',
+        help='Use sudo when running the R script (default: run as current user)'
+    )
+    parser.add_argument(
+        '--r-executable',
+        default='/opt/R/4.5.2/bin/Rscript',
+        help='Path to the Rscript executable (default: /opt/R/4.5.2/bin/Rscript)'
     )
     return parser.parse_args()
 
@@ -91,7 +90,7 @@ def find_config_files(search_root: str, pattern: str) -> List[str]:
     return config_files
 
 
-def run_r_script(config_file: str, log_dir: str, use_sudo: bool, r_executable: str = '/opt/R/4.5.2/bin/R') -> Dict[str, Any]:
+def run_r_script(config_file: str, log_dir: str, use_sudo: bool, r_executable: str = '/opt/R/4.5.2/bin/Rscript') -> Dict[str, Any]:
     """
     Run the R script with a given config file and capture output to a log file.
     """
@@ -323,7 +322,8 @@ def main():
                 run_r_script,
                 config,
                 args.log_dir,
-                not args.no_sudo
+                args.sudo,
+                args.r_executable
             )
             future_to_config[future] = config
 
