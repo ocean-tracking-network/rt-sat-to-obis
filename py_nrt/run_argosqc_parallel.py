@@ -2,10 +2,9 @@
 """
 Run R script with multiple config files in parallel threads.
 Pull git changes on jphub:
- su - satnrt
-Password: otndc
-cd /opt/otn_nrt/rt-sat-to-obis
-git pull
+cd /opt/satnrt/rt-sat-to-obis
+sudo -u satnrt git reset --hard
+sudo -u satnrt git pull
 """
 
 import argparse
@@ -91,7 +90,7 @@ def find_config_files(search_root: str, pattern: str) -> List[str]:
     return config_files
 
 
-def run_r_script(config_file: str, log_dir: str, use_sudo: bool, r_executable: str = '/opt/R/4.5.2/bin/R') -> Dict[str, Any]:
+def run_r_script(config_file: str, log_dir: str, use_sudo: bool, r_executable: str = '/opt/R/4.5.2/bin/Rscript') -> Dict[str, Any]:
     """
     Run the R script with a given config file and capture output to a log file.
     """
