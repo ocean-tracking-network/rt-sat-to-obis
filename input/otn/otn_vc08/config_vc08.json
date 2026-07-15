@@ -3,10 +3,10 @@
     "setup": {
       "program": "otn",
       "data.dir": "input/otn/otn_vc08/mdb",
+      "meta.file": "C:\\Users\\hpz2\\otn_gitlab\\rt-sat-to-obis\\input\\otn\\otn_vc08\\vc08_deployment_meta_delay.csv",
       "maps.dir": "qc/otn/otn_vc08/maps",
       "diag.dir": "qc/otn/otn_vc08/diag",
       "output.dir": "qc/otn/otn_vc08",
-      "meta.file":"input/otn/otn_vc08/OTN_SATTAG_Location-QC_metadata_vc08_nrt.csv",
       "return.R": false
     },
     "harvest": {
@@ -22,7 +22,7 @@
       "model": "crw",
       "vmax": 3,
       "time.step": 3,
-      "proj": "+proj=stere +lat_0=-90 +lat_ts=-71 +lon_0=100 +k=1 +ellps=WGS84 +units=km +no_defs",
+      "proj": "+proj=merc +ellps=WGS84 +units=km +no_defs",
       "reroute": true,
       "dist": 500,
       "barrier": null,
@@ -34,8 +34,8 @@
       "pred.int": 12
     },
     "meta": {
-      "common_name": "VMT",
-      "species": "Hg",
+      "common_name": "grey seal",
+      "species": "Halichoerus grypus",
       "release_site": "Hay Island",
       "state_country": "Nova Scotia Canada"
     }
