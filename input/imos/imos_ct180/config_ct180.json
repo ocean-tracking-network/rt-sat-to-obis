@@ -12,11 +12,11 @@
     "harvest": {
       "download": false,
       "cid": "ct180",
-      "smru.usr": "",
-      "smru.pwd": "",
+      "smru.usr": "imos",
+      "smru.pwd": "imos",
       "timeout": 180,
       "dropIDs": "input/imos/imos_ct180/exclude_tags.csv",
-      "p2mdbtools": ""
+      "p2mdbtools": "/usr/bin"
     },
     "model": {
       "model": "crw",
