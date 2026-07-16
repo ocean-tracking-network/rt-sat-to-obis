@@ -85,7 +85,7 @@ def find_config_files(search_root: str, pattern: str) -> List[str]:
     config_files = []
     for root, dirs, files in os.walk(search_root):
         for file in files:
-            if fnmatch.fnmatch(file, pattern) and '_delay' not in file:
+            if fnmatch.fnmatch(file, pattern):
                 config_files.append(os.path.join(root, file))
     return config_files
 
@@ -311,6 +311,13 @@ def main():
         sys.exit(1)
 
     logger.info(f"Found {len(config_files)} config files: \n {config_files}")
+    delay_configs = []
+    for config_file in config_files.copy():
+        if 'delay' in config_file:
+            delay_configs.append(config_file)
+            config_files.remove(config_file)
+            logger.info(f"Excluding deply config file: {config_file}")
+
 
     # Use ThreadPoolExecutor
     results = []
