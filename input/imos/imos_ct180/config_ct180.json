@@ -10,7 +10,7 @@
       "return.R": false
     },
     "harvest": {
-      "download": false,
+      "download": true,
       "cid": "ct180",
       "smru.usr": "imos",
       "smru.pwd": "imos",
