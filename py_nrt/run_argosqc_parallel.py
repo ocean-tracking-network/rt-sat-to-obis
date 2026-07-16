@@ -85,7 +85,7 @@ def find_config_files(search_root: str, pattern: str) -> List[str]:
     config_files = []
     for root, dirs, files in os.walk(search_root):
         for file in files:
-            if fnmatch.fnmatch(file, pattern):
+            if fnmatch.fnmatch(file, pattern) and '_delay' not in file:
                 config_files.append(os.path.join(root, file))
     return config_files
 
