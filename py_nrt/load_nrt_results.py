@@ -12,7 +12,7 @@ from py_nrt.common import print_error, get_engine, show_df, get_program_campaign
 from sqlalchemy.engine import Engine
 from sqlalchemy import inspect
 
-SAT_NRT_SCHEMA = 'satnrt'
+SAT_NRT_SCHEMA = 'otnsat'
 SAT_DELAY_SCHEMA = 'satdelay'
 # SAT_NRT_SCHEMA = 'test'
 # SAT_DELAY_SCHEMA = 'test'
