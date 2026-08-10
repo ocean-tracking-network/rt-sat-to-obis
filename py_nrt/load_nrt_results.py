@@ -12,10 +12,10 @@ from py_nrt.common import print_error, get_engine, show_df, get_program_campaign
 from sqlalchemy.engine import Engine
 from sqlalchemy import inspect
 
-# SAT_NRT_SCHEMA = 'satnrt'
-# SAT_DELAY_SCHEMA = 'satdelay'
-SAT_NRT_SCHEMA = 'test'
-SAT_DELAY_SCHEMA = 'test'
+SAT_NRT_SCHEMA = 'satnrt'
+SAT_DELAY_SCHEMA = 'satdelay'
+# SAT_NRT_SCHEMA = 'test'
+# SAT_DELAY_SCHEMA = 'test'
 OTN_NRT_SSM_MASTER_TABLE = 'sat_ssm_master'
 NRT_UPLOAD_LOG_TABLE = 'sat_ssm_upload_logs'
 OTN_NRT_SSM_SUMMARY_TABLE = 'sat_ssm_summary'
