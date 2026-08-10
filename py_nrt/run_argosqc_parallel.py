@@ -311,6 +311,13 @@ def main():
         sys.exit(1)
 
     logger.info(f"Found {len(config_files)} config files: \n {config_files}")
+    delay_configs = []
+    for config_file in config_files.copy():
+        if 'delay' in config_file:
+            delay_configs.append(config_file)
+            config_files.remove(config_file)
+            logger.info(f"Excluding deply config file: {config_file}")
+
 
     # Use ThreadPoolExecutor
     results = []

@@ -41,7 +41,7 @@ import pandas as pd
 from xml.etree import ElementTree as ET
 import warnings
 
-from py_nrt.argos_smru_project_config import get_path_from_strings
+from py_nrt.argos_smru_project import get_path_from_strings
 from py_nrt.common import run_from_ipython, show_df, build_combobox
 from py_nrt.load_nrt_results import get_files_by_pattern
 

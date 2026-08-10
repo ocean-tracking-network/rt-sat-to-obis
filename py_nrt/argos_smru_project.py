@@ -417,8 +417,8 @@ def create_smru_qc_config(
         deployment_df: pd.DataFrame,
         drop_ids: list[str],
         otn_collection_code: str,
-        qc_input_path: Path,
-        qc_output_path: Path,
+        qc_input_path: str,
+        qc_output_path: str,
         mdb_tables_path: str,
         user: str,
         password: str,
@@ -437,13 +437,13 @@ def create_smru_qc_config(
 
     Args:
         program (str): The program name for the QC configuration
-        deployment_meta_file_for_argosqc (str): deployment meta file for ArgosQC
+        upload_mode (str): nrt or delay
         cid (str): Collection/collaboration identifier
         deployment_df (pd.DataFrame): vendor deployment dataframe.
         drop_ids (list[str]): List of drop/tag IDs to process
         otn_collection_code (str): OTN collection code identifier
-        qc_input_path (Path): Directory path containing input data files
-        qc_output_path (Path): Directory path for QC output files
+        qc_input_path (str): Directory path containing input data files
+        qc_output_path (str): Directory path for QC output files
         mdb_tables_path (Path): .mdb file path
         user (str): Username for database authentication
         password (str): Password for database authentication
@@ -476,9 +476,11 @@ def create_smru_qc_config(
 
     project_id = build_project_id_smru(program, cid)
     if upload_mode == 'nrt':
+        config_file_json = f'config_{cid}.json'
         if (not user) or (not password):
             display(HTML(f'<h3 style="margin: 0; color: red;">Near real-time configuration requires SUMR user and password.</h3>'))
     elif upload_mode == 'delay':
+        config_file_json = f'config_{cid}_{upload_mode}.json'
         deployment_meta_file_for_argosqc, deployments_for_argosqc_df = export_deployment_for_argosqc(program, cid,
                                                                               deployment_df,
                                                                               qc_input_path,
@@ -488,6 +490,9 @@ def create_smru_qc_config(
         deployments_for_argosqc_df['species'] = species
         deployments_for_argosqc_df['release_site'] = release_site
         meta_file = deployment_meta_file_for_argosqc
+    else:
+        raise ValueError(f'Invalid upload_mode: "{upload_mode}". Expected "nrt" or "delay".')
+
     smru_qc_config = [
         {
             "setup": {
@@ -531,7 +536,7 @@ def create_smru_qc_config(
             }
         }
     ]
-    qc_config_file = get_path_from_strings([qc_input_path, program, f'{program}_{cid}', f'config_{cid}.json'])
+    qc_config_file = get_path_from_strings([qc_input_path, program, f'{program}_{cid}', config_file_json])
     with open(qc_config_file, 'w') as f:
         json.dump(smru_qc_config, f, indent=2, ensure_ascii=False)
     exclude_tags_file = get_path_from_strings([qc_input_path, program, f'{program}_{cid}', drop_ids_file])
@@ -541,14 +546,14 @@ def create_smru_qc_config(
     relative_path = f'{qc_input_path}/{program}/{project_id}'
     html_messages = {
         'found':  [
-            HTML(f'<h3 style="margin: 0; color: blue;">Generated ArgosQC config files: config_{cid}.json and {drop_ids_file}</h3>'),
+            HTML(f'<h3 style="margin: 0; color: blue;">Generated ArgosQC config files: {config_file_json} and {drop_ids_file}</h3>'),
             HTML(f'<a href="{upload_url}" target="_blank">Click here to review or modify config files in a new tab.</a>')
         ],
         'missing': [
             HTML(f'<h3 style="margin: 0; color: red;">No Argos config files found in {qc_input_path}. Please contact OTN data team for assistant.</h3>')
         ]
     }
-    check_file_exists(relative_path, f'config_{cid}.json', html_messages, upload_url, False, False)
+    check_file_exists(relative_path, config_file_json, html_messages, upload_url, False, False)
 
     display(HTML(f'''<p>
         <span style="font-size:25px;"><i class="fa fa-flip-horizontal">🐟</i></span>

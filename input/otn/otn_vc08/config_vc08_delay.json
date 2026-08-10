@@ -7,16 +7,17 @@
       "maps.dir": "qc/otn/otn_vc08/maps",
       "diag.dir": "qc/otn/otn_vc08/diag",
       "output.dir": "qc/otn/otn_vc08",
+      "meta.file":"input/otn/otn_vc08/vc08_deployment_meta_delay.csv",
       "return.R": false
     },
     "harvest": {
       "download": false,
       "cid": "vc08",
-      "smru.usr": "",
-      "smru.pwd": "",
+      "smru.usr": "imos",
+      "smru.pwd": "imos",
       "timeout": 180,
       "dropIDs": "input/otn/otn_vc08/exclude_tags.csv",
-      "p2mdbtools": "C:/Users/hpz2/mdbtools-app"
+      "p2mdbtools": "/usr/bin"
     },
     "model": {
       "model": "crw",

@@ -6,7 +6,8 @@ LOG_FILE="$NRT_CODE_BASE/logs/run_argosqc_parallel_$(date +\%Y\%m\%d_\%H\%M\%S).
 RUN_DETAILS_CSV="$NRT_CODE_BASE/argosqc_run_details.csv"
 EMAILTO="yinghuan.niu@oceantrack.org"
 
-cd "$NRT_CODE_BASE" && "$PYTHON_EXEC" "$NRT_CODE_BASE/py_nrt/run_argosqc_parallel.py" --r-executable "$R_EXEC" > "$LOG_FILE" 2>&1
+cd "$NRT_CODE_BASE" && "$PYTHON_EXEC" "$NRT_CODE_BASE/py_nrt/run_argosqc_parallel.py" --r-executable "$R_EXEC" 2>&1 | tee "$LOG_FILE"
+
 EXIT_CODE=$?
 
 if [ $EXIT_CODE -ne 0 ]; then
