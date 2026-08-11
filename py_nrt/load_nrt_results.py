@@ -11,30 +11,32 @@ from IPython.display import display, HTML
 from py_nrt.common import print_error, get_engine, show_df, get_program_campaign_from_ssm_file
 from sqlalchemy.engine import Engine
 from sqlalchemy import inspect
-
-SAT_NRT_SCHEMA = 'otnsat'
-SAT_DELAY_SCHEMA = 'satdelay'
-# SAT_NRT_SCHEMA = 'test'
-# SAT_DELAY_SCHEMA = 'test'
-OTN_NRT_SSM_MASTER_TABLE = 'sat_ssm_master'
-NRT_UPLOAD_LOG_TABLE = 'sat_ssm_upload_logs'
-OTN_NRT_SSM_SUMMARY_TABLE = 'sat_ssm_summary'
-NRT_META_TABLE = 'sat_deployments'
-TAG_META_FILE_PATTERN= r'.*metadata.*'
-MIN_MAX_DEPTH_FILE_PATTERN = r'.*MinMaxDepth.*|.*summary_.*'
-QC_OUTPUT_PATH = 'qc'
-
 import pandas as pd
 from datetime import datetime, timedelta
 from sqlalchemy import create_engine, text
 import logging
+
+SAT_NRT_SCHEMA = 'satnrt'
+SAT_DELAY_SCHEMA = 'satdelay'
+SAT_SSM_MASTER_TABLE = 'sat_ssm_master'
+SAT_SSM_UPLOAD_LOG_TABLE = 'sat_ssm_upload_logs'
+SAT_SSM_SUMMARY_TABLE = 'sat_ssm_summary'
+SAT_META_TABLE = 'sat_deployments'
+TAG_META_FILE_PATTERN= r'.*metadata.*'
+MIN_MAX_DEPTH_FILE_PATTERN = r'.*MinMaxDepth.*|.*summary_.*'
+QC_OUTPUT_PATH = 'qc'
+
+# Uncomment below for testing
+# SAT_NRT_SCHEMA = 'test'
+# SAT_DELAY_SCHEMA = 'test'
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 exclude_folders=['maps', 'diag', 'aodn', 'mdb']
 
 
-def check_sat_db_backend(engine: Engine, schema: str = 'OTN_NRT_SCHEMA', verbose: bool = True) -> bool:
+def check_sat_db_backend(engine: Engine, schema: str = SAT_NRT_SCHEMA, verbose: bool = True) -> bool:
     """
     Get loaners in dataframe
         engine: SQLAlchemy Engine object
@@ -182,8 +184,8 @@ def load_to_nrt_db(engine: Engine, ssmoutput_last_modified_map: dict[str, str], 
         summary_df_list.append(load_csv_to_db(engine, table_name, output_csv, last_modified, SAT_NRT_SCHEMA))
         print(f'Uploaded SSM results to HOST: {engine.url.host} DB: {engine.url.database} {SAT_NRT_SCHEMA}.{table_name} table.')
         meta_df = parse_tag_metadata(QC_OUTPUT_PATH, program, campaign, verbose=False)
-        metadata_rows = load_meta_df_to_db(engine, meta_df, table_name=NRT_META_TABLE, schema=SAT_NRT_SCHEMA)
-        print(f'Uploaded {metadata_rows} SSM tag metadata to {NRT_META_TABLE} table')
+        metadata_rows = load_meta_df_to_db(engine, meta_df, table_name=SAT_META_TABLE, schema=SAT_NRT_SCHEMA)
+        print(f'Uploaded {metadata_rows} SSM tag metadata to {SAT_META_TABLE} table')
         if summary_df_list:
             summary_df = pd.concat(summary_df_list, ignore_index=True)
         if all_meta_df_list:
@@ -193,12 +195,12 @@ def load_to_nrt_db(engine: Engine, ssmoutput_last_modified_map: dict[str, str], 
 
 def get_loaded_program_campaign_table_info(engine: Engine, table_name: str, schema: str=SAT_NRT_SCHEMA) -> dict[str, str]:
     inspector = inspect(engine)
-    if not inspector.has_table(NRT_UPLOAD_LOG_TABLE, schema=SAT_NRT_SCHEMA) or (not inspector.has_table(table_name, schema=schema)):
+    if not inspector.has_table(SAT_SSM_UPLOAD_LOG_TABLE, schema=SAT_NRT_SCHEMA) or (not inspector.has_table(table_name, schema=schema)):
         return {}
 
     log_sql = f"""
         SELECT ssmoutput_table, source_file_last_modified 
-        FROM {schema}.{NRT_UPLOAD_LOG_TABLE}
+        FROM {schema}.{SAT_SSM_UPLOAD_LOG_TABLE}
         WHERE constraint_applied = true
         AND ssmoutput_table = '{table_name}'
         ORDER BY source_file_last_modified DESC
@@ -214,11 +216,11 @@ def get_loaded_program_campaign_table_info(engine: Engine, table_name: str, sche
     return pd.DataFrame(rows, columns=result.keys())
 
 
-def init_otn_nrt_ssm_master_table(engine, schema):
+def init_sat_ssm_master_table(engine, schema):
     inspector = inspect(engine)
-    if not inspector.has_table(OTN_NRT_SSM_MASTER_TABLE, schema=schema):
+    if not inspector.has_table(SAT_SSM_MASTER_TABLE, schema=schema):
         create_table_sql = f'''
-            CREATE TABLE IF NOT EXISTS {schema}.{OTN_NRT_SSM_MASTER_TABLE} (
+            CREATE TABLE IF NOT EXISTS {schema}.{SAT_SSM_MASTER_TABLE} (
                 tag_id text NULL,
                 "date" timestamp NULL,
                 lon NUMERIC NULL,
@@ -247,9 +249,9 @@ def init_nrt_upload_log_table(engine, schema, start_datetime, table_name):
     log_id = f"{get_ip_by_hostname()}_{table_name}_{start_datetime.replace(':', '_').replace(' ', '_')}"
 
     inspector = inspect(engine)
-    if not inspector.has_table(NRT_UPLOAD_LOG_TABLE, schema=schema):
+    if not inspector.has_table(SAT_SSM_UPLOAD_LOG_TABLE, schema=schema):
         create_table_sql = f'''
-        CREATE TABLE IF NOT EXISTS {schema}.{NRT_UPLOAD_LOG_TABLE} (
+        CREATE TABLE IF NOT EXISTS {schema}.{SAT_SSM_UPLOAD_LOG_TABLE} (
             id VARCHAR(100) PRIMARY KEY,
             start_datetime TIMESTAMPTZ NOT NULL,
             end_datetime TIMESTAMPTZ NULL,
@@ -268,7 +270,7 @@ def init_nrt_upload_log_table(engine, schema, start_datetime, table_name):
     with engine.begin() as conn:
         conn.execute(
             text(f"""
-                INSERT INTO {schema}.{NRT_UPLOAD_LOG_TABLE}
+                INSERT INTO {schema}.{SAT_SSM_UPLOAD_LOG_TABLE}
                 (id, start_datetime)
                 VALUES (:id, :start_datetime)
                 RETURNING id
@@ -288,7 +290,7 @@ def load_meta_df_to_db(engine: Engine, meta_df: pd.DataFrame, table_name: str, s
         engine: SQLAlchemy engine instance connected to the PostgreSQL database.
         meta_df: metadata dataframe.
         table_name: Name of the target table to create/replace.
-        schema: Database schema. Defaults to OTN_NRT_SCHEMA
+        schema: Database schema. Defaults to SAT_NRT_SCHEMA
     Returns:
         bool: True if the CSV was successfully loaded.
     """
@@ -350,7 +352,7 @@ def load_csv_to_db(engine: Engine, table_name: str, csv_path: str, source_file_l
         engine: SQLAlchemy engine instance connected to the PostgreSQL database.
         table_name: Name of the target table to create/replace.
         csv_path: Path to the CSV file to be loaded.
-        schema: Database schema. Defaults to OTN_NRT_SCHEMA
+        schema: Database schema. Defaults to SAT_NRT_SCHEMA
 
     Returns:
         bool: True if the CSV was successfully loaded.
@@ -426,7 +428,7 @@ def transform_nrt_table(engine: Engine, schema: str, table_name: str) -> None:
     Returns:
         None
     """
-    init_otn_nrt_ssm_master_table(engine, schema)
+    init_sat_ssm_master_table(engine, schema)
     full_table_name = f'{schema}.{table_name}'
     number_columns = ['lon', 'lat', 'x', 'y', 'x_se', 'y_se', 'u', 'v', 'u_se', 'v_se', 's', 's_se']
     datetime_columns = ['date']
@@ -468,7 +470,7 @@ def transform_nrt_table(engine: Engine, schema: str, table_name: str) -> None:
     # Add index and inheritance
     with engine.begin() as conn:
         conn.execute(text(f'CREATE INDEX IF NOT EXISTS idx_{table_name}_tag_id_date ON {full_table_name} ("tag_id", "date")'))
-        conn.execute(text(f'ALTER TABLE {full_table_name} INHERIT {schema}.{OTN_NRT_SSM_MASTER_TABLE}'))
+        conn.execute(text(f'ALTER TABLE {full_table_name} INHERIT {schema}.{SAT_SSM_MASTER_TABLE}'))
 
 
 def update_log_checkpoint(engine: Engine, schema: str, log_id: int, updates: Dict[str, Any]) -> None:
@@ -487,7 +489,7 @@ def update_log_checkpoint(engine: Engine, schema: str, log_id: int, updates: Dic
     set_clause = ", ".join([f"{col} = :{col}" for col in update_columns])
 
     sql = f"""
-        UPDATE {schema}.{NRT_UPLOAD_LOG_TABLE}
+        UPDATE {schema}.{SAT_SSM_UPLOAD_LOG_TABLE}
         SET {set_clause}
         WHERE id = :id
     """
@@ -514,14 +516,14 @@ def get_ip_by_hostname():
     return ip_address
 
 
-def create_otn_nrt_ssm_summary(engine: Engine, schema: str):
+def create_sat_ssm_summary(engine: Engine, schema: str):
     """
     Create the OTN NRT catalog table to track all data tables with tag and species info.
     """
-    full_table_name = f'{schema}.{OTN_NRT_SSM_SUMMARY_TABLE}'
+    full_table_name = f'{schema}.{SAT_SSM_SUMMARY_TABLE}'
     create_sql = f'''
     CREATE TABLE IF NOT EXISTS {full_table_name} (
-        nrt_ssm_table_name VARCHAR(200) NOT NULL,
+        sat_ssm_table_name VARCHAR(200) NOT NULL,
         tag_id TEXT NOT NULL,
         program TEXT NULL,
         cid TEXT NULL,
@@ -533,9 +535,9 @@ def create_otn_nrt_ssm_summary(engine: Engine, schema: str):
         latest_lat NUMERIC NULL,
         latest_lon NUMERIC NULL,
         common_name TEXT NULL,
-        UNIQUE (nrt_ssm_table_name, tag_id)
+        UNIQUE (sat_ssm_table_name, tag_id)
     );
-    ALTER TABLE {full_table_name} ADD PRIMARY KEY (nrt_ssm_table_name, tag_id);
+    ALTER TABLE {full_table_name} ADD PRIMARY KEY (sat_ssm_table_name, tag_id);
     '''
 
     with engine.begin() as conn:
@@ -546,7 +548,7 @@ def create_nrt_meta_table(engine: Engine, schema: str):
     """
     Create the OTN NRT catalog table to track all data tables with tag and species info.
     """
-    full_table_name = f'{schema}.{NRT_META_TABLE}'
+    full_table_name = f'{schema}.{SAT_META_TABLE}'
     create_table_sql = f'''
     CREATE TABLE {full_table_name} (
         campaign_id TEXT,
@@ -580,10 +582,10 @@ def update_otn_nrt_catalog(engine: Engine, schema: str, ssm_result_table: str) -
     """
     summary_df = pd.DataFrame
     inspector = inspect(engine)
-    if not inspector.has_table(OTN_NRT_SSM_SUMMARY_TABLE, schema=schema):
-        create_otn_nrt_ssm_summary(engine, schema)
+    if not inspector.has_table(SAT_SSM_SUMMARY_TABLE, schema=schema):
+        create_sat_ssm_summary(engine, schema)
 
-    if not inspector.has_table(NRT_META_TABLE, schema=schema):
+    if not inspector.has_table(SAT_META_TABLE, schema=schema):
         create_nrt_meta_table(engine, schema)
 
     # Check if CID column exists
@@ -614,10 +616,10 @@ def update_otn_nrt_catalog(engine: Engine, schema: str, ssm_result_table: str) -
                 WHERE tag_id IS NOT NULL AND tag_id != ''
                 ORDER BY tag_id, date DESC
             )
-            INSERT INTO {schema}.{OTN_NRT_SSM_SUMMARY_TABLE}
-            (nrt_ssm_table_name, tag_id, min_date, max_date, row_count, cid, latest_lon, latest_lat)
+            INSERT INTO {schema}.{SAT_SSM_SUMMARY_TABLE}
+            (sat_ssm_table_name, tag_id, min_date, max_date, row_count, cid, latest_lon, latest_lat)
             SELECT 
-                '{ssm_result_table}' as nrt_ssm_table_name,
+                '{ssm_result_table}' as sat_ssm_table_name,
                 a.tag_id,
                 a.min_date,
                 a.max_date,
@@ -627,7 +629,7 @@ def update_otn_nrt_catalog(engine: Engine, schema: str, ssm_result_table: str) -
                 l.latest_lat
             FROM tag_aggregates a
             LEFT JOIN tag_latest_info l ON a.tag_id = l.tag_id
-            ON CONFLICT (nrt_ssm_table_name, tag_id) DO UPDATE SET
+            ON CONFLICT (sat_ssm_table_name, tag_id) DO UPDATE SET
                 min_date = EXCLUDED.min_date,
                 max_date = EXCLUDED.max_date,
                 row_count = EXCLUDED.row_count,
@@ -659,10 +661,10 @@ def update_otn_nrt_catalog(engine: Engine, schema: str, ssm_result_table: str) -
                 WHERE tag_id IS NOT NULL AND tag_id != ''
                 ORDER BY tag_id, date DESC
             )
-            INSERT INTO {schema}.{OTN_NRT_SSM_SUMMARY_TABLE}
-            (nrt_ssm_table_name, tag_id, min_date, max_date, row_count, latest_lon, latest_lat)
+            INSERT INTO {schema}.{SAT_SSM_SUMMARY_TABLE}
+            (sat_ssm_table_name, tag_id, min_date, max_date, row_count, latest_lon, latest_lat)
             SELECT 
-                '{ssm_result_table}' as nrt_ssm_table_name,
+                '{ssm_result_table}' as sat_ssm_table_name,
                 a.tag_id,
                 a.min_date,
                 a.max_date,
@@ -671,7 +673,7 @@ def update_otn_nrt_catalog(engine: Engine, schema: str, ssm_result_table: str) -
                 l.latest_lat
             FROM tag_aggregates a
             LEFT JOIN tag_latest_info l ON a.tag_id = l.tag_id
-            ON CONFLICT (nrt_ssm_table_name, tag_id) DO UPDATE SET
+            ON CONFLICT (sat_ssm_table_name, tag_id) DO UPDATE SET
                 min_date = EXCLUDED.min_date,
                 max_date = EXCLUDED.max_date,
                 row_count = EXCLUDED.row_count,
@@ -877,13 +879,16 @@ def parse_tag_metadata(qc_output_path: str = QC_OUTPUT_PATH, program: str = '', 
     return curated_meta_df
 
 
-def show_db_deployments(engine: Engine, program: list[str] = [],
-                        campaign: list[str] = []) -> pd.DataFrame:
+def show_db_deployments(engine: Engine, program: list[str] = [], campaign: list[str] = []) -> pd.DataFrame:
     """
-    Query NRT DB to get nrt_metadata
+    Query NRT DB to get deployments
     """
+    inspector = inspect(engine)
+    if not inspector.has_table(SAT_META_TABLE, schema=SAT_NRT_SCHEMA):
+        print(f'Table does not exist {SAT_NRT_SCHEMA}.{SAT_META_TABLE}.')
+        return pd.DataFrame()
     # Build the query with optional filters
-    base_query = f"SELECT * FROM {SAT_NRT_SCHEMA}.nrt_metadata"
+    base_query = f"SELECT * FROM {SAT_NRT_SCHEMA}.{SAT_META_TABLE}"
 
     where_clauses = []
     params = {}
@@ -909,7 +914,7 @@ def show_db_deployments(engine: Engine, program: list[str] = [],
         result = conn.execute(text(full_query))
         rows = result.fetchall()
         if not rows:
-            print(f"No tags found in {nrt_metadata}")
+            print(f"No tags found in {SAT_NRT_SCHEMA}.{SAT_META_TABLE}")
     db_nrt_metadata_df = pd.DataFrame(rows, columns=result.keys())
     show_df(db_nrt_metadata_df, f'db_nrt_metadata_df', True)
     return db_nrt_metadata_df
@@ -923,6 +928,11 @@ def get_campaign_status(engine, programs: list = [], campaigns: list = []) -> pd
     """
     Get the latest last_updated timestamp for each campaign/collectioncode
     """
+    inspector = inspect(engine)
+    if not inspector.has_table(table=SAT_SSM_SUMMARY_TABLE, schema=SAT_NRT_SCHEMA):
+        print(f'Table does not exist {SAT_NRT_SCHEMA}.{SAT_SSM_SUMMARY_TABLE}.')
+        return pd.DataFrame()
+
     full_query = f"""
      WITH latest_updates AS (
         SELECT
@@ -934,7 +944,7 @@ def get_campaign_status(engine, programs: list = [], campaigns: list = []) -> pd
             COUNT(*) as total_records,
             MIN(min_date) as earliest_date,
             MAX(max_date) as latest_date
-        FROM {SAT_NRT_SCHEMA}.nrt_ssm_summary
+        FROM {SAT_NRT_SCHEMA}.{SAT_SSM_SUMMARY_TABLE}
         GROUP BY program, cid, collectioncode
     )
     SELECT 
@@ -953,7 +963,7 @@ def get_campaign_status(engine, programs: list = [], campaigns: list = []) -> pd
         data = result.fetchall()
         df = pd.DataFrame(data, columns=result.keys())
 
-    now = pd.Timestamp.now(tz='UTC')
+    now = pd.Timestamp.now()
     df['latest_update'] = pd.to_datetime(df['latest_update'])
     df['hours_since_update'] = (now - df['latest_update']).dt.total_seconds() / 3600
 
