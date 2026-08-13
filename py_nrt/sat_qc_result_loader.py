@@ -30,7 +30,7 @@ class SatQcResultsLoader:
 
     # Default DB settings
     SATNRT_SCHEMA = 'satnrt'
-    SATNRT_SCHEMA = 'satdelay'
+    SATDELAY_SCHEMA = 'satdelay'
     SAT_SSM_MASTER_TABLE = 'sat_ssm_master'
     SAT_SSM_UPLOAD_LOG_TABLE = 'sat_ssm_upload_logs'
     SAT_SSM_SUMMARY_TABLE = 'sat_ssm_summary'
@@ -68,8 +68,9 @@ class SatQcResultsLoader:
         Returns:
             bool: True if all tables exist and user has permission, False otherwise
         """
-        if self.schema in inspector.get_schema_names():
-            raise RuntimeError(f'{self.schema} is not found in: {engine}')
+        inspector = inspect(self.engine)
+        if self.schema not in inspector.get_schema_names():
+            raise RuntimeError(f'{self.schema} is not found in the list of schemas: {inspector.get_schema_names()}')
 
         # Check required tables
         required_tables = [
@@ -81,12 +82,11 @@ class SatQcResultsLoader:
 
         missing_tables = []
         for table in required_tables:
-            if not inspector.has_table(table, schema=self.schema):
+            if not self.engine.has_table(table, schema=self.schema):
                 missing_tables.append(table)
 
         if missing_tables:
-            raise RuntimeError(f"Missing tables in schema '{self.schema}': {missing_tables}"
-                               f"\nPlease contact OTN Data Team for assistance.")
+            raise RuntimeError(f"Missing tables in schema '{self.schema}': {missing_tables} \nPlease contact OTN Data Team for assistance.")
 
         # Check permissions on tables
         permission_issues = []
@@ -165,7 +165,7 @@ class SatQcResultsLoader:
             projects = []
             for sub_folder in os.listdir(program_folder):
                 if (sub_folder not in self.EXCLUDE_FOLDERS and not sub_folder.startswith('.')):
-                    projects.append(second_level_sub_folder)
+                    projects.append(sub_folder)
 
             program_projects.update({qced_program: sorted(projects)})
         return program_projects
@@ -183,10 +183,11 @@ class SatQcResultsLoader:
         if program not in self.get_qced_programs():
             raise RuntimeError(f"Program not found in QC output folder: {self.qc_output_path}")
 
-        projects = self.get_qced_projects_for_programs([program]).values()
+        projects = self.get_qced_projects_for_programs([program]).get(program, [])
+        ssmoutput_last_modified_map = {}
         for project in projects:
             project_path = os.path.join(self.qc_output_path, program, project)
-            ssmoutputs_files = list(Path(project_path).glob(QCED_OUTPUT_FILE_PATTERN))
+            ssmoutputs_files = list(Path(project_path).glob(SatQcResultsLoader.QCED_OUTPUT_FILE_PATTERN))
             if ssmoutputs_files:
                 project_ssmoutputs = str(ssmoutputs_files[0])
                 last_modified = datetime.fromtimestamp(os.path.getmtime(ssmoutputs_files[0]))
@@ -195,7 +196,7 @@ class SatQcResultsLoader:
                 ssmoutput_last_modified_map[project_ssmoutputs] = last_modified
             else:
                 if self.verbose:
-                    print(f"-- No SSM result found for project: {sub_folder}. Skipping...")
+                    print(f"-- No SSM result found for project: {project_path}. Skipping...")
                 continue
 
         return ssmoutput_last_modified_map
@@ -922,8 +923,7 @@ class SatQcResultsLoader:
         Returns:
             DataFrame with project status information
         """
-        inspector = inspect(self.engine)
-        if not inspector.has_table(table=self.SAT_SSM_SUMMARY_TABLE, schema=self.schema):
+        if not self.engine.has_table(self.SAT_SSM_SUMMARY_TABLE, schema=self.schema):
             print(f'Table does not exist {self.schema}.{self.SAT_SSM_SUMMARY_TABLE}.')
             return pd.DataFrame()
 
@@ -982,7 +982,7 @@ class SatQcResultsLoader:
             return df
 
         now = pd.Timestamp.now()
-        df['latest_update'] = pd.to_datetime(df['latest_update'])
+        df['latest_update'] = pd.to_datetime(df['latest_update']).dt.tz_localize(None)
         df['hours_since_update'] = (now - df['latest_update']).dt.total_seconds() / 3600
 
         def get_status(hours):
