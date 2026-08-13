@@ -4,7 +4,7 @@ LOG_FILE="$NRT_CODE_BASE/logs/run_load_today_ssmoutput_$(date +\%Y\%m\%d_\%H\%M\
 RUN_DETAILS_CSV="$NRT_CODE_BASE/argosqc_run_details.csv"
 EMAILTO="yinghuan.niu@oceantrack.org"
 
-cd "$NRT_CODE_BASE" && /opt/miniconda3/envs/rt-sat-to-obis/bin/python  "$NRT_CODE_BASE/python py_nrt/run_load_all_sat_qc_results.py" > $LOG_FILE  2>&1
+cd "$NRT_CODE_BASE" && /opt/miniconda3/envs/rt-sat-to-obis/bin/python  "$NRT_CODE_BASE/py_nrt/run_load_all_sat_qc_results.py" > $LOG_FILE  2>&1
 EXIT_CODE=$?
 
 if [ $EXIT_CODE -ne 0 ]; then
