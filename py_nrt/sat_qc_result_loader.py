@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import List, Union, Dict, Any, Optional
 from IPython.display import display, HTML
 
-from py_nrt.common import print_error, get_engine, show_df, get_program_campaign_from_ssm_file, get_files_by_pattern
+from py_nrt.common import print_error, get_engine, show_df, get_program_project_from_ssm_file, get_files_by_pattern, get_ip_by_hostname
 from sqlalchemy.engine import Engine
 from sqlalchemy import inspect
 import pandas as pd
@@ -38,6 +38,7 @@ class SatQcResultsLoader:
 
     # Default file system settings
     TAG_META_FILE_PATTERN = r'.*metadata.*'
+    QCED_OUTPUT_FILE_PATTERN = '*ssmoutputs*_nrt.csv'
     MIN_MAX_DEPTH_FILE_PATTERN = r'.*MinMaxDepth.*|.*summary_.*'
     QC_OUTPUT_PATH = 'qc'
     EXCLUDE_FOLDERS = ['maps', 'diag', 'aodn', 'mdb']
@@ -119,7 +120,7 @@ class SatQcResultsLoader:
                 raise e
 
         if permission_issues:
-            print(f"❌ Permission issues detected:")
+            print(f"Permission issues detected:")
             for issue in permission_issues:
                 raise RuntimeError(f"Permission issue(s) found: \n{issue}"
                                    f"\nPlease contact OTN Data Team to grant appropriate permissions.")
@@ -169,46 +170,37 @@ class SatQcResultsLoader:
             program_projects.update({qced_program: sorted(projects)})
         return program_projects
 
-    def get_campaign_qc_results(self, program: str) -> Dict[str, datetime]:
+    def get_qc_results_for_program(self, program: str) -> Dict[str, datetime]:
         """
         Get QCed projects for a given program.
 
         Args:
-            program: NRT program name
+            program: program name
 
         Returns:
             dict[str, datetime]: A map of the QCed results file path to last_modified datetime
         """
-        program_path = os.path.join(self.qc_output_path, program)
-        ssmoutput_last_modified_map = {}
+        if program not in self.get_qced_programs():
+            raise RuntimeError(f"Program not found in QC output folder: {self.qc_output_path}")
 
-        if not os.path.exists(program_path):
-            print(f"Warning: Program path {program_path} does not exist")
-            return ssmoutput_last_modified_map
-
-        for sub_folder in os.listdir(program_path):
-            campaign_path = os.path.join(self.qc_output_path, program, sub_folder)
-            if sub_folder not in self.EXCLUDE_FOLDERS and not sub_folder.startswith('.'):
+        projects = self.get_qced_projects_for_programs([program]).values()
+        for project in projects:
+            project_path = os.path.join(self.qc_output_path, program, project)
+            ssmoutputs_files = list(Path(project_path).glob(QCED_OUTPUT_FILE_PATTERN))
+            if ssmoutputs_files:
+                project_ssmoutputs = str(ssmoutputs_files[0])
+                last_modified = datetime.fromtimestamp(os.path.getmtime(ssmoutputs_files[0]))
                 if self.verbose:
-                    print(f'Found campaign folder for {program}: {campaign_path}')
-
-                ssmoutputs_files = list(Path(campaign_path).glob('*ssmoutputs*_nrt.csv'))
-                if ssmoutputs_files:
-                    campaign_ssmoutputs = str(ssmoutputs_files[0])
-                    last_modified = datetime.fromtimestamp(os.path.getmtime(ssmoutputs_files[0]))
-                    if self.verbose:
-                        print(f"Found SSM results: {ssmoutputs_files[0]} - "
-                              f"last updated on {last_modified}")
-                    ssmoutput_last_modified_map[campaign_ssmoutputs] = last_modified
-                else:
-                    if self.verbose:
-                        print(f"-- No SSM result found in {sub_folder}. Skipping...")
-                    continue
+                    print(f"Found SSM results: {ssmoutputs_files[0]} - last updated on {last_modified}")
+                ssmoutput_last_modified_map[project_ssmoutputs] = last_modified
+            else:
+                if self.verbose:
+                    print(f"-- No SSM result found for project: {sub_folder}. Skipping...")
+                continue
 
         return ssmoutput_last_modified_map
 
-    def load_all_to_db(self, programs: Optional[List[str]] = None) -> tuple[
-        pd.DataFrame, List[pd.DataFrame]]:
+    def load_all_qced_results_to_db(self, programs: Optional[List[str]] = None) -> tuple[pd.DataFrame, List[pd.DataFrame]]:
         """
         Load all QC results for specified programs (or all available) to the database.
 
@@ -218,9 +210,6 @@ class SatQcResultsLoader:
         Returns:
             tuple: (summary_df, all_meta_df_list)
         """
-        if self.engine is None:
-            raise ValueError("Database engine not initialized. Call set_engine() first.")
-
         if programs is None:
             programs = self.get_qced_programs()
 
@@ -228,45 +217,39 @@ class SatQcResultsLoader:
         all_meta_df_list = []
 
         for program in programs:
-            ssmoutput_map = self.get_campaign_qc_results(program)
+            ssmoutput_map = self.get_qc_results_for_program(program)
             if not ssmoutput_map:
                 if self.verbose:
                     print(f"No SSM results found for program: {program}")
                 continue
 
             for output_csv, last_modified in ssmoutput_map.items():
-                program_name, campaign = get_program_campaign_from_ssm_file(output_csv)
-                table_name = '_'.join([program_name, campaign])
-
+                program_name, project = get_program_project_from_ssm_file(output_csv)
+                table_name = '_'.join([program_name, project])
                 if self.verbose:
-                    print(
-                        f'Uploading SSM results for program:{program_name} campaign:{campaign}...')
+                    print(f'Uploading SSM results for program:{program_name} project:{project}...')
 
                 # Check previously loaded table
                 if self._is_already_loaded(table_name, last_modified):
                     continue
 
-                summary_df = self._load_single_ssmoutput_to_db(output_csv, last_modified,
-                                                               table_name)
+                summary_df = self._load_single_ssmoutput_to_db(output_csv, last_modified, table_name)
                 if not summary_df.empty:
                     summary_df_list.append(summary_df)
 
                 if self.verbose:
-                    print(f'Uploaded SSM results to HOST: {self.engine.url.host} '
-                          f'DB: {self.engine.url.database} {self.schema}.{table_name} table.')
+                    print(f'Uploaded SSM results to HOST: {self.engine.url.host} DB: {self.engine.url.database} {self.schema}.{table_name} table.')
 
                 # Load metadata
-                meta_df = self.parse_tag_metadata(program_name, campaign)
+                meta_df = self.parse_tag_metadata(program_name, project)
                 if not meta_df.empty:
                     metadata_rows = self.load_meta_df_to_db(meta_df, table_name=self.SAT_META_TABLE)
                     if self.verbose:
-                        print(
-                            f'Uploaded {metadata_rows} SSM tag metadata to {self.SAT_META_TABLE} table')
+                        print(f'Uploaded {metadata_rows} SSM tag metadata to {self.SAT_META_TABLE} table')
                     all_meta_df_list.append(meta_df)
 
         # Combine results
-        summary_df = pd.concat(summary_df_list,
-                               ignore_index=True) if summary_df_list else pd.DataFrame()
+        summary_df = pd.concat(summary_df_list, ignore_index=True) if summary_df_list else pd.DataFrame()
         return summary_df, all_meta_df_list
 
     def _is_already_loaded(self, table_name: str, last_modified: datetime) -> bool:
@@ -283,18 +266,15 @@ class SatQcResultsLoader:
         prev_load_df = self._get_loaded_table_info(table_name)
         if prev_load_df is None or len(prev_load_df) == 0:
             if self.verbose:
-                print(f'This is the first time loading {table_name}. '
-                      f'Will create {self.schema}.{table_name}...')
+                print(f'This is the first time loading {table_name}. Will create {self.schema}.{table_name}...')
             return False
 
-        prev_timestamp = pd.to_datetime(
-            prev_load_df.iloc[0]['source_file_last_modified']).tz_localize(None)
+        prev_timestamp = pd.to_datetime(prev_load_df.iloc[0]['source_file_last_modified']).tz_localize(None)
         current_timestamp = pd.to_datetime(last_modified).tz_localize(None)
 
         if abs((current_timestamp - prev_timestamp).total_seconds()) < 2:
             if self.verbose:
-                print(f"SSM results have been loaded for table {table_name} - "
-                      f"last modified on {prev_timestamp.strftime('%Y_%m_%d_%H_%M_%S')}. Skipping...")
+                print(f"SSM results have been loaded for table {table_name} - last modified on {prev_timestamp.strftime('%Y_%m_%d_%H_%M_%S')}. Skipping...")
             return True
 
         return False
@@ -309,9 +289,6 @@ class SatQcResultsLoader:
         Returns:
             DataFrame with table info or empty DataFrame
         """
-        if self.engine is None:
-            raise ValueError("Database engine not initialized. Call set_engine() first.")
-
         inspector = inspect(self.engine)
         if (not inspector.has_table(self.SAT_SSM_UPLOAD_LOG_TABLE, schema=self.schema) or
                 not inspector.has_table(table_name, schema=self.schema)):
@@ -349,8 +326,7 @@ class SatQcResultsLoader:
         """
         return self.load_csv_to_db(table_name, ssmoutput_csv, last_modified)
 
-    def load_csv_to_db(self, table_name: str, csv_path: str,
-                       source_file_last_modified: datetime) -> pd.DataFrame:
+    def load_csv_to_db(self, table_name: str, csv_path: str, source_file_last_modified: datetime) -> pd.DataFrame:
         """
         Load a CSV file into the database.
 
@@ -445,7 +421,7 @@ class SatQcResultsLoader:
         if self.engine is None:
             raise ValueError("Database engine not initialized. Call set_engine() first.")
 
-        log_id = f"{self._get_ip_by_hostname()}_{table_name}_{start_datetime.replace(':', '_').replace(' ', '_')}"
+        log_id = f"{get_ip_by_hostname()}_{table_name}_{start_datetime.replace(':', '_').replace(' ', '_')}"
 
         with self.engine.begin() as conn:
             conn.execute(
@@ -454,11 +430,7 @@ class SatQcResultsLoader:
                     (id, start_datetime)
                     VALUES (:id, :start_datetime)
                     RETURNING id
-                """),
-                {
-                    'id': log_id,
-                    'start_datetime': start_datetime
-                }
+                """), {'id': log_id, 'start_datetime': start_datetime}
             )
 
         return log_id
@@ -471,14 +443,6 @@ class SatQcResultsLoader:
             log_id: The log entry ID
             updates: Dictionary of field-value pairs to update
         """
-        if self.engine is None:
-            raise ValueError("Database engine not initialized. Call set_engine() first.")
-
-        if not log_id:
-            if self.verbose:
-                print("Warning: No log_id provided for checkpoint update")
-            return
-
         # Add the ID to the updates
         updates['id'] = log_id
 
@@ -504,12 +468,8 @@ class SatQcResultsLoader:
         Args:
             table_name: Name of the table to transform
         """
-        if self.engine is None:
-            raise ValueError("Database engine not initialized. Call set_engine() first.")
-
         full_table_name = f'{self.schema}.{table_name}'
-        number_columns = ['lon', 'lat', 'x', 'y', 'x_se', 'y_se', 'u', 'v', 'u_se', 'v_se', 's',
-                          's_se']
+        number_columns = ['lon', 'lat', 'x', 'y', 'x_se', 'y_se', 'u', 'v', 'u_se', 'v_se', 's', 's_se']
         datetime_columns = ['date']
         text_columns = ['ptt', 'cid', 'common_name']
 
@@ -565,15 +525,11 @@ class SatQcResultsLoader:
         Returns:
             DataFrame with updated catalog information
         """
-        if self.engine is None:
-            raise ValueError("Database engine not initialized. Call set_engine() first.")
-
         summary_df = pd.DataFrame()
         inspector = inspect(self.engine)
 
         # Check if CID column exists
-        source_columns = [col['name'] for col in
-                          inspector.get_columns(ssm_result_table, schema=self.schema)]
+        source_columns = [col['name'] for col in inspector.get_columns(ssm_result_table, schema=self.schema)]
         has_cid = 'cid' in source_columns
 
         # Build dynamic SQL using self.schema
@@ -693,9 +649,6 @@ class SatQcResultsLoader:
         Returns:
             int: Number of rows affected
         """
-        if self.engine is None:
-            raise ValueError("Database engine not initialized. Call set_engine() first.")
-
         table_name = table_name or self.SAT_META_TABLE
         full_table_name = f"{self.schema}.{table_name}"
         temp_table = f"temp_{table_name}"
@@ -708,7 +661,7 @@ class SatQcResultsLoader:
                 ) ON COMMIT DROP
             """))
 
-            # Insert data into temporary table using the same connection
+            # Insert data into temporary table
             for _, row in meta_df.iterrows():
                 # Handle NaN values
                 row_dict = row.to_dict()
@@ -727,7 +680,7 @@ class SatQcResultsLoader:
 
                 conn.execute(insert_sql, row_dict)
 
-            # Perform UPSERT from temp table
+            # UPSERT from temp table
             columns = [f'"{col}"' for col in meta_df.columns]
             columns_str = ', '.join(columns)
 
@@ -855,8 +808,7 @@ class SatQcResultsLoader:
         depth_files = get_files_by_pattern(program_cid_path, self.MIN_MAX_DEPTH_FILE_PATTERN)
 
         if not depth_files:
-            print_error(
-                f'No min max depth file found in {program_cid_path} by pattern {self.MIN_MAX_DEPTH_FILE_PATTERN}')
+            print_error(f'No min max depth file found in {program_cid_path} by pattern {self.MIN_MAX_DEPTH_FILE_PATTERN}')
             return pd.DataFrame()
 
         depth_df = pd.read_csv(depth_files[0])
@@ -876,67 +828,39 @@ class SatQcResultsLoader:
                     found_col = col
                     break
             if found_col is None:
-                print_error(
-                    f"None of the expected columns for '{target_col}' found in {depth_df.columns.tolist()}"
-                )
+                print_error(f"None of the expected columns for '{target_col}' found in {depth_df.columns.tolist()}")
                 return pd.DataFrame()
             selected_columns[target_col] = found_col
             if self.verbose:
-                print(f"   Mapped: '{found_col}' ➔ '{target_col}'")
+                print(f"   Mapped: '{found_col}' to '{target_col}'")
 
         # Select and rename columns
         try:
-            depth_df = depth_df[
-                [selected_columns['tag_id'], selected_columns['ptt'], selected_columns['max_depth']]
-            ].copy()
+            depth_df = depth_df[[selected_columns['tag_id'], selected_columns['ptt'], selected_columns['max_depth']]].copy()
             depth_df.columns = ['tag_id', 'ptt', 'max_depth']
         except KeyError as e:
             print_error(f"Column selection error: {e}")
             return pd.DataFrame()
 
         # Group by tag_id and ptt to get the max of max_depth
-        group_depth_df = (
-            depth_df.groupby(['tag_id', 'ptt'], as_index=False)
-                .agg({
-                'max_depth': 'max'
-            })
-        )
+        group_depth_df = (depth_df.groupby(['tag_id', 'ptt'], as_index=False).agg({'max_depth': 'max'}))
         # Add min_depth column with default value 0
         group_depth_df['min_depth'] = 0
         # Reorder columns
         group_depth_df = group_depth_df[['tag_id', 'ptt', 'min_depth', 'max_depth']]
         return group_depth_df
 
-    def _get_ip_by_hostname(self) -> str:
-        """
-        Get IP address
-
-        Returns:
-            str: IP address or 'unknown_ip' if unable to retrieve
-        """
-        ip_address = 'unknown_ip'
-        try:
-            ip_address = socket.gethostbyname(socket.gethostname())
-        except Exception:
-            if self.verbose:
-                print('Warning: can not get IP address.')
-        return ip_address
-
-    def show_db_deployments(self, program: List[str] = [],
-                            campaign: List[str] = []) -> pd.DataFrame:
+    def show_db_deployments(self, program: List[str] = [], project: List[str] = []) -> pd.DataFrame:
         """
         Query NRT DB to get deployments
 
         Args:
             program: List of program names to filter
-            campaign: List of campaign names to filter
+            project: List of project names to filter
 
         Returns:
             DataFrame with deployment information
         """
-        if self.engine is None:
-            raise ValueError("Database engine not initialized. Call set_engine() first.")
-
         inspector = inspect(self.engine)
         if not inspector.has_table(self.SAT_META_TABLE, schema=self.schema):
             print(f'Table does not exist {self.schema}.{self.SAT_META_TABLE}.')
@@ -954,10 +878,10 @@ class SatQcResultsLoader:
             for i, p in enumerate(program):
                 params[f'p{i}'] = p
 
-        if campaign:
-            placeholders = ','.join([f':c{i}' for i in range(len(campaign))])
-            where_clauses.append(f"campaign IN ({placeholders})")
-            for i, c in enumerate(campaign):
+        if project:
+            placeholders = ','.join([f':c{i}' for i in range(len(project))])
+            where_clauses.append(f"project IN ({placeholders})")
+            for i, c in enumerate(project):
                 params[f'c{i}'] = c
 
         if where_clauses:
@@ -982,26 +906,22 @@ class SatQcResultsLoader:
 
         Args:
             programs: List of program names to filter
-            projects: List of campaign names to filter
+            projects: List of project names to filter
         """
-        status_df = self.get_campaign_status(programs, projects)
+        status_df = self.get_project_status(programs, projects)
         self._show_status_lights(status_df)
 
-    def get_campaign_status(self, programs: List[str] = [],
-                            projects: List[str] = []) -> pd.DataFrame:
+    def get_project_status(self, programs: List[str] = [], projects: List[str] = []) -> pd.DataFrame:
         """
-        Get the latest last_updated timestamp for each campaign/collectioncode
+        Get the latest last_updated timestamp for each project/collectioncode
 
         Args:
             programs: List of program names to filter
-            projects: List of campaign names to filter
+            projects: List of project names to filter
 
         Returns:
-            DataFrame with campaign status information
+            DataFrame with project status information
         """
-        if self.engine is None:
-            raise ValueError("Database engine not initialized. Call set_engine() first.")
-
         inspector = inspect(self.engine)
         if not inspector.has_table(table=self.SAT_SSM_SUMMARY_TABLE, schema=self.schema):
             print(f'Table does not exist {self.schema}.{self.SAT_SSM_SUMMARY_TABLE}.')
@@ -1083,7 +1003,7 @@ class SatQcResultsLoader:
 
     def _show_status_lights(self, status_df: pd.DataFrame) -> None:
         """
-        Display campaign status with colored lights
+        Display project status with colored lights
 
         Args:
             status_df: DataFrame with status information
