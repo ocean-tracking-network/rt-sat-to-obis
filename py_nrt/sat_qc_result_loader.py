@@ -35,6 +35,7 @@ class SatQcResultsLoader:
     SAT_SSM_UPLOAD_LOG_TABLE = 'sat_ssm_upload_logs'
     SAT_SSM_SUMMARY_TABLE = 'sat_ssm_summary'
     SAT_META_TABLE = 'sat_deployments'
+    SAT_DB_INIT_FILE = 'init_sat_tables.sql'
 
     # Default file system settings
     TAG_META_FILE_PATTERN = r'.*metadata.*'
@@ -128,6 +129,40 @@ class SatQcResultsLoader:
         # All checks passed
         print(f"All checks passed.")
         return True
+
+    def init_database_tables(self) -> bool:
+        """
+        Initialize database tables by running the SQL script.
+
+        Returns:
+            bool: True if initialization was successful, False otherwise
+        """
+        inspector = inspect(self.engine)
+        if self.schema in inspector.get_schema_names():
+            raise RuntimeError(f'{self.schema} is already exist.')
+
+        # Find SQL file
+        sql_file_path = os.path.join(os.getcwd(), SatQcResultsLoader.SAT_DB_INIT_FILE)
+        if not os.path.exists(sql_file_path):
+            sql_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), SatQcResultsLoader.SAT_DB_INIT_FILE)
+
+        if not os.path.exists(sql_file_path):
+            raise RuntimeError(f"SQL file not found: {sql_file_path}")
+
+        # Read and modify SQL
+        with open(sql_file_path, 'r') as f:
+            sql_content = f.read()
+
+        sql_content = sql_content.replace('{{sat_schema}}.', f'{self.schema}.')
+
+        # Execute
+        try:
+            with self.engine.begin() as conn:
+                conn.execute(text(sql_content))
+            print(f"Schema '{self.schema}' initialized successfully!")
+            return True
+        except Exception as e:
+            raise RuntimeError(f"Database initialization failed: {e}")
 
     def get_qced_programs(self) -> List[str]:
         """
