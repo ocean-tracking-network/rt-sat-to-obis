@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import List, Union, Dict, Any
 from IPython.display import display, HTML
 
-from py_nrt.common import print_error, get_engine, show_df, get_program_campaign_from_ssm_file
+from py_nrt.common import print_error, get_engine, show_df, get_program_project_from_ssm_file
 from sqlalchemy.engine import Engine
 from sqlalchemy import inspect
 import pandas as pd
@@ -170,7 +170,7 @@ def load_to_nrt_db(engine: Engine, ssmoutput_last_modified_map: dict[str, str], 
     summary_df = pd.DataFrame
     all_meta_df = pd.DataFrame
     for output_csv, last_modified in ssmoutput_last_modified_map.items():
-        program, campaign = get_program_campaign_from_ssm_file(output_csv)
+        program, campaign = get_program_project_from_ssm_file(output_csv)
         table_name = '_'.join([program, campaign])
         print(f'Uploading SSM results for program:{program} campaign:{campaign}...')
         # Check previously loaded table
