@@ -71,7 +71,8 @@ class SatQcResultsLoader:
         """
         inspector = inspect(self.engine)
         if self.schema not in inspector.get_schema_names():
-            raise RuntimeError(f'{self.schema} is not found in the list of schemas: {inspector.get_schema_names()}')
+            raise RuntimeError(f'{self.schema} is not found in the list of schemas: {inspector.get_schema_names()}. \n'
+                               f'Please sat_loader.init_database_tables() to create the schema.')
 
         # Check required tables
         required_tables = [
@@ -153,7 +154,8 @@ class SatQcResultsLoader:
         with open(sql_file_path, 'r') as f:
             sql_content = f.read()
 
-        sql_content = sql_content.replace('{{sat_schema}}.', f'{self.schema}.')
+        sql_content = sql_content.replace('{{sat_schema}}', f'{self.schema}')
+        sql_content = sql_content.replace('{{user_name}}', f'{self.engine.url.username}')
 
         # Execute
         try:
