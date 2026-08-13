@@ -6,7 +6,9 @@ from dataclasses import dataclass
 from getpass import getpass
 from io import StringIO
 from typing import Union, Dict, List
-
+from pathlib import Path
+import re
+import socket
 import itables
 import pandas as pd
 from IPython.core.display_functions import display
@@ -436,12 +438,12 @@ def show_df(dataframe:pd.DataFrame, save_as_file: str, show_all_rows=False) -> N
                 ])
 
 
-def get_program_campaign_from_ssm_file(ssm_file: str)-> tuple[str, str]:
+def get_program_project_from_ssm_file(ssm_file: str)-> tuple[str, str]:
     ssm_file = ssm_file.replace(str(os.getcwd()), '')
     print(f'ssm_file: {ssm_file}')
     program = ssm_file.split(os.path.sep)[1]
-    campaign = ssm_file.split(os.path.sep)[2].replace(program + '_', '')
-    return program, campaign
+    project = ssm_file.split(os.path.sep)[2].replace(program + '_', '')
+    return program, project
 
 
 def build_dropdown(option_lst: list[str], place_holder: str='') -> Dropdown:
@@ -555,3 +557,41 @@ def check_file_exists(
             display(html)
 
         return True
+
+
+def get_files_by_pattern(folder: str, file_pattern: str) -> List[Path]:
+    """
+    Find all files matching a pattern in a folder and its subfolders.
+
+    Args:
+        folder: relative folder to current folder.
+        file_pattern: file name pattern
+
+    Returns:
+        List of Path objects for files matching the pattern.
+    """
+    folder_path = Path(folder)
+    if not folder_path.exists():
+        print_error(f'Folder is not found: {folder_path}')
+        return []
+
+    found_files = list(folder_path.rglob(file_pattern))
+    if not found_files:
+        found_files = [f for f in folder_path.glob('*') if re.search(file_pattern, f.name)]
+    return found_files
+
+
+def get_ip_by_hostname(verbose=True) -> str:
+    """
+    Get IP address
+
+    Returns:
+        str: IP address or 'unknown_ip' if unable to retrieve
+    """
+    ip_address = 'unknown_ip'
+    try:
+        ip_address = socket.gethostbyname(socket.gethostname())
+    except Exception:
+        if verbose:
+            print('Warning: can not get IP address.')
+    return ip_address
