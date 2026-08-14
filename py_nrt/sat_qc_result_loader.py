@@ -238,7 +238,7 @@ class SatQcResultsLoader:
 
         return ssmoutput_last_modified_map
 
-    def load_all_qced_results_to_db(self, programs: Optional[List[str]] = None) -> tuple[pd.DataFrame, List[pd.DataFrame]]:
+    def load_all_qced_results_to_db(self, programs: List[str]) -> tuple[pd.DataFrame, List[pd.DataFrame]]:
         """
         Load all QC results for specified programs (or all available) to the database.
 
