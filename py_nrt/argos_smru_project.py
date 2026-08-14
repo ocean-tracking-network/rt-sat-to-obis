@@ -123,9 +123,10 @@ def get_user_input(user_input_dict: Dict) -> Optional[Tuple]:
     # Validate all widgets
     for key, widget in user_input_dict.items():
         if not evaluate_input(key, widget):  # or evaluate_input(widget)
-            return None, None, None, None
+            return None, None, None, None, None
     upload_mode = 'delay' if 'delay' in user_input_dict['upload_mode'].value else 'nrt'
-    return (user_input_dict['program'].value, upload_mode, user_input_dict['cid'].value, user_input_dict['collectioncode'].value)
+    project_id = '_'.join([user_input_dict['program'].value, user_input_dict['cid'].value])
+    return (user_input_dict['program'].value, upload_mode, user_input_dict['cid'].value, user_input_dict['collectioncode'].value, project_id)
 
 
 def show_smru_login_or_local_mdb(qc_input_path: str, program: str, upload_mode: str, cid: str, collectioncode, base_url) -> Optional[Tuple]:
