@@ -277,17 +277,18 @@ class SatQcResultsLoader:
                 if self._is_already_loaded(table_name, last_modified):
                     continue
 
-                if not summary_df.empty:
-                    summary_df_list.append(summary_df)
-
                 if self.verbose:
                     print(f'Uploaded SSM results to HOST: {self.engine.url.host} DB: {self.engine.url.database} {self.schema}.{table_name} table.')
 
                 summary_df = self.load_single_ssmoutput_to_db(output_csv, last_modified, table_name)
+
                 display(HTML(f'''<p>
                     <span style="font-size:25px;"><i class="fa fa-flip-horizontal">🐟</i></span>
                     <span style="font-size:20px;">~ Paste into issue: loaded "ssmoutputs_{project}_nrt.csv" into {self.schema}.{table_name}.</span>
                 </p>'''))
+
+                if not summary_df.empty:
+                    summary_df_list.append(summary_df)
 
                 # Load metadata
                 meta_df = self.parse_tag_metadata(program_name, project)
