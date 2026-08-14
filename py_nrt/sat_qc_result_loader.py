@@ -207,20 +207,25 @@ class SatQcResultsLoader:
             program_projects.update({qced_program: sorted(projects)})
         return program_projects
 
-    def get_qc_results_for_program(self, program: str) -> Dict[str, datetime]:
+    def get_qc_results_for_program_and_project(self, program: str, include_projects: List[str] = []) -> Dict[str, datetime]:
         """
         Get QCed projects for a given program.
 
         Args:
             program: program name
+            include_projects: project names
 
         Returns:
             dict[str, datetime]: A map of the QCed results file path to last_modified datetime
         """
         if program not in self.get_qced_programs():
-            raise RuntimeError(f"Program not found in QC output folder: {self.qc_output_path}")
+            raise RuntimeError(f"Program: {program} not found in QC output folder: {self.qc_output_path}")
 
-        projects = self.get_qced_projects_for_programs([program]).get(program, [])
+        if include_projects:
+            projects = include_projects
+        else:
+            projects = self.get_qced_projects_for_programs([program]).get(program, [])
+
         ssmoutput_last_modified_map = {}
         for project in projects:
             project_path = os.path.join(self.qc_output_path, program, project)
@@ -229,7 +234,7 @@ class SatQcResultsLoader:
                 project_ssmoutputs = str(ssmoutputs_files[0])
                 last_modified = datetime.fromtimestamp(os.path.getmtime(ssmoutputs_files[0]))
                 if self.verbose:
-                    print(f"Found SSM results: {ssmoutputs_files[0]} - last updated on {last_modified}")
+                    print(f"Found SSM results for project {project}: {ssmoutputs_files[0]} - last updated on {last_modified}")
                 ssmoutput_last_modified_map[project_ssmoutputs] = last_modified
             else:
                 if self.verbose:
@@ -256,8 +261,7 @@ class SatQcResultsLoader:
         all_meta_df_list = []
 
         for program in programs:
-            ssmoutput_map = self.get_qc_results_for_program(program)
-            print(ssmoutput_map)
+            ssmoutput_map = self.get_qc_results_for_program_and_project(program, projects)
             if not ssmoutput_map:
                 if self.verbose:
                     print(f"No SSM results found for program: {program}")
@@ -273,12 +277,17 @@ class SatQcResultsLoader:
                 if self._is_already_loaded(table_name, last_modified):
                     continue
 
-                summary_df = self.load_single_ssmoutput_to_db(output_csv, last_modified, table_name)
                 if not summary_df.empty:
                     summary_df_list.append(summary_df)
 
                 if self.verbose:
                     print(f'Uploaded SSM results to HOST: {self.engine.url.host} DB: {self.engine.url.database} {self.schema}.{table_name} table.')
+
+                summary_df = self.load_single_ssmoutput_to_db(output_csv, last_modified, table_name)
+                display(HTML(f'''<p>
+                    <span style="font-size:25px;"><i class="fa fa-flip-horizontal">🐟</i></span>
+                    <span style="font-size:20px;">~ Paste into issue: loaded "ssmoutputs_{project}_nrt.csv" into {self.schema}.{table_name}.</span>
+                </p>'''))
 
                 # Load metadata
                 meta_df = self.parse_tag_metadata(program_name, project)

@@ -37,7 +37,7 @@ def load_all_ssmoutput(auth_file: str = './py_nrt/database_conn_string.auth'):
     programs = sat_loader.get_qced_programs()
     all_ssmoutput_last_modified_map = {}
     for program in programs:
-        ssmoutput_last_modified_map = sat_loader.get_qc_results_for_program(program)
+        ssmoutput_last_modified_map = sat_loader.get_qc_results_for_program_and_project(program)
         all_ssmoutput_last_modified_map.update(ssmoutput_last_modified_map)
     summary_df, _ = sat_loader.load_qced_results_to_db(programs)
 
