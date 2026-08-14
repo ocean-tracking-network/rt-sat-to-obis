@@ -744,16 +744,20 @@ def show_argosqc_results(qc_output_path:str, notebook_base_url:str, program:str,
     Returns: None
     """
     current_dir = os.path.dirname(__file__)
-    upload_url = os.path.join(notebook_base_url, qc_output_path, program)
+    upload_url = os.path.join(notebook_base_url, qc_output_path, program, f'{program}_{cid}')
     relative_path = os.path.join(qc_output_path, program)
     folder_path = os.path.join(os.path.dirname(current_dir), relative_path)
     html_messages = {
         'found':  [
             HTML(f'<h3 style="margin: 0; color: blue;">ArgosQC results are found in {folder_path}/{program}_{cid}.</h3>'),
-            HTML(f'<a href="{upload_url}" target="_blank">Click here to download ArgosQC results in a new tab.</a>')
+            HTML(f'<a href="{upload_url}" target="_blank">Click here open QC output folder. Download results file: "ssmoutputs_{program}_{cid}_nrt.csv"</a>')
         ],
         'missing': [
             HTML(f'<h3 style="margin: 0; color: red;">No ArgosQC results found. Please review step 6 Run ArgosQC output or contact OTN data team.</h3>')
         ]
     }
     check_file_exists(relative_path, f'{program}_{cid}', html_messages, upload_url, True, False)
+    display(HTML(f'''<p>
+        <span style="font-size:25px;"><i class="fa fa-flip-horizontal">🐟</i></span>
+        <span style="font-size:20px;">~ Attach evaluated "ssmoutputs_{program}_{cid}_nrt.csv" to issue.</span>
+    </p>'''))
