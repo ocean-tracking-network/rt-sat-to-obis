@@ -238,12 +238,13 @@ class SatQcResultsLoader:
 
         return ssmoutput_last_modified_map
 
-    def load_all_qced_results_to_db(self, programs: List[str]) -> tuple[pd.DataFrame, List[pd.DataFrame]]:
+    def load_qced_results_to_db(self, programs: List[str], projects: List[str]=None) -> tuple[pd.DataFrame, List[pd.DataFrame]]:
         """
         Load all QC results for specified programs (or all available) to the database.
 
         Args:
             programs: List of program names to load. If None, loads all available programs.
+            projects: List of project names to load. If None, loads all available projects.
 
         Returns:
             tuple: (summary_df, all_meta_df_list)
@@ -256,6 +257,7 @@ class SatQcResultsLoader:
 
         for program in programs:
             ssmoutput_map = self.get_qc_results_for_program(program)
+            print(ssmoutput_map)
             if not ssmoutput_map:
                 if self.verbose:
                     print(f"No SSM results found for program: {program}")
@@ -271,7 +273,7 @@ class SatQcResultsLoader:
                 if self._is_already_loaded(table_name, last_modified):
                     continue
 
-                summary_df = self._load_single_ssmoutput_to_db(output_csv, last_modified, table_name)
+                summary_df = self.load_single_ssmoutput_to_db(output_csv, last_modified, table_name)
                 if not summary_df.empty:
                     summary_df_list.append(summary_df)
 
@@ -349,8 +351,7 @@ class SatQcResultsLoader:
 
         return pd.DataFrame(rows, columns=result.keys())
 
-    def _load_single_ssmoutput_to_db(self, ssmoutput_csv: str, last_modified: datetime,
-                                     table_name: str) -> pd.DataFrame:
+    def load_single_ssmoutput_to_db(self, ssmoutput_csv: str, last_modified: datetime, table_name: str) -> pd.DataFrame:
         """
         Load a single ssmoutput into the database.
 

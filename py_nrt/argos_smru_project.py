@@ -576,12 +576,12 @@ def build_project_id_smru(program: str, cid: str) -> str:
     return project_id
 
 
-def extract_ssmoutput_tracks(program: str, cid: str, qc_output_path: str, subset_tags: list[str]=[], verbose=False) -> pd.DataFrame:
+def extract_ssmoutput_tracks(program: str, cid: str, qc_output_path: str, subset_tags: list[str]=[], verbose=False) -> Tuple[pd.DataFrame, List]:
     ssmoutput_folder = get_path_from_strings([qc_output_path, program, f'{program}_{cid}'])
     ssmoutput_files = get_files_by_pattern(ssmoutput_folder, '*ssmoutputs*.csv')
     if not ssmoutput_files:
         print(f'No SSM output file found in {ssmoutput_folder}')
-        return pd.DataFrame()
+        return pd.DataFrame(), None
 
     ssmoutputs_df = pd.read_csv(ssmoutput_files[0])
     itables.show(ssmoutputs_df)
@@ -598,7 +598,7 @@ def extract_ssmoutput_tracks(program: str, cid: str, qc_output_path: str, subset
         ssmoutputs_df = ssmoutputs_df[ssmoutputs_df['tag_ref'].isin(subset_tags)]
     filename = f"{cid}_ssmoutput_{datetime.now().strftime('%Y%m%d')}.csv"
     show_df(ssmoutputs_df, filename, True)
-    return ssmoutputs_df
+    return ssmoutputs_df, ssmoutput_files
 
 
 def run_smru_qc(r_executable: str, config_file: str, argosqc_r_script = 'r_nrt/run_ArgosQC_smru_qc.R'):
@@ -748,8 +748,8 @@ def show_argosqc_results(qc_output_path:str, notebook_base_url:str, program:str,
     folder_path = os.path.join(os.path.dirname(current_dir), relative_path)
     html_messages = {
         'found':  [
-            HTML(f'<h3 style="margin: 0; color: blue;">ArgosQC results are found in {folder_path}.</h3>'),
-            HTML(f'<a href="{upload_url}" target="_blank">Click here to review ArgosQC results in a new tab.</a>')
+            HTML(f'<h3 style="margin: 0; color: blue;">ArgosQC results are found in {folder_path}/{program}_{cid}.</h3>'),
+            HTML(f'<a href="{upload_url}" target="_blank">Click here to download ArgosQC results in a new tab.</a>')
         ],
         'missing': [
             HTML(f'<h3 style="margin: 0; color: red;">No ArgosQC results found. Please review step 6 Run ArgosQC output or contact OTN data team.</h3>')
