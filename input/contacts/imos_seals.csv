@@ -1,0 +1,7 @@
+title,firstname,lastname,role,position,org,email,country,state,orcid,url
+Dr.,Rob,Harcourt,Principal Investigator,Emeritus Professor,Macquarie University,robert.harcourt@mq.edu.au, AU, New South Wales,0000-0003-4666-2934,
+Dr.,Clive,McMahon,Principal Investigator,Scientific Manager,Sydney Institute of Marine Science,clive.mcmahon@utas.edu.au,AU, New South Wales,0000-0001-5241-8917,
+Dr.,Mark,Hindell,Principal Investigator,Emeritus Professor,University of Tasmania,mark.hindell@utas.edu.au,AU, Tasmania,0000-0002-7823-7185,
+Dr.,Christophe,Guinet,Content Provider,Deputy Director,Centre d'Etudes Biologiques de Chizé,christophe.guinet@cebc.cnrs.fr,FR,,0000-0003-2481-6947,
+Dr.,Baptiste,Picard,Content Provider,Research Engineer ,Centre d'Etudes Biologiques de Chizé,baptiste.picard@cebc.cnrs.fr,FR,,0000-0001-9565-9446,
+Dr.,Ian,Jonsen,Processor,Owner,dataStochasticQC,jonsen@stochastic-qc.org,CA,Nova Scotia,0000-0001-5423-6076,

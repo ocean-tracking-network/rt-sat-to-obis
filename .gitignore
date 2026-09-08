@@ -1,1 +1,33 @@
+# Input files
 input/**/*.json
+input/*/*.log
+
+# Output directory
+output/
+
+# QC and processing directories
+input/*/qc/maps/
+input/*/qc/mdb/
+input/*/qc/aodn/
+input/*/qc/diag/
+input/*/aodn/
+input/*/maps/
+input/*/diag/
+
+# Archive and binary files
+*.zip
+*.mdb
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# Compiled python
+__pycache__/
+
+# Local auths
+.iptauth*
+.mapbox_token
