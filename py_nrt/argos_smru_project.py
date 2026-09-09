@@ -375,7 +375,7 @@ def prompt_potential_match_otn_tags(engine: Engine, deployment_df: pd.DataFrame,
 def show_match_widgets(engine:Engine, match_df: pd.DataFrame, tag_ref: str, disp_cols: List[str]):
     print('Please select OTN tag catalognumber and click the button Save to database.')
     show_df(match_df[disp_cols], save_as_file=f'{tag_ref}_match.csv', show_all_rows=True)
-    otn_sat_tag_dropdown = Dropdown(options=match_df['catalognumber'].tolist())
+    otn_sat_tag_dropdown = Dropdown(options=match_df['tag_catalognumber'].tolist())
     submit_btn = widgets.Button(description="Save", button_style='primary')
     submit_btn.on_click(partial(do_match, engine, otn_sat_tag_dropdown,tag_ref))
     display(otn_sat_tag_dropdown)
@@ -421,7 +421,7 @@ def do_match(engine: Engine, widget: Any, tag_ref: str, submit_btn: Button):
     '''
     Upsert into obis.vendor_ref_otn_catalognumber_match table
     '''
-    all_otn_sat_tags = get_all_otn_sat_tags()['tag_catalognumber'].tolist()
+    all_otn_sat_tags = get_all_otn_sat_tags(engine)['tag_catalognumber'].tolist()
     if widget.value not in all_otn_sat_tags:
         print(f'catalognumber is not found in {TAG_REF_CATALOGNUMBER_MATCH_TABLE}. Please try again.')
         return
