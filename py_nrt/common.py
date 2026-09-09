@@ -595,3 +595,14 @@ def get_ip_by_hostname(verbose=True) -> str:
         if verbose:
             print('Warning: can not get IP address.')
     return ip_address
+
+
+class StopCell(Exception):
+    def __init__(self, message=None):
+        self.message = message
+        super().__init__(message)
+
+    def _render_traceback_(self):
+        if self.message:
+            print_error(self.message)
+        pass

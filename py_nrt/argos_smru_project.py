@@ -298,13 +298,24 @@ def get_all_otn_sat_tags(engine: Engine) -> pd.DataFrame:
     return sat_tag_df
 
 
-def prompt_potential_match_otn_tags(engine: Engine, deployment_df: pd.DataFrame):
+def prompt_potential_match_otn_tags(engine: Engine, deployment_df: pd.DataFrame, collectioncode: str='unknown'):
     all_otn_sat_tag_df = get_all_otn_sat_tags(engine)
+
+    if collectioncode and collectioncode.lower() !='unknown':
+        subset_otn_sat_tag_df = all_otn_sat_tag_df[all_otn_sat_tag_df['tag_collectioncode'] == collectioncode.upper()]
+    else:
+        subset_otn_sat_tag_df = all_otn_sat_tag_df.copy()
+
+    if subset_otn_sat_tag_df.empty:
+        print(f'No satellite tags found in otnunit for specified collectioncode: {collectioncode}')
+        subset_otn_sat_tag_df = all_otn_sat_tag_df.copy()
+
+    show_df(subset_otn_sat_tag_df, save_as_file='otn_sat_tag_df.csv', show_all_rows=True )
+
     for index, row in deployment_df.iterrows():
 
         # Match to otn_satellite_tags by PTT and BODY
-        match_by_ptt_body_df = all_otn_sat_tag_df.loc[
-            (all_otn_sat_tag_df['ptt_code'] == row['PTT']) & (all_otn_sat_tag_df['collectornumber'] == row['BODY'])]
+        match_by_ptt_body_df = subset_otn_sat_tag_df.loc[(subset_otn_sat_tag_df['ptt_code'] == row['PTT']) & (subset_otn_sat_tag_df['collectornumber'] == row['BODY'])]
         if not match_by_ptt_body_df.empty:
             print(f'Found possible matching tag(s) by PTT and BODY for {row["REF"]} with {OTN_SATELLITE_TAGS_TABLE}')
             show_match_widgets(engine, match_by_ptt_body_df, row["REF"])
@@ -314,14 +325,14 @@ def prompt_potential_match_otn_tags(engine: Engine, deployment_df: pd.DataFrame)
             continue
 
         # Match to otn_satellite_tags by PTT
-        match_by_ptt_df = all_otn_sat_tag_df.loc[all_otn_sat_tag_df['ptt_code'] == row['PTT']]
+        match_by_ptt_df = subset_otn_sat_tag_df.loc[subset_otn_sat_tag_df['ptt_code'] == row['PTT']]
         if not match_by_ptt_df.empty:
             print(f'Found possible matching tag(s) by PTT only for {row["REF"]} with {OTN_SATELLITE_TAGS_TABLE}')
             show_df(match_by_ptt_df, save_as_file=f'{row["REF"]}_match.csv', show_all_rows=True)
             continue
 
         # Match to otn_satellite_tags by PTT
-        match_by_code_df = all_otn_sat_tag_df.loc[all_otn_sat_tag_df['collectornumber'] == row['BODY']]
+        match_by_code_df = subset_otn_sat_tag_df.loc[subset_otn_sat_tag_df['collectornumber'] == row['BODY']]
         if not match_by_code_df.empty:
             print(f'Found possible matching tag(s) by CODE only for {row["REF"]} with {OTN_SATELLITE_TAGS_TABLE}')
             show_df(match_by_code_df, save_as_file=f'{row["REF"]}_match.csv', show_all_rows=True)
