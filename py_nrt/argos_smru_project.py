@@ -33,13 +33,14 @@ import pandas as pd
 import plotly
 import requests
 from IPython import get_ipython
-from ipywidgets import Layout, Checkbox, VBox, Label, Box, Button, widgets, HTML, RadioButtons
+from ipywidgets import Layout, Checkbox, VBox, Label, Box, Button, widgets, HTML, RadioButtons,Dropdown
 from IPython.display import display
 from shapely import wkb
 import xmltodict
 from pandas import json_normalize
 
 from sqlalchemy.engine import Engine
+from sqlalchemy import text
 import itables
 import re
 import hmac
@@ -65,6 +66,8 @@ from tqdm import tqdm
 import shutil
 import time
 
+
+OTN_SATELLITE_TAGS_TABLE = 'obis.otn_satellite_tags_animals'
 
 def show_data_upload_mode_radio() -> RadioButtons:
     from IPython.display import display
@@ -284,6 +287,56 @@ def download_and_extract(mdb_url: str, cid: str, dest_path: Path, timeout: int=1
         if zip_path.exists():
             os.remove(zip_path)
         raise
+
+
+def get_all_otn_sat_tags(engine: Engine) -> pd.DataFrame:
+    """Fetch all records from the obis.otn_satellite_tags table."""
+    sat_tag_df = pd.read_sql_query(
+        f'SELECT * FROM {OTN_SATELLITE_TAGS_TABLE}',
+        engine
+    )
+    return sat_tag_df
+
+
+def prompt_potential_match_otn_tags(engine: Engine, deployment_df: pd.DataFrame):
+    all_otn_sat_tag_df = get_all_otn_sat_tags(engine)
+    for index, row in deployment_df.iterrows():
+
+        # Match to otn_satellite_tags by PTT and BODY
+        match_by_ptt_body_df = all_otn_sat_tag_df.loc[
+            (all_otn_sat_tag_df['ptt_code'] == row['PTT']) & (all_otn_sat_tag_df['collectornumber'] == row['BODY'])]
+        if not match_by_ptt_body_df.empty:
+            print(f'Found possible matching tag(s) by PTT and BODY for {row["REF"]} with {OTN_SATELLITE_TAGS_TABLE}')
+            show_match_widgets(engine, match_by_ptt_body_df, row["REF"])
+            otn_sat_tag_dropdown = Dropdown(options=match_by_ptt_body_df['catalognumber'].tolsit())
+            submit_btn = widgets.Button(description="Create loan entry", button_style='primary')
+            submit_btn.on_click(partial(do_match, otn_sat_tag_dropdown, collcode, remote_node, engine, False))
+            continue
+
+        # Match to otn_satellite_tags by PTT
+        match_by_ptt_df = all_otn_sat_tag_df.loc[all_otn_sat_tag_df['ptt_code'] == row['PTT']]
+        if not match_by_ptt_df.empty:
+            print(f'Found possible matching tag(s) by PTT only for {row["REF"]} with {OTN_SATELLITE_TAGS_TABLE}')
+            show_df(match_by_ptt_df, save_as_file=f'{row["REF"]}_match.csv', show_all_rows=True)
+            continue
+
+        # Match to otn_satellite_tags by PTT
+        match_by_code_df = all_otn_sat_tag_df.loc[all_otn_sat_tag_df['collectornumber'] == row['BODY']]
+        if not match_by_code_df.empty:
+            print(f'Found possible matching tag(s) by CODE only for {row["REF"]} with {OTN_SATELLITE_TAGS_TABLE}')
+            show_df(match_by_code_df, save_as_file=f'{row["REF"]}_match.csv', show_all_rows=True)
+            continue
+
+def show_match_widgets(engine:Engine, match_df: pd.DataFrame, tag_ref: str):
+    show_df(match_df, save_as_file=f'{row["REF"]}_match.csv', show_all_rows=True)
+    otn_sat_tag_dropdown = Dropdown(options=match_df['catalognumber'].tolsit())
+    submit_btn = widgets.Button(description="Confirm", button_style='primary')
+    submit_btn.on_click(partial(do_match, engine, otn_sat_tag_dropdown,tag_ref))
+
+def do_match(engine:Engine, dropdown: Dropdown,tag_ref:str, submit_btn:Button):
+    print(dropdown.value, tag_ref)
+    # with engine.begin as conn:
+
 
 
 def extract_deployments(program: str, cid: str, input_path: str, mdb_path: str='', verbose: bool=False) -> dict[str, pd.DataFrame]:
