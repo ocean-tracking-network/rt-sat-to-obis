@@ -303,13 +303,13 @@ def prompt_potential_match_otn_tags(engine: Engine, deployment_df: pd.DataFrame,
     all_otn_sat_tag_df = get_all_otn_sat_tags(engine)
 
     if collectioncode and collectioncode.lower() !='unknown':
-        print(f'Found satellite tag(s) in otnunit for specified collectioncode:')
+        display(HTML(f'<h3> Found below satellite tag(s) in OTN for specified collectioncode: {collectioncode} </h3>'))
         subset_otn_sat_tag_df = all_otn_sat_tag_df[all_otn_sat_tag_df['tag_collectioncode'] == collectioncode.upper()]
     else:
         subset_otn_sat_tag_df = all_otn_sat_tag_df.copy()
 
     if subset_otn_sat_tag_df.empty:
-        print(f'No satellite tags found in otnunit for specified collectioncode: {collectioncode}. Displaying all satellite tags in OTN.')
+        display(HTML(f'<h3> No satellite tags found in OTN for specified collectioncode: {collectioncode}. Displaying all satellite tags in OTN.</h3>'))
         subset_otn_sat_tag_df = all_otn_sat_tag_df.copy()
 
     show_df(subset_otn_sat_tag_df, save_as_file='otn_sat_tag_df.csv', show_all_rows=True )
@@ -329,29 +329,29 @@ def prompt_potential_match_otn_tags(engine: Engine, deployment_df: pd.DataFrame,
             display(remove_btn)
             continue
 
-        # # Match to otn_satellite_tags by PTT and BODY
-        # match_by_ptt_body_df = subset_otn_sat_tag_df.loc[
-        #     (subset_otn_sat_tag_df['ptt_code'].astype(str) == str(row['PTT'])) &
-        #     (subset_otn_sat_tag_df['collectornumber'].astype(str) == str(row['BODY']))
-        #     ]
-        # if not match_by_ptt_body_df.empty:
-        #     display(HTML(f'<h4>Found possible matching tag(s) and related animal(s) by PTT and BODY:</h4>'))
-        #     show_match_widgets(engine, match_by_ptt_body_df, row["REF"], match_df_disp_cols)
-        #     continue
-        #
-        # # Match to otn_satellite_tags by PTT
-        # match_by_ptt_df = subset_otn_sat_tag_df.loc[subset_otn_sat_tag_df['ptt_code'].astype(str) == str(row['PTT'])]
-        # if not match_by_ptt_df.empty:
-        #     display(HTML(f'<h4>Found possible matching tag(s) and related animal(s) by PTT only:</h4>'))
-        #     show_match_widgets(engine, match_by_ptt_df, row["REF"], match_df_disp_cols)
-        #     continue
+        # Match to otn_satellite_tags by PTT and BODY
+        match_by_ptt_body_df = subset_otn_sat_tag_df.loc[
+            (subset_otn_sat_tag_df['ptt_code'].astype(str) == str(row['PTT'])) &
+            (subset_otn_sat_tag_df['collectornumber'].astype(str) == str(row['BODY']))
+            ]
+        if not match_by_ptt_body_df.empty:
+            display(HTML(f'<h4>Found possible matching tag(s) and related animal(s) by PTT and BODY:</h4>'))
+            show_match_widgets(engine, match_by_ptt_body_df, row["REF"], match_df_disp_cols)
+            continue
 
-        # # Match to otn_satellite_tags by BODY
-        # match_by_code_df = subset_otn_sat_tag_df.loc[subset_otn_sat_tag_df['collectornumber'].astype(str) == str(row['BODY'])]
-        # if not match_by_code_df.empty:
-        #     display(HTML(f'<h4>Found possible matching tag(s) and related animal(s) by BODY number only:</h4>'))
-        #     show_match_widgets(engine, match_by_code_df, row["REF"], match_df_disp_cols)
-        #     continue
+        # Match to otn_satellite_tags by PTT
+        match_by_ptt_df = subset_otn_sat_tag_df.loc[subset_otn_sat_tag_df['ptt_code'].astype(str) == str(row['PTT'])]
+        if not match_by_ptt_df.empty:
+            display(HTML(f'<h4>Found possible matching tag(s) and related animal(s) by PTT only:</h4>'))
+            show_match_widgets(engine, match_by_ptt_df, row["REF"], match_df_disp_cols)
+            continue
+
+        # Match to otn_satellite_tags by BODY
+        match_by_code_df = subset_otn_sat_tag_df.loc[subset_otn_sat_tag_df['collectornumber'].astype(str) == str(row['BODY'])]
+        if not match_by_code_df.empty:
+            display(HTML(f'<h4>Found possible matching tag(s) and related animal(s) by BODY number only:</h4>'))
+            show_match_widgets(engine, match_by_code_df, row["REF"], match_df_disp_cols)
+            continue
 
         display(HTML(f'<h4>No possible matching OTN tag found by PTT or BODY number. Please manually search for matching catalognumber and Save the match.</h4>'))
         catalognumber_text = widgets.Text(
