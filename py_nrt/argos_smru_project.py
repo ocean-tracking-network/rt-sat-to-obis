@@ -321,8 +321,10 @@ def prompt_potential_match_otn_tags(engine: Engine, deployment_df: pd.DataFrame,
         existing_match_dict = get_existing_tag_mapping(engine, row["REF"])
         if existing_match_dict:
             display(HTML(f'<h4>Previously matched to collectornumber: {existing_match_dict["catalognumber"]} on {existing_match_dict["last_updated"].strftime("%Y-%m-%d")} by {"auto-match" if existing_match_dict["auto_match"] else "manual-match"}.</h4>'))
+            show_df(subset_otn_sat_tag_df[subset_otn_sat_tag_df["catalognumber"]==existing_match_dict["catalognumber"]], save_as_file='otn_sat_tag_df.csv', show_all_rows=True)
             remove_btn = widgets.Button(description='Remove Match', button_style='primary')
             remove_btn.on_click(partial(do_remove_match, engine, existing_match_dict["catalognumber"], row["REF"]))
+            print('To change this matching, first remove existing matching then run this cell gain.')
             display(remove_btn)
             continue
 
@@ -391,7 +393,7 @@ def get_existing_tag_mapping(engine: Engine, tag_ref: str) -> dict:
     return dict(result) if result else {}
 
 
-def do_remove_match(engine: Engine, catalognumber: str, tag_ref: str) -> None:
+def do_remove_match(engine: Engine, catalognumber: str, tag_ref: str, remove_btn: Button=None) -> None:
     '''
     Remove matching record from obis.vendor_ref_otn_catalognumber_match table
     '''
@@ -410,6 +412,9 @@ def do_remove_match(engine: Engine, catalognumber: str, tag_ref: str) -> None:
             print(f"Removed mapping: tag_ref='{tag_ref}' with catalognumber='{catalognumber}'")
         else:
             print(f"No mapping found for tag_ref='{tag_ref}' with catalognumber='{catalognumber}'")
+    remove_btn.description = 'Removed'
+    description.button_style = 'success'
+    description.disabled = True
 
 
 def do_match(engine: Engine, widget: Any, tag_ref: str, submit_btn: Button):
