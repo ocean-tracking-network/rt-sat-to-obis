@@ -302,16 +302,18 @@ def prompt_potential_match_otn_tags(engine: Engine, deployment_df: pd.DataFrame,
     all_otn_sat_tag_df = get_all_otn_sat_tags(engine)
 
     if collectioncode and collectioncode.lower() !='unknown':
+        print(f'Found satellite tag(s) in otnunit for specified collectioncode:')
         subset_otn_sat_tag_df = all_otn_sat_tag_df[all_otn_sat_tag_df['tag_collectioncode'] == collectioncode.upper()]
     else:
         subset_otn_sat_tag_df = all_otn_sat_tag_df.copy()
 
     if subset_otn_sat_tag_df.empty:
-        print(f'No satellite tags found in otnunit for specified collectioncode: {collectioncode}')
+        print(f'No satellite tags found in otnunit for specified collectioncode: {collectioncode}. Displaying all satellite tags in OTN.')
         subset_otn_sat_tag_df = all_otn_sat_tag_df.copy()
 
     show_df(subset_otn_sat_tag_df, save_as_file='otn_sat_tag_df.csv', show_all_rows=True )
 
+    match_df_disp_cols = ['tag_catalognumber', 'tag_locality', 'ptt_code', 'collectornumber', 'tag_startdatetime', 'tag_enddatetime', 'institutioncode', 'collector', 'scientificname', 'commonname', 'organism_id']
     for index, row in deployment_df.iterrows():
         # Match to otn_satellite_tags by PTT and BODY
         match_by_ptt_body_df = subset_otn_sat_tag_df.loc[
@@ -319,26 +321,23 @@ def prompt_potential_match_otn_tags(engine: Engine, deployment_df: pd.DataFrame,
             (subset_otn_sat_tag_df['collectornumber'].astype(str) == str(row['BODY']))
             ]
         if not match_by_ptt_body_df.empty:
-            print(f'Found possible matching tag(s) by PTT and BODY for SMRU tag_ref: {row["REF"]} (on date: {row["ON_DATE"]} - off date: {row["OFF_DATE"]}) with {OTN_SATELLITE_TAGS_TABLE}')
-            show_match_widgets(engine, match_by_ptt_body_df, row["REF"])
-            otn_sat_tag_dropdown = Dropdown(options=match_by_ptt_body_df['catalognumber'].tolist())
-            submit_btn = widgets.Button(description="Create loan entry", button_style='primary')
-            submit_btn.on_click(partial(do_match, engine, otn_sat_tag_dropdown, row["REF"]))
+            display(HTML(f'<h3>Found possible matching tag(s) by PTT and BODY for SMRU tag_ref: {row["REF"]} (on date: {row["ON_DATE"]} - off date: {row["OFF_DATE"]}) with {OTN_SATELLITE_TAGS_TABLE}</h3>'))
+            show_match_widgets(engine, match_by_ptt_body_df, row["REF"], match_df_disp_cols)
             continue
 
         # Match to otn_satellite_tags by PTT
         match_by_ptt_df = subset_otn_sat_tag_df.loc[subset_otn_sat_tag_df['ptt_code'].astype(str) == str(row['PTT'])]
 
         if not match_by_ptt_df.empty:
-            print(f'Found possible matching tag(s) by PTT only for {row["REF"]} with {OTN_SATELLITE_TAGS_TABLE}')
-            show_df(match_by_ptt_df, save_as_file=f'{row["REF"]}_match.csv', show_all_rows=True)
+            display(HTML(f'<h3>Found possible matching tag(s) by PTT only for SMRU tag_ref: {row["REF"]} (on date: {row["ON_DATE"]} - off date: {row["OFF_DATE"]}) with {OTN_SATELLITE_TAGS_TABLE}</h3>'))
+            show_match_widgets(engine, match_by_ptt_df, row["REF"], match_df_disp_cols)
             continue
 
         # Match to otn_satellite_tags by PTT
         match_by_code_df = subset_otn_sat_tag_df.loc[subset_otn_sat_tag_df['collectornumber'] == row['BODY']]
         if not match_by_code_df.empty:
-            print(f'Found possible matching tag(s) by CODE only for {row["REF"]} with {OTN_SATELLITE_TAGS_TABLE}')
-            show_df(match_by_code_df, save_as_file=f'{row["REF"]}_match.csv', show_all_rows=True)
+            display(HTML(f'<h3>Found possible matching tag(s) by CODE only for SMRU tag_ref: {row["REF"]} (on date: {row["ON_DATE"]} - off date: {row["OFF_DATE"]}) with {OTN_SATELLITE_TAGS_TABLE}</h3>'))
+            show_match_widgets(engine, match_by_code_df, row["REF"], match_df_disp_cols)
             continue
 
     return subset_otn_sat_tag_df
@@ -355,7 +354,6 @@ def do_match(engine: Engine, dropdown: Dropdown, tag_ref: str, submit_btn: Butto
     '''
     Upsert into obis.vendor_ref_otn_catalognumber_match table
     '''
-    print(f"Mapping: tag_ref='{tag_ref}' -> catalognumber='{dropdown.value}'")
 
     with engine.begin() as conn:
         upsert_query = text("""
@@ -377,6 +375,7 @@ def do_match(engine: Engine, dropdown: Dropdown, tag_ref: str, submit_btn: Butto
     submit_btn.description = 'Saved'
     submit_btn.button_style = 'success'
     submit_btn.disabled = True
+    dropdown.disabled = True
 
 def extract_deployments(program: str, cid: str, input_path: str, mdb_path: str='', verbose: bool=False) -> dict[str, pd.DataFrame]:
     """
