@@ -335,3 +335,9 @@ EXCEPTION
 END;
 $$
 LANGUAGE plpgsql;
+
+CREATE TABLE obis.vendor_ref_otn_catalognumber_match (
+    tag_ref VARCHAR(255) UNIQUE,
+    catalognumber VARCHAR(255) UNIQUE,
+    UNIQUE (tag_ref, catalognumber)
+);
