@@ -68,6 +68,7 @@ import time
 
 
 OTN_SATELLITE_TAGS_TABLE = 'obis.otn_satellite_tags_animals'
+TAG_REF_CATALOGNUMBER_MATCH_TABLE = 'obis.vendor_ref_otn_catalognumber_match'
 
 def show_data_upload_mode_radio() -> RadioButtons:
     from IPython.display import display
@@ -328,31 +329,31 @@ def prompt_potential_match_otn_tags(engine: Engine, deployment_df: pd.DataFrame,
             display(remove_btn)
             continue
 
-        # Match to otn_satellite_tags by PTT and BODY
-        match_by_ptt_body_df = subset_otn_sat_tag_df.loc[
-            (subset_otn_sat_tag_df['ptt_code'].astype(str) == str(row['PTT'])) &
-            (subset_otn_sat_tag_df['collectornumber'].astype(str) == str(row['BODY']))
-            ]
-        if not match_by_ptt_body_df.empty:
-            display(HTML(f'<h4>Found possible matching tag(s) and related animal(s) by PTT and BODY:</h4>'))
-            show_match_widgets(engine, match_by_ptt_body_df, row["REF"], match_df_disp_cols)
-            continue
+        # # Match to otn_satellite_tags by PTT and BODY
+        # match_by_ptt_body_df = subset_otn_sat_tag_df.loc[
+        #     (subset_otn_sat_tag_df['ptt_code'].astype(str) == str(row['PTT'])) &
+        #     (subset_otn_sat_tag_df['collectornumber'].astype(str) == str(row['BODY']))
+        #     ]
+        # if not match_by_ptt_body_df.empty:
+        #     display(HTML(f'<h4>Found possible matching tag(s) and related animal(s) by PTT and BODY:</h4>'))
+        #     show_match_widgets(engine, match_by_ptt_body_df, row["REF"], match_df_disp_cols)
+        #     continue
+        #
+        # # Match to otn_satellite_tags by PTT
+        # match_by_ptt_df = subset_otn_sat_tag_df.loc[subset_otn_sat_tag_df['ptt_code'].astype(str) == str(row['PTT'])]
+        # if not match_by_ptt_df.empty:
+        #     display(HTML(f'<h4>Found possible matching tag(s) and related animal(s) by PTT only:</h4>'))
+        #     show_match_widgets(engine, match_by_ptt_df, row["REF"], match_df_disp_cols)
+        #     continue
 
-        # Match to otn_satellite_tags by PTT
-        match_by_ptt_df = subset_otn_sat_tag_df.loc[subset_otn_sat_tag_df['ptt_code'].astype(str) == str(row['PTT'])]
-        if not match_by_ptt_df.empty:
-            display(HTML(f'<h4>Found possible matching tag(s) and related animal(s) by PTT only:</h4>'))
-            show_match_widgets(engine, match_by_ptt_df, row["REF"], match_df_disp_cols)
-            continue
+        # # Match to otn_satellite_tags by BODY
+        # match_by_code_df = subset_otn_sat_tag_df.loc[subset_otn_sat_tag_df['collectornumber'].astype(str) == str(row['BODY'])]
+        # if not match_by_code_df.empty:
+        #     display(HTML(f'<h4>Found possible matching tag(s) and related animal(s) by BODY number only:</h4>'))
+        #     show_match_widgets(engine, match_by_code_df, row["REF"], match_df_disp_cols)
+        #     continue
 
-        # Match to otn_satellite_tags by PTT
-        match_by_code_df = subset_otn_sat_tag_df.loc[subset_otn_sat_tag_df['collectornumber'].astype(str) == str(row['BODY'])]
-        if not match_by_code_df.empty:
-            display(HTML(f'<h4>Found possible matching tag(s) and related animal(s) by BODY number only:</h4>'))
-            show_match_widgets(engine, match_by_code_df, row["REF"], match_df_disp_cols)
-            continue
-
-        display(HTML(f'<h4>please manually search for matching catalognumber and Save the match.</h4>'))
+        display(HTML(f'<h4>No possible matching OTN tag found by PTT or BODY number. Please manually search for matching catalognumber and Save the match.</h4>'))
         catalognumber_text = widgets.Text(
             value='',
             placeholder='OTN tag catalognumber',
@@ -384,9 +385,9 @@ def show_match_widgets(engine:Engine, match_df: pd.DataFrame, tag_ref: str, disp
 def get_existing_tag_mapping(engine: Engine, tag_ref: str) -> dict:
     """Get the full mapping record for a given tag_ref from the mapping table."""
     with engine.connect() as conn:
-        query = text("""
+        query = text(f"""
             SELECT tag_ref, catalognumber, last_updated, auto_match
-            FROM obis.vendor_ref_otn_catalognumber_match 
+            FROM {TAG_REF_CATALOGNUMBER_MATCH_TABLE} 
             WHERE tag_ref = :tag_ref
         """)
         result = conn.execute(query, {"tag_ref": tag_ref}).mappings().first()
@@ -399,8 +400,8 @@ def do_remove_match(engine: Engine, catalognumber: str, tag_ref: str, remove_btn
     '''
     with engine.begin() as conn:
         # Option 1: Remove by both tag_ref and catalognumber
-        delete_query = text("""
-            DELETE FROM obis.vendor_ref_otn_catalognumber_match 
+        delete_query = text(f"""
+            DELETE FROM {TAG_REF_CATALOGNUMBER_MATCH_TABLE} 
             WHERE tag_ref = :tag_ref AND catalognumber = :catalognumber
         """)
         result = conn.execute(delete_query, {
@@ -416,15 +417,17 @@ def do_remove_match(engine: Engine, catalognumber: str, tag_ref: str, remove_btn
     remove_btn.button_style = 'success'
     remove_btn.disabled = True
 
-
 def do_match(engine: Engine, widget: Any, tag_ref: str, submit_btn: Button):
     '''
     Upsert into obis.vendor_ref_otn_catalognumber_match table
     '''
-
+    all_otn_sat_tags = get_all_otn_sat_tags()['tag_catalognumber'].tolist()
+    if widget.value not in all_otn_sat_tags:
+        print(f'catalognumber is not found in {TAG_REF_CATALOGNUMBER_MATCH_TABLE}. Please try again.')
+        return
     with engine.begin() as conn:
-        upsert_query = text("""
-            INSERT INTO obis.vendor_ref_otn_catalognumber_match (tag_ref, catalognumber, last_updated, auto_match)
+        upsert_query = text(f"""
+            INSERT INTO {TAG_REF_CATALOGNUMBER_MATCH_TABLE} (tag_ref, catalognumber, last_updated, auto_match)
             VALUES (:tag_ref, :catalognumber, CURRENT_TIMESTAMP, :auto_match)
             ON CONFLICT (tag_ref) 
             DO UPDATE SET 
