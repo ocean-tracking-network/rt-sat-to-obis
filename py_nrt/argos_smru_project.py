@@ -321,7 +321,7 @@ def prompt_potential_match_otn_tags(engine: Engine, deployment_df: pd.DataFrame,
             (subset_otn_sat_tag_df['collectornumber'].astype(str) == str(row['BODY']))
             ]
         if not match_by_ptt_body_df.empty:
-            display(HTML(f'<h3>Found possible matching tag(s) by PTT and BODY for SMRU tag_ref: {row["REF"]} (on date: {row["ON_DATE"]} - off date: {row["OFF_DATE"]}) with {OTN_SATELLITE_TAGS_TABLE}</h3>'))
+            display(HTML(f'<h3>SMRU tag_ref: {row["REF"]} ({row["ON_DATE"]} to {row["OFF_DATE"]}) matches tag(s) and related animal(s) by PTT and BODY:</h3>'))
             show_match_widgets(engine, match_by_ptt_body_df, row["REF"], match_df_disp_cols)
             continue
 
@@ -329,21 +329,22 @@ def prompt_potential_match_otn_tags(engine: Engine, deployment_df: pd.DataFrame,
         match_by_ptt_df = subset_otn_sat_tag_df.loc[subset_otn_sat_tag_df['ptt_code'].astype(str) == str(row['PTT'])]
 
         if not match_by_ptt_df.empty:
-            display(HTML(f'<h3>Found possible matching tag(s) by PTT only for SMRU tag_ref: {row["REF"]} (on date: {row["ON_DATE"]} - off date: {row["OFF_DATE"]}) with {OTN_SATELLITE_TAGS_TABLE}</h3>'))
+            display(HTML(f'<h3>SMRU tag_ref: {row["REF"]} ({row["ON_DATE"]} to {row["OFF_DATE"]}) matches tag(s) and related animal(s) by PTT only:</h3>'))
             show_match_widgets(engine, match_by_ptt_df, row["REF"], match_df_disp_cols)
             continue
 
         # Match to otn_satellite_tags by PTT
         match_by_code_df = subset_otn_sat_tag_df.loc[subset_otn_sat_tag_df['collectornumber'] == row['BODY']]
         if not match_by_code_df.empty:
-            display(HTML(f'<h3>Found possible matching tag(s) by CODE only for SMRU tag_ref: {row["REF"]} (on date: {row["ON_DATE"]} - off date: {row["OFF_DATE"]}) with {OTN_SATELLITE_TAGS_TABLE}</h3>'))
+            display(HTML(f'<h3>SMRU tag_ref: {row["REF"]} ({row["ON_DATE"]} to {row["OFF_DATE"]}) matches tag(s) and related animal(s) by BODY number only:</h3>'))
             show_match_widgets(engine, match_by_code_df, row["REF"], match_df_disp_cols)
             continue
 
     return subset_otn_sat_tag_df
 
-def show_match_widgets(engine:Engine, match_df: pd.DataFrame, tag_ref: str):
-    show_df(match_df, save_as_file=f'{tag_ref}_match.csv', show_all_rows=True)
+def show_match_widgets(engine:Engine, match_df: pd.DataFrame, tag_ref: str, disp_cols: List[str]):
+    print('Please select OTN tag catalognumber and click the button Save to database.')
+    show_df(match_df[disp_cols], save_as_file=f'{tag_ref}_match.csv', show_all_rows=True)
     otn_sat_tag_dropdown = Dropdown(options=match_df['catalognumber'].tolist())
     submit_btn = widgets.Button(description="Save", button_style='primary')
     submit_btn.on_click(partial(do_match, engine, otn_sat_tag_dropdown,tag_ref))
