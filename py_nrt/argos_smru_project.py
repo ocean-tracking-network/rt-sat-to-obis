@@ -413,8 +413,8 @@ def do_remove_match(engine: Engine, catalognumber: str, tag_ref: str, remove_btn
         else:
             print(f"No mapping found for tag_ref='{tag_ref}' with catalognumber='{catalognumber}'")
     remove_btn.description = 'Removed'
-    description.button_style = 'success'
-    description.disabled = True
+    remove_btn.button_style = 'success'
+    remove_btn.disabled = True
 
 
 def do_match(engine: Engine, widget: Any, tag_ref: str, submit_btn: Button):
