@@ -21,7 +21,7 @@ from pathlib import Path
 import zipfile
 import shutil
 from datetime import datetime
-from typing import List, Tuple
+from typing import List, Tuple, Any
 import subprocess
 import pandas as pd
 import os
@@ -33,7 +33,7 @@ import pandas as pd
 import plotly
 import requests
 from IPython import get_ipython
-from ipywidgets import Layout, Checkbox, VBox, Label, Box, Button, widgets, HTML, RadioButtons,Dropdown
+from ipywidgets import Layout, Checkbox, VBox, Label, Box, Button, widgets, HTML, RadioButtons, Dropdown, Text
 from IPython.display import display
 from shapely import wkb
 import xmltodict
@@ -315,10 +315,15 @@ def prompt_potential_match_otn_tags(engine: Engine, deployment_df: pd.DataFrame,
 
     match_df_disp_cols = ['tag_catalognumber', 'tag_locality', 'ptt_code', 'collectornumber', 'tag_startdatetime', 'tag_enddatetime', 'institutioncode', 'collector', 'scientificname', 'commonname', 'organism_id']
     for index, row in deployment_df.iterrows():
+        display(HTML(f'<h3>- SMRU tag_ref: {row["REF"]} ({row["ON_DATE"].split(" ")[0]} to {row["OFF_DATE"].split(" ")[0]})</h3>'))
 
-        existing_match_dict = get_current_tag_mapping_df(engine, row["REF"])
+        # If existing match found, display remove match button.
+        existing_match_dict = get_existing_tag_mapping(engine, row["REF"])
         if existing_match_dict:
-            display(HTML(f'<h3>SMRU tag_ref: {row["REF"]} ({row["ON_DATE"]} to {row["OFF_DATE"]}) was matched to collectornumber: {existing_match_dict["catalognumber"]} on {existing_match_dict["last_updated"]} - {"auto-match" if existing_match_dict["auto_match"] else "manual-match"} </h3>'))
+            display(HTML(f'<h4>Previously matched to collectornumber: {existing_match_dict["catalognumber"]} on {existing_match_dict["last_updated"].strftime("%Y-%m-%d")} by {"auto-match" if existing_match_dict["auto_match"] else "manual-match"}.</h4>'))
+            remove_btn = widgets.Button(description='Remove Match', button_style='primary')
+            remove_btn.on_click(partial(do_remove_match, engine, existing_match_dict["catalognumber"], row["REF"]))
+            display(remove_btn)
             continue
 
         # Match to otn_satellite_tags by PTT and BODY
@@ -327,24 +332,39 @@ def prompt_potential_match_otn_tags(engine: Engine, deployment_df: pd.DataFrame,
             (subset_otn_sat_tag_df['collectornumber'].astype(str) == str(row['BODY']))
             ]
         if not match_by_ptt_body_df.empty:
-            display(HTML(f'<h3>SMRU tag_ref: {row["REF"]} ({row["ON_DATE"]} to {row["OFF_DATE"]}) matches tag(s) and related animal(s) by PTT and BODY:</h3>'))
+            display(HTML(f'<h4>Found possible matching tag(s) and related animal(s) by PTT and BODY:</h4>'))
             show_match_widgets(engine, match_by_ptt_body_df, row["REF"], match_df_disp_cols)
             continue
 
         # Match to otn_satellite_tags by PTT
         match_by_ptt_df = subset_otn_sat_tag_df.loc[subset_otn_sat_tag_df['ptt_code'].astype(str) == str(row['PTT'])]
-
         if not match_by_ptt_df.empty:
-            display(HTML(f'<h3>SMRU tag_ref: {row["REF"]} ({row["ON_DATE"]} to {row["OFF_DATE"]}) matches tag(s) and related animal(s) by PTT only:</h3>'))
+            display(HTML(f'<h4>Found possible matching tag(s) and related animal(s) by PTT only:</h4>'))
             show_match_widgets(engine, match_by_ptt_df, row["REF"], match_df_disp_cols)
             continue
 
         # Match to otn_satellite_tags by PTT
-        match_by_code_df = subset_otn_sat_tag_df.loc[subset_otn_sat_tag_df['collectornumber'] == row['BODY']]
+        match_by_code_df = subset_otn_sat_tag_df.loc[subset_otn_sat_tag_df['collectornumber'].astype(str) == str(row['BODY'])]
         if not match_by_code_df.empty:
-            display(HTML(f'<h3>SMRU tag_ref: {row["REF"]} ({row["ON_DATE"]} to {row["OFF_DATE"]}) matches tag(s) and related animal(s) by BODY number only:</h3>'))
+            display(HTML(f'<h4>Found possible matching tag(s) and related animal(s) by BODY number only:</h4>'))
             show_match_widgets(engine, match_by_code_df, row["REF"], match_df_disp_cols)
             continue
+
+        display(HTML(f'<h4>please manually search for matching catalognumber and Save the match.</h4>'))
+        catalognumber_text = widgets.Text(
+            value='',
+            placeholder='OTN tag catalognumber',
+            description='catalognumber:',
+            style={'description_width': 'initial'},
+            layout=widgets.Layout(width='500px')
+        )
+        manual_submit_btn = widgets.Button(
+            description='Save',
+            button_style='primary'
+        )
+        manual_submit_btn.on_click(partial(do_match, engine, catalognumber_text, row["REF"]))
+        display(catalognumber_text)
+        display(manual_submit_btn)
 
     return subset_otn_sat_tag_df
 
@@ -359,7 +379,7 @@ def show_match_widgets(engine:Engine, match_df: pd.DataFrame, tag_ref: str, disp
     display(submit_btn)
 
 
-def get_current_tag_mapping(engine: Engine, tag_ref: str) -> dict:
+def get_existing_tag_mapping(engine: Engine, tag_ref: str) -> dict:
     """Get the full mapping record for a given tag_ref from the mapping table."""
     with engine.connect() as conn:
         query = text("""
@@ -371,7 +391,28 @@ def get_current_tag_mapping(engine: Engine, tag_ref: str) -> dict:
     return dict(result) if result else {}
 
 
-def do_match(engine: Engine, dropdown: Dropdown, tag_ref: str, submit_btn: Button):
+def do_remove_match(engine: Engine, catalognumber: str, tag_ref: str) -> None:
+    '''
+    Remove matching record from obis.vendor_ref_otn_catalognumber_match table
+    '''
+    with engine.begin() as conn:
+        # Option 1: Remove by both tag_ref and catalognumber
+        delete_query = text("""
+            DELETE FROM obis.vendor_ref_otn_catalognumber_match 
+            WHERE tag_ref = :tag_ref AND catalognumber = :catalognumber
+        """)
+        result = conn.execute(delete_query, {
+            "tag_ref": tag_ref,
+            "catalognumber": catalognumber
+        })
+
+        if result.rowcount > 0:
+            print(f"Removed mapping: tag_ref='{tag_ref}' with catalognumber='{catalognumber}'")
+        else:
+            print(f"No mapping found for tag_ref='{tag_ref}' with catalognumber='{catalognumber}'")
+
+
+def do_match(engine: Engine, widget: Any, tag_ref: str, submit_btn: Button):
     '''
     Upsert into obis.vendor_ref_otn_catalognumber_match table
     '''
@@ -388,15 +429,15 @@ def do_match(engine: Engine, dropdown: Dropdown, tag_ref: str, submit_btn: Butto
         """)
         conn.execute(upsert_query, {
             "tag_ref": tag_ref,
-            "catalognumber": dropdown.value,
+            "catalognumber": widget.value,
             "auto_match": False  # Set to True if auto-matched, False if manual
         })
-        print(f"Mapped: tag_ref='{tag_ref}' with catalognumber='{dropdown.value}'")
+        print(f"Mapped: tag_ref='{tag_ref}' with catalognumber='{widget.value}'")
 
     submit_btn.description = 'Saved'
     submit_btn.button_style = 'success'
     submit_btn.disabled = True
-    dropdown.disabled = True
+    widget.disabled = True
 
 def extract_deployments(program: str, cid: str, input_path: str, mdb_path: str='', verbose: bool=False) -> dict[str, pd.DataFrame]:
     """
