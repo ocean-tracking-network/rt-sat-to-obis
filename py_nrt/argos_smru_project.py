@@ -315,6 +315,12 @@ def prompt_potential_match_otn_tags(engine: Engine, deployment_df: pd.DataFrame,
 
     match_df_disp_cols = ['tag_catalognumber', 'tag_locality', 'ptt_code', 'collectornumber', 'tag_startdatetime', 'tag_enddatetime', 'institutioncode', 'collector', 'scientificname', 'commonname', 'organism_id']
     for index, row in deployment_df.iterrows():
+
+        existing_match_dict = get_current_tag_mapping_df(engine, row["REF"])
+        if existing_match_dict:
+            display(HTML(f'<h3>SMRU tag_ref: {row["REF"]} ({row["ON_DATE"]} to {row["OFF_DATE"]}) was matched to collectornumber: {existing_match_dict["catalognumber"]} on {existing_match_dict["last_updated"]} - {"auto-match" if existing_match_dict["auto_match"] else "manual-match"} </h3>'))
+            continue
+
         # Match to otn_satellite_tags by PTT and BODY
         match_by_ptt_body_df = subset_otn_sat_tag_df.loc[
             (subset_otn_sat_tag_df['ptt_code'].astype(str) == str(row['PTT'])) &
@@ -342,6 +348,7 @@ def prompt_potential_match_otn_tags(engine: Engine, deployment_df: pd.DataFrame,
 
     return subset_otn_sat_tag_df
 
+
 def show_match_widgets(engine:Engine, match_df: pd.DataFrame, tag_ref: str, disp_cols: List[str]):
     print('Please select OTN tag catalognumber and click the button Save to database.')
     show_df(match_df[disp_cols], save_as_file=f'{tag_ref}_match.csv', show_all_rows=True)
@@ -350,6 +357,19 @@ def show_match_widgets(engine:Engine, match_df: pd.DataFrame, tag_ref: str, disp
     submit_btn.on_click(partial(do_match, engine, otn_sat_tag_dropdown,tag_ref))
     display(otn_sat_tag_dropdown)
     display(submit_btn)
+
+
+def get_current_tag_mapping(engine: Engine, tag_ref: str) -> dict:
+    """Get the full mapping record for a given tag_ref from the mapping table."""
+    with engine.connect() as conn:
+        query = text("""
+            SELECT tag_ref, catalognumber, last_updated, auto_match
+            FROM obis.vendor_ref_otn_catalognumber_match 
+            WHERE tag_ref = :tag_ref
+        """)
+        result = conn.execute(query, {"tag_ref": tag_ref}).mappings().first()
+    return dict(result) if result else {}
+
 
 def do_match(engine: Engine, dropdown: Dropdown, tag_ref: str, submit_btn: Button):
     '''
