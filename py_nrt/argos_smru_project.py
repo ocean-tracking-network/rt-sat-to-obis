@@ -303,8 +303,9 @@ def prompt_potential_match_otn_tags(engine: Engine, deployment_df: pd.DataFrame,
     all_otn_sat_tag_df = get_all_otn_sat_tags(engine)
 
     if collectioncode and collectioncode.lower() !='unknown':
-        display(HTML(f'<h3> Found below satellite tag(s) in OTN for specified collectioncode: {collectioncode} </h3>'))
         subset_otn_sat_tag_df = all_otn_sat_tag_df[all_otn_sat_tag_df['tag_collectioncode'] == collectioncode.upper()]
+        if not subset_otn_sat_tag_df.empty:
+            display(HTML(f'<h3> Found below satellite tag(s) in OTN for specified collectioncode: {collectioncode} </h3>'))
     else:
         subset_otn_sat_tag_df = all_otn_sat_tag_df.copy()
 
@@ -321,10 +322,10 @@ def prompt_potential_match_otn_tags(engine: Engine, deployment_df: pd.DataFrame,
         # If existing match found, display remove match button.
         existing_match_dict = get_existing_tag_mapping(engine, row["REF"])
         if existing_match_dict:
-            display(HTML(f'<h4>Previously matched to collectornumber: {existing_match_dict["tag_catalognumber"]} on {existing_match_dict["last_updated"].strftime("%Y-%m-%d")} by {"auto-match" if existing_match_dict["auto_match"] else "manual-match"}.</h4>'))
+            display(HTML(f'<h4>Previously matched to collectornumber: {existing_match_dict["catalognumber"]} on {existing_match_dict["last_updated"].strftime("%Y-%m-%d")} by {"auto-match" if existing_match_dict["auto_match"] else "manual-match"}.</h4>'))
             show_df(subset_otn_sat_tag_df[subset_otn_sat_tag_df["tag_catalognumber"]==existing_match_dict["catalognumber"]], save_as_file='otn_sat_tag_df.csv', show_all_rows=True)
             remove_btn = widgets.Button(description='Remove Match', button_style='primary')
-            remove_btn.on_click(partial(do_remove_match, engine, existing_match_dict["tag_catalognumber"], row["REF"]))
+            remove_btn.on_click(partial(do_remove_match, engine, existing_match_dict["catalognumber"], row["REF"]))
             print('To change this matching, first remove existing matching then run this cell gain.')
             display(remove_btn)
             continue
@@ -337,21 +338,21 @@ def prompt_potential_match_otn_tags(engine: Engine, deployment_df: pd.DataFrame,
         if not match_by_ptt_body_df.empty:
             display(HTML(f'<h4>Found possible matching tag(s) and related animal(s) by PTT and BODY:</h4>'))
             show_match_widgets(engine, match_by_ptt_body_df, row["REF"], match_df_disp_cols)
-            # continue
+            continue
 
         # Match to otn_satellite_tags by PTT
         match_by_ptt_df = subset_otn_sat_tag_df.loc[subset_otn_sat_tag_df['ptt_code'].astype(str) == str(row['PTT'])]
         if not match_by_ptt_df.empty:
             display(HTML(f'<h4>Found possible matching tag(s) and related animal(s) by PTT only:</h4>'))
             show_match_widgets(engine, match_by_ptt_df, row["REF"], match_df_disp_cols)
-            # continue
+            continue
 
         # Match to otn_satellite_tags by BODY
         match_by_code_df = subset_otn_sat_tag_df.loc[subset_otn_sat_tag_df['collectornumber'].astype(str) == str(row['BODY'])]
         if not match_by_code_df.empty:
             display(HTML(f'<h4>Found possible matching tag(s) and related animal(s) by BODY number only:</h4>'))
             show_match_widgets(engine, match_by_code_df, row["REF"], match_df_disp_cols)
-            # continue
+            continue
 
         display(HTML(f'<h4>No possible matching OTN tag found by PTT or BODY number. Please manually search for matching catalognumber and Save the match.</h4>'))
         catalognumber_text = widgets.Text(
@@ -423,8 +424,10 @@ def do_match(engine: Engine, widget: Any, tag_ref: str, submit_btn: Button):
     '''
     all_otn_sat_tags = get_all_otn_sat_tags(engine)['tag_catalognumber'].tolist()
     if widget.value not in all_otn_sat_tags:
-        print(f'catalognumber is not found in {TAG_REF_CATALOGNUMBER_MATCH_TABLE}. Please try again.')
+        print(f'catalognumber: {widget.value} is not found in {TAG_REF_CATALOGNUMBER_MATCH_TABLE}. Please try again.')
+        widget.value = f'{widget.value} is not found - try again'
         return
+
     with engine.begin() as conn:
         upsert_query = text(f"""
             INSERT INTO {TAG_REF_CATALOGNUMBER_MATCH_TABLE} (tag_ref, catalognumber, last_updated, auto_match)
