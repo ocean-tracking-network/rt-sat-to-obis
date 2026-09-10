@@ -755,21 +755,22 @@ def extract_ssmoutput_tracks(engine: Engine, program: str, cid: str, qc_output_p
     })
     ssmoutputs_df['date_time'] = pd.to_datetime(
         ssmoutputs_df['date_time'],
-        dayfirst=True,  # Keep this if needed
-        errors='coerce'  # Handle invalid dates gracefully
+        dayfirst=True,
+        errors='coerce'
     )
     if subset_tags:
         ssmoutputs_df = ssmoutputs_df[ssmoutputs_df['tag_ref'].isin(subset_tags)]
 
     # Display summary ssmoutput
     summary_df = ssmoutputs_df.groupby('tag_ref').agg(
-        count=('tag_ref', 'size'),
-        date_range=('date', lambda s: (s.min(), s.max())),
-        lat_range=('lat', lambda s: (s.min(), s.max())),
-        lon_range=('lon', lambda s: (s.min(), s.max())),
+        row_count=('tag_ref', 'size'),
+        min_datetime=('date_time', 'min'),
+        max_datetime=('date_time', 'max'),
+        min_lat=('lat', 'min'),
+        max_lat=('lat', 'max'),
+        min_lon=('lon', 'min'),
+        max_lon=('lon', 'max'),
     ).reset_index()
-    filename = f"{cid}_ssmoutput_summary_{datetime.now().strftime('%Y%m%d')}.csv"
-    show_df(summary_df, filename, True)
 
     # Merge with tag_ref_catalognumber_match
     all_tag_ref_catalognumber_df = get_all_tag_ref_catalognumber_match_df(engine)
@@ -778,7 +779,19 @@ def extract_ssmoutput_tracks(engine: Engine, program: str, cid: str, qc_output_p
         on='tag_ref',
         how='left'
     )
+    filename = f"{cid}_qced_telemetry_{datetime.now().strftime('%Y%m%d')}.csv"
+    display(HTML(f'''<p>
+        <span style="font-size:25px;"><i class="fa fa-flip-horizontal">🐟</i></span>
+        <span style="font-size:20px;">~ Click CSV button to download and attach "{filename}" to the Gitlab issue.</span>
+    </p>'''))
+
     show_df(ssmoutputs_df, f"{cid}_qced_telemetry_{datetime.now().strftime('%Y%m%d')}.csv", True)
+
+    # Display summary ssmoutput at the end
+    print('Summary of ssmoutput by tag_ref:')
+    filename = f"{cid}_ssmoutput_summary_{datetime.now().strftime('%Y%m%d')}.csv"
+    show_df(summary_df, filename, True)
+
     return ssmoutputs_df, ssmoutput_files
 
 
@@ -940,14 +953,10 @@ def show_argosqc_results(qc_output_path:str, notebook_base_url:str, program:str,
     html_messages = {
         'found':  [
             HTML(f'<h3 style="margin: 0; color: blue;">ArgosQC results are found in {folder_path}/{program}_{cid}.</h3>'),
-            HTML(f'<a href="{upload_url}" target="_blank">Click here open QC output folder. Download results file: "ssmoutputs_{program}_{cid}_nrt.csv"</a>')
+            HTML(f'<a href="{upload_url}" target="_blank">Click here open QC output folder."</a>')
         ],
         'missing': [
             HTML(f'<h3 style="margin: 0; color: red;">No ArgosQC results found. Please review step 6 Run ArgosQC output or contact OTN data team.</h3>')
         ]
     }
     check_file_exists(relative_path, f'{program}_{cid}', html_messages, upload_url, True, False)
-    display(HTML(f'''<p>
-        <span style="font-size:25px;"><i class="fa fa-flip-horizontal">🐟</i></span>
-        <span style="font-size:20px;">~ Attach evaluated "ssmoutputs_{program}_{cid}_nrt.csv" to issue.</span>
-    </p>'''))
