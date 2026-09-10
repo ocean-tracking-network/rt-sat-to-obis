@@ -79,6 +79,8 @@ ALTER TABLE {{sat_schema}}.sat_ssm_summary ADD PRIMARY KEY (sat_ssm_table_name, 
 -- 4. SAT_META_TABLE (sat_deployments)
 -- ============================================
 CREATE TABLE IF NOT EXISTS {{sat_schema}}.sat_deployments (
+    program TEXT,
+    catalognumber TEXT,
     campaign_id TEXT,
     tag_id TEXT,
     ptt BIGINT,
