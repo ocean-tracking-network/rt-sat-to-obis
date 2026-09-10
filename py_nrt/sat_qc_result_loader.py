@@ -285,6 +285,14 @@ class SatQcResultsLoader:
                 if self.verbose:
                     print(f'Uploaded SSM results to HOST: {self.engine.url.host} DB: {self.engine.url.database} {self.schema}.{table_name} table.')
 
+                # Load metadata
+                meta_df = self.parse_tag_metadata(program_name, project)
+                if not meta_df.empty:
+                    metadata_rows = self.load_meta_df_to_db(meta_df, table_name=self.SAT_META_TABLE)
+                    if self.verbose:
+                        print(f'Uploaded {metadata_rows} SSM tag metadata to {self.SAT_META_TABLE} table')
+                    all_meta_df_list.append(meta_df)
+
                 summary_df = self.load_single_ssmoutput_to_db(output_csv, last_modified, table_name)
 
                 display(HTML(f'''<p>
@@ -295,13 +303,7 @@ class SatQcResultsLoader:
                 if not summary_df.empty:
                     summary_df_list.append(summary_df)
 
-                # Load metadata
-                meta_df = self.parse_tag_metadata(program_name, project)
-                if not meta_df.empty:
-                    metadata_rows = self.load_meta_df_to_db(meta_df, table_name=self.SAT_META_TABLE)
-                    if self.verbose:
-                        print(f'Uploaded {metadata_rows} SSM tag metadata to {self.SAT_META_TABLE} table')
-                    all_meta_df_list.append(meta_df)
+
 
         # Combine results
         summary_df = pd.concat(summary_df_list, ignore_index=True) if summary_df_list else pd.DataFrame()
