@@ -5,6 +5,9 @@ input/*/*.log
 # Logs
 argosqc_run_details.csv
 
+#Credentials
+py_nrt/database_conn_string.auth
+
 # Output directory
 output/
 
