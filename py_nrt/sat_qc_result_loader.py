@@ -857,9 +857,6 @@ class SatQcResultsLoader:
 
         # Get min/max depth dataframe
         min_max_depth_df = self._parse_min_max_depth(program, cid)
-        if self.verbose:
-            show_df(min_max_depth_df, 'min_max_depth_df', True)
-            show_df(curated_meta_df, 'curated_meta_df', True)
 
         # Left join min_max_depth_df with min_max_depth_df
         curated_meta_df = curated_meta_df.merge(
