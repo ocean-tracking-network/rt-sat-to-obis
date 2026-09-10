@@ -12,8 +12,8 @@
     "harvest": {
       "download": true,
       "cid": "ct182",
-      "smru.usr": "imos",
-      "smru.pwd": "imos",
+      "smru.usr": "",
+      "smru.pwd": "",
       "timeout": 180,
       "dropIDs": "input/imos/imos_ct182/exclude_tags.csv",
       "p2mdbtools": "C:/Users/hpz2/mdbtools-app"
