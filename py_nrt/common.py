@@ -559,25 +559,34 @@ def check_file_exists(
         return True
 
 
-def get_files_by_pattern(folder: str, file_pattern: str) -> List[Path]:
+def get_files_by_pattern(folder: str, file_pattern: str, exclude_dirs: List[str] = None) -> List[Path]:
     """
     Find all files matching a pattern in a folder and its subfolders.
 
     Args:
         folder: relative folder to current folder.
         file_pattern: file name pattern
+        exclude_dirs: directory names to skip
 
     Returns:
         List of Path objects for files matching the pattern.
     """
+    exclude_dirs = set(exclude_dirs or [])
     folder_path = Path(folder)
     if not folder_path.exists():
         print_error(f'Folder is not found: {folder_path}')
         return []
 
-    found_files = list(folder_path.rglob(file_pattern))
+    found_files = [
+        f for f in folder_path.rglob(file_pattern)
+        if not exclude_dirs.intersection(f.relative_to(folder_path).parts)
+    ]
     if not found_files:
-        found_files = [f for f in folder_path.glob('*') if re.search(file_pattern, f.name)]
+        found_files = [
+            f for f in folder_path.glob('*')
+            if re.search(file_pattern, f.name)
+            and not exclude_dirs.intersection(f.relative_to(folder_path).parts)
+        ]
     return found_files
 
 
