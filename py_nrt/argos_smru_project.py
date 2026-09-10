@@ -780,7 +780,7 @@ def extract_ssmoutput_tracks(engine: Engine, program: str, cid: str, qc_output_p
         how='left'
     )
     filename = f"{cid}_qced_telemetry_{datetime.now().strftime('%Y%m%d')}.csv"
-    ssmoutputs_df.to_csv(os.path.sep.join([ssmoutput_folder, filename]), index=False)
+    ssmoutputs_df.to_csv(os.path.sep.join([str(ssmoutput_folder), filename]), index=False)
     display(HTML(f'''<p>
         <span style="font-size:25px;"><i class="fa fa-flip-horizontal">🐟</i></span>
         <span style="font-size:20px;">~ Click CSV button to download and attach "{filename}" to the Gitlab issue.</span>
@@ -954,7 +954,7 @@ def show_argosqc_results(qc_output_path:str, notebook_base_url:str, program:str,
     html_messages = {
         'found':  [
             HTML(f'<h3 style="margin: 0; color: blue;">ArgosQC results are found in {folder_path}/{program}_{cid}.</h3>'),
-            HTML(f'<a href="{upload_url}" target="_blank">Click here open QC output folder."</a>')
+            HTML(f'<a href="{upload_url}" target="_blank">Click here open QC output folder.</a>')
         ],
         'missing': [
             HTML(f'<h3 style="margin: 0; color: red;">No ArgosQC results found. Please review step 6 Run ArgosQC output or contact OTN data team.</h3>')
