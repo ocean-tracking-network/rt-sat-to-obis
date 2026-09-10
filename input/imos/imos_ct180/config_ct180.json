@@ -16,7 +16,7 @@
       "smru.pwd": "imos",
       "timeout": 180,
       "dropIDs": "input/imos/imos_ct180/exclude_tags.csv",
-      "p2mdbtools": "/usr/bin"
+      "p2mdbtools": "C:/Users/hpz2/mdbtools-app"
     },
     "model": {
       "model": "crw",
@@ -34,10 +34,11 @@
       "pred.int": 12
     },
     "meta": {
-      "common_name": "southern elephant seal",
+      "otn_collectioncode": "unknown",
+      "common_name": "Southern elephant seal",
       "species": "Mirounga leonina",
       "release_site": "Kerguelen",
-      "state_country": " French Southern and Antarctic Lands"
+      "state_country": "France"
     }
   }
 ]
