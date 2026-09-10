@@ -7,6 +7,7 @@ import itables
 from pathlib import Path
 from typing import List, Union, Dict, Any, Optional
 from IPython.display import display, HTML
+import json
 
 from py_nrt.common import print_error, get_engine, show_df, get_program_project_from_ssm_file, get_files_by_pattern, get_ip_by_hostname
 from sqlalchemy.engine import Engine
@@ -39,6 +40,7 @@ class SatQcResultsLoader:
 
     # Default file system settings
     TAG_META_FILE_PATTERN = r'.*metadata.*|.*_deployment_.*'
+    QC_CONFIG_PATTERN = r'.*config.*.json'
     QCED_OUTPUT_FILE_PATTERN = '*ssmoutputs*_nrt.csv'
     MIN_MAX_DEPTH_FILE_PATTERN = r'.*MinMaxDepth.*|.*summary_.*'
     QC_OUTPUT_PATH = 'qc'
@@ -765,7 +767,7 @@ class SatQcResultsLoader:
         Returns:
             DataFrame with standardized column names
         """
-        # 1. Parse deployments table from .mdb if available.
+        # 1. (Optional) Parse deployments table from .mdb if available.
         input_program_cid_path = os.path.join(self.qc_input_path, program, f'{program}_{cid}')
         # Get vendor tag metadata file
         vendor_meta_files = get_files_by_pattern(input_program_cid_path, self.TAG_META_FILE_PATTERN)
@@ -781,6 +783,21 @@ class SatQcResultsLoader:
         if self.verbose:
             print(f"Looking in: {qc_program_cid_path}")
 
+        # 2. (Optional) Parse QC config.json file.
+        qc_config_files = get_files_by_pattern(input_program_cid_path, self.QC_CONFIG_PATTERN)
+
+        config = {}
+        if qc_config_files:
+            with open(qc_config_files[0], "r", encoding="utf-8") as f:
+                config = json.load(f)
+
+            # config may be a list wrapping a single dict
+            if isinstance(config, list):
+                config = config[0] if config else {}
+
+        qc_config_dict = config.get("meta", {}) if isinstance(config, dict) else {}
+
+        # 3. Parse deployments table from .mdb if available.
         # Get QCed tag metadata file
         meta_files = get_files_by_pattern(qc_program_cid_path, self.TAG_META_FILE_PATTERN)
 
@@ -873,7 +890,14 @@ class SatQcResultsLoader:
             curated_meta_df['deployment_lon'] = curated_meta_df['deployment_lon'].fillna(
                 curated_meta_df['release_longitude']
             )
-
+            print('qc_config_dict')
+            print(qc_config_dict.get("otn_collectioncode"))
+            if qc_config_dict:
+                curated_meta_df = curated_meta_df.assign(
+                    collectioncode=qc_config_dict.get("otn_collectioncode"),
+                    common_name=qc_config_dict.get("common_name"),
+                    scientific_name=qc_config_dict.get("species"),
+                )
         show_df(curated_meta_df, save_as_file='curated_meta_df.csv', show_all_rows=True)
         return curated_meta_df[output_cols]
 
