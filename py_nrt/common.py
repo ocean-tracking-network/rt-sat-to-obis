@@ -16,7 +16,7 @@ from ipywidgets import Color
 from ipywidgets.widgets import widget, VBox, Text, HTML, RadioButtons, Combobox, Layout, Dropdown
 from pykeepass import PyKeePass
 from pykeepass.exceptions import CredentialsError
-from sqlalchemy import create_engine, VARCHAR
+from sqlalchemy import create_engine, VARCHAR, text
 from sqlalchemy.engine import Engine
 from termcolor import colored
 
@@ -597,6 +597,25 @@ def get_ip_by_hostname(verbose=True) -> str:
         if verbose:
             print('Warning: can not get IP address.')
     return ip_address
+
+
+def pull_sat_tags_from_otnunit_to_otnsat(auth_file: str = './py_nrt/database_conn_string.auth'):
+    engine = get_engine(auth_file)
+    url = engine.url
+    username = url.username
+    password = url.password
+
+    with engine.begin() as conn:
+        conn.execute(
+            text("SELECT obis.repopulate_satellite_tags(:username, :password)"),
+            {"username": username, "password": password},
+        )
+        row_count = conn.execute(
+            text("SELECT COUNT(*) FROM obis.otn_satellite_tags_animals")
+        ).scalar_one()
+
+    print(f"Repopulated obis.otn_satellite_tags_animals: {row_count} rows")
+    return row_count
 
 
 class StopCell(Exception):
