@@ -1,3 +1,0 @@
-user=satnrt password= host=db.load.oceantrack.org dbname=otnsat port=5432
-
-# user=postgres password=otndb host=localhost dbname=postgres port=5432
