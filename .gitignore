@@ -2,6 +2,9 @@
 input/**/*.json
 input/*/*.log
 
+# Logs
+argosqc_run_details.csv
+
 # Output directory
 output/
 
