@@ -196,7 +196,7 @@ class SatQcResultsLoader:
             dict[str: list[str]]: dict of program: [projects...]
                 e.g.,
                 {'imos': ['imos_ct180', 'imos_ct182'],
-                 'irap': ['irap_damianlidgard_grey_seal']}
+                 'irap': ['otn_damianlidgard_grey_seal']}
         """
         program_projects = {}
         for qced_program in qced_programs:
@@ -302,8 +302,6 @@ class SatQcResultsLoader:
 
                 if not summary_df.empty:
                     summary_df_list.append(summary_df)
-
-
 
         # Combine results
         summary_df = pd.concat(summary_df_list, ignore_index=True) if summary_df_list else pd.DataFrame()

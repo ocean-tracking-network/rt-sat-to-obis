@@ -96,7 +96,7 @@ def get_qced_program_campaigns(qc_output_path: str) -> dict[str: list[str]]:
         dict[str: list[str]]: dict of program: [campaigns...]
              e.g.,
              {'imos': ['imos_ct180', 'imos_ct182'],
-             'irap': ['irap_damianlidgard_grey_seal']}
+             'irap': ['otn_damianlidgard_grey_seal']}
    """
     if (not os.path.exists(qc_output_path)) or (not os.path.isdir(qc_output_path)):
         print(f"Warning: Path {qc_output_path} does not exist or not a directory")
