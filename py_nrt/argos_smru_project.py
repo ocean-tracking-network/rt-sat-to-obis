@@ -741,8 +741,7 @@ def build_project_id_smru(program: str, cid: str) -> str:
     return project_id
 
 
-def extract_ssmoutput_tracks(engine: Engine, program: str, cid: str, qc_output_path: str, subset_tags: list[str]=[], verbose=False) -> Tuple[pd.DataFrame, List]:
-    ssmoutput_folder = get_path_from_strings([qc_output_path, program, f'{program}_{cid}'])
+def read_ssmoutput(ssmoutput_folder: str) -> Tuple[pd.DataFrame, str]:
     ssmoutput_files = get_files_by_pattern(ssmoutput_folder, '*ssmoutputs*.csv')
     if not ssmoutput_files:
         print(f'No SSM output file found in {ssmoutput_folder}')
@@ -758,19 +757,15 @@ def extract_ssmoutput_tracks(engine: Engine, program: str, cid: str, qc_output_p
         dayfirst=True,
         errors='coerce'
     )
+    return ssmoutputs_df, ssmoutput_files[0]
+
+
+def extract_ssmoutput_tracks(engine: Engine, program: str, cid: str, qc_output_path: str, subset_tags: list[str]=[], verbose=False) -> pd.DataFrame:
+    ssmoutput_folder = get_path_from_strings([qc_output_path, program, f'{program}_{cid}'])
+    ssmoutputs_df, _ = read_ssmoutput(ssmoutput_folder)
+
     if subset_tags:
         ssmoutputs_df = ssmoutputs_df[ssmoutputs_df['tag_ref'].isin(subset_tags)]
-
-    # Display summary ssmoutput
-    summary_df = ssmoutputs_df.groupby('tag_ref').agg(
-        row_count=('tag_ref', 'size'),
-        min_datetime=('date_time', 'min'),
-        max_datetime=('date_time', 'max'),
-        min_lat=('lat', 'min'),
-        max_lat=('lat', 'max'),
-        min_lon=('lon', 'min'),
-        max_lon=('lon', 'max'),
-    ).reset_index()
 
     # Merge with tag_ref_catalognumber_match
     all_tag_ref_catalognumber_df = get_all_tag_ref_catalognumber_match_df(engine)
@@ -788,12 +783,7 @@ def extract_ssmoutput_tracks(engine: Engine, program: str, cid: str, qc_output_p
 
     show_df(ssmoutputs_df, f"{cid}_qced_telemetry_{datetime.now().strftime('%Y%m%d')}.csv", True)
 
-    # Display summary ssmoutput at the end
-    print('Summary of ssmoutput by tag_ref:')
-    filename = f"{cid}_ssmoutput_summary_{datetime.now().strftime('%Y%m%d')}.csv"
-    show_df(summary_df, filename, True)
-
-    return ssmoutputs_df, ssmoutput_files
+    return ssmoutputs_df
 
 
 def get_all_tag_ref_catalognumber_match_df(engine: Engine) -> pd.DataFrame:
@@ -961,3 +951,20 @@ def show_argosqc_results(qc_output_path:str, notebook_base_url:str, program:str,
         ]
     }
     check_file_exists(relative_path, f'{program}_{cid}', html_messages, upload_url, True, False)
+    ssmoutput_folder = get_path_from_strings([qc_output_path, program, f'{program}_{cid}'])
+
+    ssmoutputs_df, _ = read_ssmoutput(ssmoutput_folder)
+    # Display summary ssmoutput
+    summary_df = ssmoutputs_df.groupby('tag_ref').agg(
+        row_count=('tag_ref', 'size'),
+        min_datetime=('date_time', 'min'),
+        max_datetime=('date_time', 'max'),
+        min_lat=('lat', 'min'),
+        max_lat=('lat', 'max'),
+        min_lon=('lon', 'min'),
+        max_lon=('lon', 'max'),
+    ).reset_index()
+    # Display summary ssmoutput at the end
+    print('Summary of ssmoutput by tag_ref:')
+    filename = f"{cid}_ssmoutput_summary_{datetime.now().strftime('%Y%m%d')}.csv"
+    show_df(summary_df, filename, True)
