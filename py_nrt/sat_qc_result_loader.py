@@ -731,12 +731,10 @@ class SatQcResultsLoader:
                     INSERT INTO {temp_table} ({columns})
                     VALUES ({placeholders})
                 """)
-                print(insert_sql)
                 conn.execute(insert_sql, row_dict)
 
             # UPSERT from temp table
             columns = [f'"{col}"' for col in meta_df.columns]
-            print(f'columns: {columns}')
             columns_str = ', '.join(columns)
 
             # Exclude duplicate columns from update set
