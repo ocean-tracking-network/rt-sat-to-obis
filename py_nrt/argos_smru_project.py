@@ -580,7 +580,7 @@ def create_smru_qc_config(
         cid: str,
         deployment_df: pd.DataFrame,
         drop_ids: list[str],
-        otn_collection_code: str,
+        otn_collectioncode: str,
         qc_input_path: str,
         qc_output_path: str,
         mdb_tables_path: str,
@@ -605,7 +605,7 @@ def create_smru_qc_config(
         cid (str): Collection/collaboration identifier
         deployment_df (pd.DataFrame): vendor deployment dataframe.
         drop_ids (list[str]): List of drop/tag IDs to process
-        otn_collection_code (str): OTN collection code identifier
+        otn_collectioncode (str): OTN collection code identifier
         qc_input_path (str): Directory path containing input data files
         qc_output_path (str): Directory path for QC output files
         mdb_tables_path (Path): .mdb file path
@@ -693,6 +693,7 @@ def create_smru_qc_config(
                 "pred.int": 12
             },
             "meta": {
+                "otn_collectioncode": collectioncode,
                 "common_name": common_name,
                 "species": species,
                 "release_site": release_site,
