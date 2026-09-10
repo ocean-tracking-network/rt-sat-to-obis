@@ -1,7 +1,7 @@
-sattag_program,device_id,ptt,body,device_wmo_ref,tag_type,common_name,species,release_longitude,release_latitude,release_site,release_date,recovery_date,age_class,sex,length,estimated_mass,actual_mass,state_country,qc_start_date,qc_end_date,qc_method,qc_method_version,qc_proj4string,qc_run_date
-vc08,vc08-VMT400-21,213693,15400,Q9902297,VMT_21A,VMT,Hg,-59.683,46.017,Hay Island,2022-06-20T00:00:00Z,NA,NA,NA,NA,NA,NA,Nova Scotia Canada,,NA,NA,NA,NA,NA
-vc08,vc08-VMT401-21,213694,15401,Q9902298,VMT_21A,VMT,Hg,-59.683,46.017,Hay Island,2022-06-20T00:00:00Z,NA,NA,NA,NA,NA,NA,Nova Scotia Canada,,NA,NA,NA,NA,NA
-vc08,vc08-VMT402-21,213695,15402,Q9902299,VMT_21A,VMT,Hg,-59.683,46.017,Hay Island,2022-06-20T00:00:00Z,NA,NA,NA,NA,NA,NA,Nova Scotia Canada,,NA,NA,NA,NA,NA
-vc08,vc08-VMT403-21,213696,15403,Q9902301,VMT_21A,VMT,Hg,-59.683,46.017,Hay Island,2022-06-20T00:00:00Z,NA,NA,NA,NA,NA,NA,Nova Scotia Canada,,NA,NA,NA,NA,NA
-vc08,vc08-VMT414-21,213697,15414,Q9902302,VMT_21A,VMT,Hg,-59.683,46.017,Hay Island,2022-06-20T00:00:00Z,NA,NA,NA,NA,NA,NA,Nova Scotia Canada,,NA,NA,NA,NA,NA
-vc08,vc08-VMT415-21,213698,15415,Q9902303,VMT_21A,VMT,Hg,-59.683,46.017,Hay Island,2022-06-20T00:00:00Z,NA,NA,NA,NA,NA,NA,Nova Scotia Canada,,NA,NA,NA,NA,NA
+sattag_program,device_id,ptt,body,device_wmo_ref,tag_type,species,release_site,release_date,recovery_date,release_latitude,release_longitude,common_name,age_class,sex,length,estimated_mass,actual_mass,state_country
+vc08,vc08-VMT400-21,213693,15400,,VMT_21A,Hg,Hay Island,2022-06-20T00:00:00Z,2023-07-01T00:00:00Z,46.017,-59.683,NA,NA,NA,NA,NA,NA,NA
+vc08,vc08-VMT401-21,213694,15401,,VMT_21A,Hg,Hay Island,2022-06-20T00:00:00Z,2023-07-01T00:00:00Z,46.017,-59.683,NA,NA,NA,NA,NA,NA,NA
+vc08,vc08-VMT402-21,213695,15402,,VMT_21A,Hg,Hay Island,2022-06-20T00:00:00Z,2023-07-01T00:00:00Z,46.017,-59.683,NA,NA,NA,NA,NA,NA,NA
+vc08,vc08-VMT403-21,213696,15403,,VMT_21A,Hg,Hay Island,2022-06-20T00:00:00Z,2023-07-01T00:00:00Z,46.017,-59.683,NA,NA,NA,NA,NA,NA,NA
+vc08,vc08-VMT414-21,213697,15414,,VMT_21A,Hg,Hay Island,2022-06-20T00:00:00Z,2023-07-01T00:00:00Z,46.017,-59.683,NA,NA,NA,NA,NA,NA,NA
+vc08,vc08-VMT415-21,213698,15415,,VMT_21A,Hg,Hay Island,2022-06-20T00:00:00Z,2023-07-01T00:00:00Z,46.017,-59.683,NA,NA,NA,NA,NA,NA,NA
