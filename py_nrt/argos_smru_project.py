@@ -780,6 +780,7 @@ def extract_ssmoutput_tracks(engine: Engine, program: str, cid: str, qc_output_p
         how='left'
     )
     filename = f"{cid}_qced_telemetry_{datetime.now().strftime('%Y%m%d')}.csv"
+    ssmoutputs_df.to_csv(os.path.sep.join([ssmoutput_folder, filename]), index=False)
     display(HTML(f'''<p>
         <span style="font-size:25px;"><i class="fa fa-flip-horizontal">🐟</i></span>
         <span style="font-size:20px;">~ Click CSV button to download and attach "{filename}" to the Gitlab issue.</span>
