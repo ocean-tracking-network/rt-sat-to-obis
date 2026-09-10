@@ -317,7 +317,7 @@ def prompt_potential_match_otn_tags(engine: Engine, deployment_df: pd.DataFrame,
 
     match_df_disp_cols = ['tag_catalognumber', 'tag_locality', 'ptt_code', 'collectornumber', 'tag_startdatetime', 'tag_enddatetime', 'institutioncode', 'collector', 'scientificname', 'commonname', 'organism_id']
     for index, row in deployment_df.iterrows():
-        display(HTML(f'<h3>- SMRU tag_ref: {row["REF"]} ({row["ON_DATE"].split(" ")[0]} to {row["OFF_DATE"].split(" ")[0]})</h3>'))
+        display(HTML(f'<h3>- SMRU tag_ref: {row["REF"]} ({str(row["ON_DATE"]).split(" ")[0]} to {str(row["OFF_DATE"]).split(" ")[0]})</h3>'))
 
         # If existing match found, display remove match button.
         existing_match_dict = get_existing_tag_mapping(engine, row["REF"])
@@ -749,7 +749,6 @@ def extract_ssmoutput_tracks(program: str, cid: str, qc_output_path: str, subset
         return pd.DataFrame(), None
 
     ssmoutputs_df = pd.read_csv(ssmoutput_files[0])
-    itables.show(ssmoutputs_df)
     ssmoutputs_df = ssmoutputs_df[['ref', 'date', 'lat', 'lon']].copy().rename(columns={
         'ref': 'tag_ref',
         'date': 'date_time'
@@ -763,6 +762,7 @@ def extract_ssmoutput_tracks(program: str, cid: str, qc_output_path: str, subset
         ssmoutputs_df = ssmoutputs_df[ssmoutputs_df['tag_ref'].isin(subset_tags)]
     filename = f"{cid}_ssmoutput_{datetime.now().strftime('%Y%m%d')}.csv"
     show_df(ssmoutputs_df, filename, True)
+
     return ssmoutputs_df, ssmoutput_files
 
 
