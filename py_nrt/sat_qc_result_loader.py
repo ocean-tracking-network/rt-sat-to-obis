@@ -773,7 +773,7 @@ class SatQcResultsLoader:
         vendor_meta_files = get_files_by_pattern(input_program_cid_path, self.TAG_META_FILE_PATTERN)
 
         if vendor_meta_files:
-            vendor_meta_df = pd.read_csv(vendor_meta_files[0], usecols=['device_id', 'release_date', 'release_latitude', 'release_longitude'])
+            vendor_meta_df = pd.read_csv(vendor_meta_files[0], usecols=['device_id', 'release_date', 'release_latitude', 'release_longitude', 'device_wmo_ref'])
         else:
             print_error(f'No vendor tag metadata file found in {input_program_cid_path} by pattern {self.TAG_META_FILE_PATTERN}. Skipping...')
             vendor_meta_df = pd.DataFrame()
@@ -871,9 +871,14 @@ class SatQcResultsLoader:
             suffixes=('', '_depth')
         )
         curated_meta_df['program'] = program
+        if qc_config_dict:
+            curated_meta_df = curated_meta_df.assign(
+                collectioncode=qc_config_dict.get("otn_collectioncode"),
+                common_name=qc_config_dict.get("common_name"),
+                scientific_name=qc_config_dict.get("species"),
+            )
         output_cols = curated_meta_df.columns
         if not vendor_meta_df.empty:
-            show_df(vendor_meta_df, save_as_file='vendor_meta_df.csv',show_all_rows=True)
             curated_meta_df = curated_meta_df.merge(
                 vendor_meta_df,
                 left_on='tag_id',
@@ -890,14 +895,10 @@ class SatQcResultsLoader:
             curated_meta_df['deployment_lon'] = curated_meta_df['deployment_lon'].fillna(
                 curated_meta_df['release_longitude']
             )
-            print('qc_config_dict')
-            print(qc_config_dict.get("otn_collectioncode"))
-            if qc_config_dict:
-                curated_meta_df = curated_meta_df.assign(
-                    collectioncode=qc_config_dict.get("otn_collectioncode"),
-                    common_name=qc_config_dict.get("common_name"),
-                    scientific_name=qc_config_dict.get("species"),
-                )
+            curated_meta_df['wmo_platform_code'] = curated_meta_df['wmo_platform_code'].fillna(
+                curated_meta_df['device_wmo_ref']
+            )
+
         show_df(curated_meta_df, save_as_file='curated_meta_df.csv', show_all_rows=True)
         return curated_meta_df[output_cols]
 

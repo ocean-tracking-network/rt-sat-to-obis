@@ -693,7 +693,7 @@ def create_smru_qc_config(
                 "pred.int": 12
             },
             "meta": {
-                "otn_collectioncode": collectioncode,
+                "otn_collectioncode": otn_collectioncode,
                 "common_name": common_name,
                 "species": species,
                 "release_site": release_site,
