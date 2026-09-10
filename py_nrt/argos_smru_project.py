@@ -741,7 +741,7 @@ def build_project_id_smru(program: str, cid: str) -> str:
     return project_id
 
 
-def extract_ssmoutput_tracks(program: str, cid: str, qc_output_path: str, subset_tags: list[str]=[], verbose=False) -> Tuple[pd.DataFrame, List]:
+def extract_ssmoutput_tracks(engine: Engine, program: str, cid: str, qc_output_path: str, subset_tags: list[str]=[], verbose=False) -> Tuple[pd.DataFrame, List]:
     ssmoutput_folder = get_path_from_strings([qc_output_path, program, f'{program}_{cid}'])
     ssmoutput_files = get_files_by_pattern(ssmoutput_folder, '*ssmoutputs*.csv')
     if not ssmoutput_files:
@@ -760,10 +760,36 @@ def extract_ssmoutput_tracks(program: str, cid: str, qc_output_path: str, subset
     )
     if subset_tags:
         ssmoutputs_df = ssmoutputs_df[ssmoutputs_df['tag_ref'].isin(subset_tags)]
-    filename = f"{cid}_ssmoutput_{datetime.now().strftime('%Y%m%d')}.csv"
-    show_df(ssmoutputs_df, filename, True)
 
+    # Display summary ssmoutput
+    summary_df = ssmoutputs_df.groupby('tag_ref').agg(
+        count=('tag_ref', 'size'),
+        date_range=('date', lambda s: (s.min(), s.max())),
+        lat_range=('lat', lambda s: (s.min(), s.max())),
+        lon_range=('lon', lambda s: (s.min(), s.max())),
+    ).reset_index()
+    filename = f"{cid}_ssmoutput_summary_{datetime.now().strftime('%Y%m%d')}.csv"
+    show_df(summary_df, filename, True)
+
+    # Merge with tag_ref_catalognumber_match
+    all_tag_ref_catalognumber_df = get_all_tag_ref_catalognumber_match_df(engine)
+    ssmoutputs_df = ssmoutputs_df.merge(
+        all_tag_ref_catalognumber_df,
+        on='tag_ref',
+        how='left'
+    )
+    show_df(ssmoutputs_df, f"{cid}_qced_telemetry_{datetime.now().strftime('%Y%m%d')}.csv", True)
     return ssmoutputs_df, ssmoutput_files
+
+
+def get_all_tag_ref_catalognumber_match_df(engine: Engine) -> pd.DataFrame:
+    """Get all rows from the tag_ref/catalognumber match table as a DataFrame."""
+    with engine.connect() as conn:
+        match_df = pd.read_sql(text(f"""
+            SELECT tag_ref, catalognumber
+            FROM {TAG_REF_CATALOGNUMBER_MATCH_TABLE}
+        """), conn)
+    return match_df
 
 
 def run_smru_qc(r_executable: str, config_file: str, argosqc_r_script = 'r_nrt/run_ArgosQC_smru_qc.R'):
