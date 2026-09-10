@@ -38,23 +38,26 @@ class SatQcResultsLoader:
     SAT_DB_INIT_FILE = 'init_sat_tables.sql'
 
     # Default file system settings
-    TAG_META_FILE_PATTERN = r'.*metadata.*'
+    TAG_META_FILE_PATTERN = r'.*metadata.*|.*_deployment_.*'
     QCED_OUTPUT_FILE_PATTERN = '*ssmoutputs*_nrt.csv'
     MIN_MAX_DEPTH_FILE_PATTERN = r'.*MinMaxDepth.*|.*summary_.*'
     QC_OUTPUT_PATH = 'qc'
+    QC_INPUT_PATH = 'input'
     EXCLUDE_FOLDERS = ['maps', 'diag', 'aodn', 'mdb']
 
-    def __init__(self, engine: Engine, schema: str = SATNRT_SCHEMA, qc_output_path: str = QC_OUTPUT_PATH, verbose: bool = True):
+    def __init__(self, engine: Engine, schema: str = SATNRT_SCHEMA, qc_input_path: str = QC_INPUT_PATH, qc_output_path: str = QC_OUTPUT_PATH, verbose: bool = True):
         """
         Initialize the SatQcResultsLoader.
 
         Args:
             engine: SQLAlchemy Engine object. If None, must be set later.
+            qc_input_path: Path to the QC input directory
             qc_output_path: Path to the QC output directory
             schema: Database schema to use (default: SATNRT_SCHEMA)
             verbose: Whether to print verbose output
         """
         self.engine = engine
+        self.qc_input_path = qc_input_path
         self.qc_output_path = qc_output_path
         self.schema = schema
         self.verbose = verbose
@@ -726,16 +729,17 @@ class SatQcResultsLoader:
                     INSERT INTO {temp_table} ({columns})
                     VALUES ({placeholders})
                 """)
-
+                print(insert_sql)
                 conn.execute(insert_sql, row_dict)
 
             # UPSERT from temp table
             columns = [f'"{col}"' for col in meta_df.columns]
+            print(f'columns: {columns}')
             columns_str = ', '.join(columns)
 
-            # Exclude conflict columns from update set
-            conflict_columns = ['program', 'tag_id', 'ptt']
-            update_columns = [col for col in meta_df.columns if col not in conflict_columns]
+            # Exclude duplicate columns from update set
+            duplicate_columns = ['tag_id', 'ptt']
+            update_columns = [col for col in meta_df.columns if col not in duplicate_columns]
             update_set = ', '.join([f'{col} = EXCLUDED.{col}' for col in update_columns])
 
             upsert_sql = text(f"""
@@ -761,25 +765,35 @@ class SatQcResultsLoader:
         Returns:
             DataFrame with standardized column names
         """
-        program_cid_path = os.path.join(self.qc_output_path, program, f'{program}_{cid}')
+        # 1. Parse deployments table from .mdb if available.
+        input_program_cid_path = os.path.join(self.qc_input_path, program, f'{program}_{cid}')
+        # Get vendor tag metadata file
+        vendor_meta_files = get_files_by_pattern(input_program_cid_path, self.TAG_META_FILE_PATTERN)
+
+        if vendor_meta_files:
+            vendor_meta_df = pd.read_csv(vendor_meta_files[0], usecols=['device_id', 'release_date', 'release_latitude', 'release_longitude'])
+        else:
+            print_error(f'No vendor tag metadata file found in {input_program_cid_path} by pattern {self.TAG_META_FILE_PATTERN}. Skipping...')
+            vendor_meta_df = pd.DataFrame()
+
+        qc_program_cid_path = os.path.join(self.qc_output_path, program, f'{program}_{cid}')
 
         if self.verbose:
-            print(f"Looking in: {program_cid_path}")
+            print(f"Looking in: {qc_program_cid_path}")
 
-        # Get tag metadata file
-        meta_files = get_files_by_pattern(program_cid_path, self.TAG_META_FILE_PATTERN)
+        # Get QCed tag metadata file
+        meta_files = get_files_by_pattern(qc_program_cid_path, self.TAG_META_FILE_PATTERN)
 
         if not meta_files:
-            print_error(
-                f'No tag metadata file found in {program_cid_path} by pattern {self.TAG_META_FILE_PATTERN}')
+            print_error(f'No tag metadata file found in {qc_program_cid_path} by pattern {self.TAG_META_FILE_PATTERN}')
             return pd.DataFrame()
 
-        # Load the original data
-        meta_df = pd.read_csv(meta_files[0])
+        # Load the QCed output metadata
+        qc_meta_df = pd.read_csv(meta_files[0])
 
         if self.verbose:
-            print(f"\nLoaded {len(meta_df)} rows from {meta_files[0].name}")
-            print(f"Original columns: {meta_df.columns.tolist()}")
+            print(f"\nLoaded {len(qc_meta_df)} rows from {meta_files[0].name}")
+            print(f"Original columns: {qc_meta_df.columns.tolist()}")
 
         # Define column mapping
         column_mapping = {
@@ -802,14 +816,14 @@ class SatQcResultsLoader:
 
         # Curated metadata: add missing columns and set values as None
         curated_meta_df = pd.DataFrame(
-            {col: [None] * len(meta_df) for col in column_mapping.keys()})
+            {col: [None] * len(qc_meta_df) for col in column_mapping.keys()})
 
         # Map and fill existing columns from meta_df
         selected_columns = {}
         for target_col, possible_cols in column_mapping.items():
             for col in possible_cols:
-                if col in meta_df.columns:
-                    curated_meta_df[target_col] = meta_df[col]
+                if col in qc_meta_df.columns:
+                    curated_meta_df[target_col] = qc_meta_df[col]
                     selected_columns[target_col] = col
                     if self.verbose:
                         print(f"   Mapped: '{col}' ➔ '{target_col}'")
@@ -830,6 +844,7 @@ class SatQcResultsLoader:
         min_max_depth_df = self._parse_min_max_depth(program, cid)
         if self.verbose:
             show_df(min_max_depth_df, 'min_max_depth_df', True)
+            show_df(curated_meta_df, 'curated_meta_df', True)
 
         # Left join min_max_depth_df with min_max_depth_df
         curated_meta_df = curated_meta_df.merge(
@@ -838,8 +853,29 @@ class SatQcResultsLoader:
             how='left',
             suffixes=('', '_depth')
         )
+        curated_meta_df['program'] = program
+        output_cols = curated_meta_df.columns
+        if not vendor_meta_df.empty:
+            show_df(vendor_meta_df, save_as_file='vendor_meta_df.csv',show_all_rows=True)
+            curated_meta_df = curated_meta_df.merge(
+                vendor_meta_df,
+                left_on='tag_id',
+                right_on="device_id",
+                how="left",
+                suffixes=("", "_vendor")
+            )
+            curated_meta_df['deployment_start'] = curated_meta_df['deployment_start'].fillna(
+                curated_meta_df['release_date']
+            )
+            curated_meta_df['deployment_lat'] = curated_meta_df['deployment_lat'].fillna(
+                curated_meta_df['release_latitude']
+            )
+            curated_meta_df['deployment_lon'] = curated_meta_df['deployment_lon'].fillna(
+                curated_meta_df['release_longitude']
+            )
 
-        return curated_meta_df
+        show_df(curated_meta_df, save_as_file='curated_meta_df.csv', show_all_rows=True)
+        return curated_meta_df[output_cols]
 
     def _parse_min_max_depth(self, program: str, cid: str) -> pd.DataFrame:
         """
