@@ -1,0 +1,6 @@
+sattag_program,device_id,ptt,body,device_wmo_ref,tag_type,species,release_site,release_date,recovery_date,release_latitude,release_longitude,common_name,age_class,sex,length,estimated_mass,actual_mass,state_country
+vc03,vc03-VMT504b-14,44438,13153,,VMT_13A,Hg,Hay Island,2014-07-07T00:00:00Z,2015-05-01T00:00:00Z,46.017,-59.683,NA,NA,NA,NA,NA,NA,NA
+vc03,vc03-VMT507b-14,44440,13154,,VMT_13A,Hg,Hay Island,2014-07-07T00:00:00Z,2015-05-01T00:00:00Z,46.017,-59.683,NA,NA,NA,NA,NA,NA,NA
+vc03,vc03-VMT679-14,44441,13155,,VMT_13A,Hg,Hay Island,2014-07-07T00:00:00Z,2015-05-01T00:00:00Z,46.017,-59.683,NA,NA,NA,NA,NA,NA,NA
+vc03,vc03-VMT680-14,106709,13156,,VMT_13A,Hg,Hay Island,2014-07-07T00:00:00Z,2015-02-01T00:00:00Z,46.017,-59.683,NA,NA,NA,NA,NA,NA,NA
+vc03,vc03-VMT681-14,106721,13157,,VMT_13A,Hg,Hay Island,2014-07-07T00:00:00Z,2015-05-01T00:00:00Z,46.017,-59.683,NA,NA,NA,NA,NA,NA,NA

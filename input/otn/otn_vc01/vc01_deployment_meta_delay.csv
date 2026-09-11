@@ -1,0 +1,4 @@
+sattag_program,device_id,ptt,body,device_wmo_ref,tag_type,species,release_site,release_date,recovery_date,release_latitude,release_longitude,common_name,age_class,sex,length,estimated_mass,actual_mass,state_country
+vc01,vc01-VMT124-12,106722,12558,,VMT_12A,Hg,Sable,2012-10-12T00:00:00Z,2013-03-01T00:00:00Z,44.643,-63.614,NA,NA,NA,NA,NA,NA,NA
+vc01,vc01-VMT125-12,106723,12613,,VMT_12A,Hg,Sable,2012-10-12T00:00:00Z,2013-03-01T00:00:00Z,44.643,-63.614,NA,NA,NA,NA,NA,NA,NA
+vc01,vc01-VMT126-12,106724,12582,,VMT_12A,Hg,Sable,2012-10-12T00:00:00Z,2013-03-01T00:00:00Z,44.643,-63.614,NA,NA,NA,NA,NA,NA,NA

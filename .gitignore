@@ -1,5 +1,18 @@
+# Input files
+input/imos/**/*.json
+input/otn/**/*.json
 input/*/*.log
+
+# Logs
+argosqc_run_details.csv
+
+#Credentials
+py_nrt/database_conn_string.auth
+
+# Output directory
 output/
+
+# QC and processing directories
 input/*/qc/maps/
 input/*/qc/mdb/
 input/*/qc/aodn/
@@ -7,6 +20,8 @@ input/*/qc/diag/
 input/*/aodn/
 input/*/maps/
 input/*/diag/
+
+# Archive and binary files
 *.zip
 *.mdb
 
@@ -20,6 +35,6 @@ ipython_config.py
 # Compiled python
 __pycache__/
 
-# local auths
+# Local auths
 .iptauth*
 .mapbox_token

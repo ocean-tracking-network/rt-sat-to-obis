@@ -1,0 +1,66 @@
+dependencies:
+- jupyter==1.0.0
+- jupyter_client==7.4.9
+- jupyter_console==6.6.3
+- jupyter_core==5.3.0
+- jupyter_events==0.6.3
+- jupyter_server==1.23.4
+- notebook=6.5.7
+- ipywidgets==8.0.4
+- traitlets==5.9
+- ipyleaflet
+- plotly
+- pandas=1.5.3
+- psycopg
+- matplotlib
+- shapely
+- sqlalchemy<=1.4.46
+- xlrd
+- xlsxwriter
+- chardet
+- pyproj
+- psycopg2
+- tabulate
+- termcolor
+- python-Levenshtein
+- geopandas
+- cartopy
+- whoosh
+- openpyxl
+- html5lib
+- sshtunnel
+- packaging
+- pyarrow
+- r-base=4.5.2
+- r-essentials
+- r-remotes
+- r-rcpp
+- r-rcppeigen
+- r-tmb
+- gsl
+- libxml2
+- itables
+- xmltodict
+- tqdm
+
+- pip:
+  - pykeepass
+  - jinja2schema
+  - requests_toolbelt
+  - pynliner
+  - geocoder
+  - geopy
+  - inflect
+  - isoweek
+  - geoalchemy2
+  - fuzzywuzzy
+  - pytz
+  - resonATe
+  - fiona
+  - psycopg_pool
+  - pypgstac
+
+
+channels:
+  - conda-forge
+  - r
