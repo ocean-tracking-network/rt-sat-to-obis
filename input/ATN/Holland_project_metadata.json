@@ -1,0 +1,43 @@
+{
+	"id":89,
+	"project_type":"Satellite",
+	"rw_project_id":6582785,
+	"rw_project_name":"Sharks as Oceanographers, 2014-2018",
+	"title":"Sharks as Oceanographers, 2014-2018",
+	"abstract":"Sharks equipped with appropriate types of tag can yield near-real time profiles of ocean temperature structure with quite precise geolocation accuracy.  Thus, in addition to improving our understanding of the movement patterns and habitat selection of sharks, we can also obtain detailed information about the ocean's structure.  These data can be used in oceanographic and meteorological modeling and forecasting and also to inform ecosystem based fisheries management.",
+	"purpose":"",
+	"funder":"NOAA IOOS and PacIOOS",
+	"program_affiliation":""
+	}
+{
+	"pi_first_name":"Kim",
+	"pi_last_name":"Holland",
+	"pi_position":"Research Professor",
+	"pi_organization":"University of Hawaii at Manoa",
+	"pi_address1":"11-007 Lilipuna Road",
+	"pi_address2":"",
+	"pi_address_city":"Kaneohe",
+	"pi_address_state":"Hawaii",
+	"pi_address_postal_code":"97644",
+	"pi_address_country":"USA",
+	"pi_email_address":"kholland@hawaii.edu",
+	"pi_phone":"8082200112",
+	"pi_creator_url":"",
+	"pi_creator_orcid":"",
+	"pi_creator_role":"principalInvestigator",
+	"dm_first_name":"Kim",
+	"dm_last_name":"Holland",
+	"dm_position":"Research Professor",
+	"dm_organization":"University of Hawaii at Manoa",
+	"dm_address1":"11-007 Lilipuna Road",
+	"dm_address2":"",
+	"dm_address_city":"Kaneohe",
+	"dm_address_state":"Hawaii",
+	"dm_address_postal_code":"97644",
+	"dm_address_country":"USA",
+	"dm_email_address":"kholland@hawaii.edu",
+	"dm_phone":"8082200112",
+	"dm_creator_url":""
+	"pi_creator_orcid":"",
+	"pi_creator_role":"principalInvestigator"
+	}

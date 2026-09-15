@@ -1,5 +1,6 @@
 # Input files
-input/**/*.json
+input/imos/**/*.json
+input/otn/**/*.json
 input/*/*.log
 
 # Logs
