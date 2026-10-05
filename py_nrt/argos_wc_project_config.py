@@ -42,7 +42,7 @@ from xml.etree import ElementTree as ET
 import warnings
 
 from py_nrt.argos_smru_project import get_path_from_strings
-from py_nrt.common import run_from_ipython, show_df, build_combobox
+from py_nrt.common import run_from_ipython, show_df, build_dropdown
 from py_nrt.load_nrt_results import get_files_by_pattern
 
 itables.init_notebook_mode()
@@ -450,7 +450,7 @@ def get_deployments_for_owner_id(a_key: str, s_key: str, collaborator: str = Non
 
 
 def download_tag(a_key: str, s_key: str, deployment_df: pd.DataFrame, program:str, qc_input_path:str, verbose=False):
-    tag_uuid_combobox = build_combobox(deployment_df['tag_uuid'].tolist())
+    tag_uuid_combobox = build_dropdown(deployment_df['tag_uuid'].tolist())
     download_button = Button(description="Download", button_style='primary')
     display(tag_uuid_combobox, download_button)
     download_button.on_click(partial(perform_download, a_key, s_key, tag_uuid_combobox, deployment_df, program, qc_input_path, verbose))
