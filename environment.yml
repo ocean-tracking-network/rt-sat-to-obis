@@ -2,13 +2,69 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - pandas
+  - pandas=1.5.3
   - pyworms
-  - Pathlib
+  - pathlib
   - bs4
   - lxml
   - requests
   - jinja2
   - pip
+  - jupyter==1.0.0
+  - jupyter_client==7.4.9
+  - jupyter_console==6.6.3
+  - jupyter_core==5.3.0
+  - jupyter_events==0.6.3
+  - jupyter_server==1.23.4
+  - notebook=6.5.7
+  - ipywidgets==8.0.4
+  - traitlets==5.9
+  - ipyleaflet
+  - plotly
+  - psycopg
+  - matplotlib
+  - shapely
+  - sqlalchemy<=1.4.46
+  - xlrd
+  - xlsxwriter
+  - chardet
+  - pyproj
+  - psycopg2
+  - tabulate
+  - termcolor
+  - python-levenshtein
+  - geopandas
+  - cartopy
+  - whoosh
+  - openpyxl
+  - html5lib
+  - sshtunnel
+  - packaging
+  - pyarrow
+  - m2w64-toolchain
+  - gsl
+  - libxml2
+  - itables
+  - xmltodict
+  - keplergl
+  - widgetsnbextension==4.0.8
+  - nodejs>=20
+  - tqdm
   - pip:
+    - pykeepass
     - requests_toolbelt
+    - jinja2schema
+    - pynliner
+    - geocoder
+    - geopy
+    - inflect
+    - isoweek
+    - geoalchemy2
+    - fuzzywuzzy
+    - pytz
+    - resonate
+    - fiona
+    - psycopg_pool
+    - pypgstac
+    - jupyter_contrib_nbextensions
+    - jupyter_nbextensions_configurator
